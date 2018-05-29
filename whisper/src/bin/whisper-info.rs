@@ -1,3 +1,17 @@
+#[macro_use] extern crate structopt;
+use structopt::StructOpt;
+use std::process::exit;
+use std::path::PathBuf;
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "whisper-info")]
+struct Args {
+    #[structopt(long = "json")]
+    json: bool,
+    #[structopt(name = "path", parse(from_os_str))]
+    path: PathBuf,
+}
+
 // whisper-info.py 
 // Usage: whisper-info.py [options] path [field]
 
@@ -35,7 +49,17 @@
 //   "fileSize": 17308
 // }
 
-fn main() {
+fn run(args: &Args) -> Result<(), String> {
     println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
     println!("whisper-info");
+    println!("{:?}", args);
+    Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }

@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Andrey Kutejko <andrey.kutejko@sizmek.com>"]
 
 [dependencies]
+structopt = "0.2"
+
+[dev-dependencies]
+assert_cli = "0.6"
