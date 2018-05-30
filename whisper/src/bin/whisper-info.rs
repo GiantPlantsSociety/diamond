@@ -28,13 +28,14 @@ struct Args {
 // xFilesFactor: 0.5
 // aggregationMethod: average
 // fileSize: 17308
-
+//
 // Archive 0
 // retention: 86400
 // secondsPerPoint: 60
 // points: 1440
 // size: 17280
 // offset: 28
+//
 
 // whisper-info.py load.1m.wsp size
 // Unknown field "size". Valid fields are maxRetention,xFilesFactor,aggregationMethod,archives,fileSize
@@ -58,6 +59,27 @@ struct Args {
 //   ],
 //   "fileSize": 17308
 // }
+
+// whisper-info.py load.2m.wsp
+// maxRetention: 172800
+// xFilesFactor: 0.5
+// aggregationMethod: average
+// fileSize: 34600
+//
+// Archive 0
+// retention: 86400
+// secondsPerPoint: 60
+// points: 1440
+// size: 17280
+// offset: 40
+//
+// Archive 1
+// retention: 172800
+// secondsPerPoint: 120
+// points: 1440
+// size: 17280
+// offset: 17320
+//
 
 fn run(args: &Args) -> Result<(), String> {
     println!("whisper-info {}", env!("CARGO_PKG_VERSION"));

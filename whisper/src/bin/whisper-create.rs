@@ -47,6 +47,9 @@ struct Args {
 // whisper-create.py load.2m.wsp 60:1440 120:2880
 // Created: load.2m.wsp (51880 bytes)
 
+// whisper-create.py load.2m.wsp 60:1440 120:1440
+// Created: load.2m.wsp (34600 bytes)
+
 fn run(args: &Args) -> Result<(), String> {
     println!("whisper-create {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
