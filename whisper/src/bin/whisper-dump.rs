@@ -9,9 +9,11 @@ struct Args {
     /// Show human-readable timestamps instead of unix times
     #[structopt(long = "pretty")]
     pretty: bool,
+
     /// Time format to use with --pretty; see time.strftime()
     #[structopt(long = "time-format", short = "t")]
     time_format: Option<String>,
+
     /// Path to data file
     #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,

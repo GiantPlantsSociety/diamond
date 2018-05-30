@@ -9,9 +9,11 @@ struct Args {
     /// Outputs results in JSON form
     #[structopt(long = "json")]
     json: bool,
+
     /// Path to data file
     #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,
+
     /// File info field to display
     field: Option<String>,
 }
