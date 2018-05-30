@@ -9,8 +9,8 @@ struct Args {
     /// Outputs results in JSON form
     #[structopt(long = "json")]
     json: bool,
-    #[structopt(name = "path", parse(from_os_str))]
     /// Path to data file
+    #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,
     /// File info field to display
     field: Option<String>,
@@ -60,8 +60,7 @@ struct Args {
 // }
 
 fn run(args: &Args) -> Result<(), String> {
-    println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    println!("whisper-info");
+    println!("whisper-info {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
     Ok(())
 }

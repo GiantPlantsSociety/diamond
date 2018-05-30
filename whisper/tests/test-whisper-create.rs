@@ -1,10 +1,10 @@
 extern crate assert_cli;
 
 #[cfg(test)]
-mod whisper_info {
+mod whisper_create {
     use assert_cli;
 
-    const NAME: &str = "whisper-info";
+    const NAME: &str = "whisper-create";
 
     #[test]
     fn calling_without_args() {
@@ -19,14 +19,6 @@ mod whisper_info {
         assert_cli::Assert::cargo_binary(NAME)
             .with_args(&["--help"])
             .stdout().contains("USAGE")
-            .unwrap();
-    }
-
-    #[test]
-    fn calling_with_invalid_path() {
-        assert_cli::Assert::cargo_binary(NAME)
-            .with_args(&["invalid"])
-            // .fails_with(1)
             .unwrap();
     }
 }

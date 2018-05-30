@@ -1,3 +1,16 @@
+#[macro_use] extern crate structopt;
+use structopt::StructOpt;
+use std::process::exit;
+use std::path::PathBuf;
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "whisper-create")]
+struct Args {
+    /// Path to data file
+    #[structopt(name = "path", parse(from_os_str))]
+    path: PathBuf,
+}
+
 // whisper-create.py 
 // Usage: whisper-create.py path timePerPoint:timeToStore [timePerPoint:timeToStore]*
 // whisper-create.py --estimate timePerPoint:timeToStore [timePerPoint:timeToStore]*
@@ -34,7 +47,16 @@
 // whisper-create.py load.2m.wsp 60:1440 120:2880
 // Created: load.2m.wsp (51880 bytes)
 
+fn run(args: &Args) -> Result<(), String> {
+    println!("whisper-create {}", env!("CARGO_PKG_VERSION"));
+    println!("{:?}", args);
+    Ok(())
+}
+
 fn main() {
-    println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    println!("whisper-create");
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
