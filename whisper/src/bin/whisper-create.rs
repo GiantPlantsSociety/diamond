@@ -6,9 +6,42 @@ use std::path::PathBuf;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-create")]
 struct Args {
+    /// Overwrite existing file
+    #[structopt(long = "overwrite")]
+    overwrite: bool,
+
+    /// Don't create a whisper file, estimate storage requirements based on archive definitions
+    #[structopt(long = "estimate")]
+    estimate: bool,
+
+    /// Create new whisper as sparse file
+    #[structopt(long = "sparse")]
+    sparse: bool,
+
+    /// Create new whisper and use fallocate
+    #[structopt(long = "fallocate")]
+    fallocate: bool,
+
+    /// XFILESFACTOR
+    #[structopt(long = "xFilesFactor", default_value = "0.5")]
+    x_files_factor: f32,
+
+    /// Function to use when aggregating values
+    /// (average, sum, last, max, min, avg_zero, absmax, absmin)
+    #[structopt(long = "aggregationMethod", default_value = "average")]
+    aggregation_method: String,
+
     /// Path to data file
     #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,
+
+    #[structopt(name = "retentions", help = r#"Specify lengths of time, for example:
+60:1440      60 seconds per datapoint, 1440 datapoints = 1 day of retention
+15m:8        15 minutes per datapoint, 8 datapoints = 2 hours of retention
+1h:7d        1 hour per datapoint, 7 days of retention
+12h:2y       12 hours per datapoint, 2 years of retention
+"#)]
+    retentions: Vec<String>,
 }
 
 // whisper-create.py 
