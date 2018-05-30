@@ -6,10 +6,14 @@ use std::path::PathBuf;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-info")]
 struct Args {
+    /// Outputs results in JSON form
     #[structopt(long = "json")]
     json: bool,
     #[structopt(name = "path", parse(from_os_str))]
+    /// Path to data file
     path: PathBuf,
+    /// File info field to display
+    field: Option<String>,
 }
 
 // whisper-info.py 
@@ -31,6 +35,12 @@ struct Args {
 // points: 1440
 // size: 17280
 // offset: 28
+
+// whisper-info.py load.1m.wsp size
+// Unknown field "size". Valid fields are maxRetention,xFilesFactor,aggregationMethod,archives,fileSize
+
+// whisper-info.py load.1m.wsp fileSize
+// 17308
 
 // whisper-info.py load.1m.wsp --json
 // {
