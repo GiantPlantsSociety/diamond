@@ -1,4 +1,5 @@
 use std::cmp;
+use std::str::FromStr;
 
 fn cmp_f64(a: &f64, b: &f64) -> cmp::Ordering {
     a.partial_cmp(b).unwrap_or(::std::cmp::Ordering::Equal)
@@ -98,6 +99,24 @@ impl AggregationMethod {
 impl ::std::default::Default for AggregationMethod {
     fn default() -> Self {
         AggregationMethod::Average
+    }
+}
+
+impl FromStr for AggregationMethod {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "average" => Ok(AggregationMethod::Average),
+            "sum" => Ok(AggregationMethod::Sum),
+            "last" => Ok(AggregationMethod::Last),
+            "max" => Ok(AggregationMethod::Max),
+            "min" => Ok(AggregationMethod::Min),
+            "avg_zero" => Ok(AggregationMethod::AvgZero),
+            "absmax" => Ok(AggregationMethod::AbsMax),
+            "absmin" => Ok(AggregationMethod::AbsMin),
+            _ => Err(format!("Unsupported aggregation method '{}'.", s)),
+        }
     }
 }
 
