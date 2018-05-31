@@ -65,6 +65,7 @@ const METADATA_SIZE: usize = 16;
 const ARCHIVE_INFO_SIZE: usize = 12;
 const POINT_SIZE: usize = 12;
 
+#[derive(Debug)]
 pub struct WhisperMetadata {
     pub aggregation_method: AggregationMethod,
     pub max_retention: u32,
