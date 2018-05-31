@@ -1,7 +1,11 @@
 #[macro_use] extern crate structopt;
+extern crate whisper;
+
 use structopt::StructOpt;
 use std::process::exit;
 use std::path::PathBuf;
+use whisper::aggregation::AggregationMethod;
+use whisper::retention::Retention;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-create")]
@@ -29,7 +33,7 @@ struct Args {
     /// Function to use when aggregating values
     /// (average, sum, last, max, min, avg_zero, absmax, absmin)
     #[structopt(long = "aggregationMethod", default_value = "average")]
-    aggregation_method: String,
+    aggregation_method: AggregationMethod,
 
     /// Path to data file
     #[structopt(name = "path", parse(from_os_str))]
@@ -40,8 +44,8 @@ struct Args {
 15m:8        15 minutes per datapoint, 8 datapoints = 2 hours of retention
 1h:7d        1 hour per datapoint, 7 days of retention
 12h:2y       12 hours per datapoint, 2 years of retention
-"#)]
-    retentions: Vec<String>,
+"#, raw(required = "true", min_values = "1"))]
+    retentions: Vec<Retention>,
 }
 
 // whisper-create.py 
@@ -86,6 +90,15 @@ struct Args {
 fn run(args: &Args) -> Result<(), String> {
     println!("whisper-create {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
+
+    let meta = whisper::WhisperMetadata::create(&args.retentions, args.x_files_factor, args.aggregation_method)
+        .map_err(|e| format!("{}", e))?;
+
+    println!("{:#?}", meta);
+
+    whisper::create(&meta, &args.path, args.sparse)
+        .map_err(|e| format!("{}", e))?;
+
     Ok(())
 }
 
