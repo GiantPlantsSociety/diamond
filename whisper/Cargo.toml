@@ -4,6 +4,12 @@ version = "0.1.0"
 authors = ["Andrey Kutejko <andrey.kutejko@sizmek.com>"]
 
 [dependencies]
+regex = "1"
+lazy_static = "1"
+byteorder = "1"
+failure = "0.1.1"
+libc = "0.2"
+num = "0.1"
 structopt = "0.2"
 
 [dev-dependencies]
