@@ -59,6 +59,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "bencher"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "bitflags"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -477,6 +482,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "whisper_tests"
+version = "0.1.0"
+dependencies = [
+ "bencher 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "whisper 0.1.0",
+]
+
+[[package]]
 name = "winapi"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -502,6 +515,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum atty 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "2fc4a1aa4c24c0718a250f0681885c1af91419d242f29eb8f2ab28502d80dbd1"
 "checksum backtrace 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "dbdd17cd962b570302f5297aea8648d5923e22e555c2ed2d8b2e34eca646bf6d"
 "checksum backtrace-sys 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)" = "bff67d0c06556c0b8e6b5f090f0eac52d950d9dfd1d35ba04e4ca3543eaf6a7e"
+"checksum bencher 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "7dfdb4953a096c551ce9ace855a604d702e6e62d77fac690575ae347571717f5"
 "checksum bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d0c54bb8f454c567f21197eefcdbf5679d0bd99f2ddbe52e84c77061952e6789"
 "checksum byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "74c0b906e9446b0a2e4f760cdb3fa4b2c48cdc6db8766a845c54b6ff063fd2e9"
 "checksum cc 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)" = "49ec142f5768efb5b7622aebc3fdbdbb8950a4b9ba996393cb76ef7466e8747d"
