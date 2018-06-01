@@ -1,5 +1,6 @@
 use std::cmp;
 use std::str::FromStr;
+use std::fmt;
 
 fn cmp_f64(a: &f64, b: &f64) -> cmp::Ordering {
     a.partial_cmp(b).unwrap_or(::std::cmp::Ordering::Equal)
@@ -120,9 +121,49 @@ impl FromStr for AggregationMethod {
     }
 }
 
+impl fmt::Display for AggregationMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match *self {
+            AggregationMethod::Average => "average",
+            AggregationMethod::Sum => "sum",
+            AggregationMethod::Last => "last",
+            AggregationMethod::Max => "max",
+            AggregationMethod::Min => "min",
+            AggregationMethod::AvgZero => "avg_zero",
+            AggregationMethod::AbsMax => "absmax",
+            AggregationMethod::AbsMin => "absmin",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_display() {
+        assert_eq!(AggregationMethod::Average.to_string(), "average");
+        assert_eq!(AggregationMethod::Sum.to_string(), "sum");
+        assert_eq!(AggregationMethod::Last.to_string(), "last");
+        assert_eq!(AggregationMethod::Max.to_string(), "max");
+        assert_eq!(AggregationMethod::Min.to_string(), "min");
+        assert_eq!(AggregationMethod::AvgZero.to_string(), "avg_zero");
+        assert_eq!(AggregationMethod::AbsMax.to_string(), "absmax");
+        assert_eq!(AggregationMethod::AbsMin.to_string(), "absmin");
+    }
+
+    #[test]
+    fn test_convert() {
+        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Average.to_string()), Ok(AggregationMethod::Average));
+        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Sum.to_string()), Ok(AggregationMethod::Sum));
+        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Last.to_string()), Ok(AggregationMethod::Last));
+        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Max.to_string()), Ok(AggregationMethod::Max));
+        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Min.to_string()), Ok(AggregationMethod::Min));
+        assert_eq!(AggregationMethod::from_str(&AggregationMethod::AvgZero.to_string()), Ok(AggregationMethod::AvgZero));
+        assert_eq!(AggregationMethod::from_str(&AggregationMethod::AbsMax.to_string()), Ok(AggregationMethod::AbsMax));
+        assert_eq!(AggregationMethod::from_str(&AggregationMethod::AbsMin.to_string()), Ok(AggregationMethod::AbsMin));
+    }
 
     #[test]
     fn test_aggregate() {

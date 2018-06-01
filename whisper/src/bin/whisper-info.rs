@@ -1,4 +1,6 @@
 #[macro_use] extern crate structopt;
+extern crate whisper;
+
 use structopt::StructOpt;
 use std::process::exit;
 use std::path::PathBuf;
@@ -86,6 +88,25 @@ struct Args {
 fn run(args: &Args) -> Result<(), String> {
     println!("whisper-info {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
+
+    let meta = whisper::info(&args.path)
+        .map_err(|e| format!("{}", e))?;
+
+    let info;
+    if let Some(field) = &args.field {
+        info = match field.as_str() {
+            "maxRetention" => meta.max_retention.to_string(),
+            "xFilesFactor" => meta.x_files_factor.to_string(),
+            "aggregationMethod" => meta.aggregation_method.to_string(),
+            "fileSize" => meta.file_size().to_string(),
+            _ => return Err(format!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field)),
+        }
+    } else {
+        info = format!("{:#?}", meta);
+    }
+
+    println!("{}", info);
+
     Ok(())
 }
 

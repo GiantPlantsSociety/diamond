@@ -26,7 +26,7 @@ mod whisper_info {
     fn calling_with_invalid_path() {
         assert_cli::Assert::cargo_binary(NAME)
             .with_args(&["invalid"])
-            // .fails_with(1)
+            .fails_with(1)
             .unwrap();
     }
 }
