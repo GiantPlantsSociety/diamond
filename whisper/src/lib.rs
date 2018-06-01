@@ -97,7 +97,7 @@ impl WhisperMetadata {
 
         // update offsets
         let mut offset = METADATA_SIZE + ARCHIVE_INFO_SIZE * archives.len();
-        for archive in archives.iter_mut() {
+        for archive in &mut archives {
             archive.offset = offset as u32;
             offset += archive.points as usize * POINT_SIZE;
         }
@@ -441,9 +441,9 @@ fn __propagate<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMetadata, tim
 
         write_archive_point(fh, lower, &my_point)?;
 
-        return Ok(true);
+        Ok(true)
     } else {
-        return Ok(false);
+        Ok(false)
     }
 }
 
@@ -651,7 +651,7 @@ impl ArchiveData {
     pub fn points(&self) -> Vec<Point> {
         range_step(self.from_interval, self.until_interval, self.step)
             .zip(&self.values)
-            .filter_map(|(interval, value)| value.map(|value| Point { interval, value: value }))
+            .filter_map(|(interval, value)| value.map(|value| Point { interval, value }))
             .collect()
     }
 }
@@ -671,7 +671,7 @@ pub fn suggest_archive(header: &WhisperMetadata, interval: Interval, now: u32) -
 }
 
 pub fn find_archive(header: &WhisperMetadata, seconds_per_point: u32) -> Result<&ArchiveInfo, String> {
-    for archive in header.archives.iter() {
+    for archive in &header.archives {
         if archive.seconds_per_point == seconds_per_point {
             return Ok(archive);
         }

@@ -43,7 +43,7 @@ impl FromStr for Retention {
 
         let mut precision = u32::from_str_radix(captures.get(2).unwrap().as_str(), 10).unwrap();
         if !captures.get(3).unwrap().as_str().is_empty() {
-            precision = precision * get_unit_multiplier(captures.get(3).unwrap().as_str())?;
+            precision *= get_unit_multiplier(captures.get(3).unwrap().as_str())?;
         }
 
         let mut points = u32::from_str_radix(captures.get(5).unwrap().as_str(), 10).unwrap();
@@ -64,7 +64,7 @@ pub fn parse_duration(s: &str) -> Result<u32, String> {
 
     let mut precision = u32::from_str_radix(captures.get(1).unwrap().as_str(), 10).unwrap();
     if !captures.get(2).unwrap().as_str().is_empty() {
-        precision = precision * get_unit_multiplier(captures.get(2).unwrap().as_str())?;
+        precision *= get_unit_multiplier(captures.get(2).unwrap().as_str())?;
     }
 
     Ok(precision)

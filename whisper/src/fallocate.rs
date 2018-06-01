@@ -19,6 +19,6 @@ pub fn fallocate(fd: &mut File, offset: usize, len: usize) -> Result<()> {
         fd.write_all(&zeroes)?;
         remaining -= zeroes.len();
     }
-    fd.write(&zeroes[0..remaining])?;
+    fd.write_all(&zeroes[0..remaining])?;
     Ok(())
 }
