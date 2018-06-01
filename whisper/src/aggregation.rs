@@ -1,6 +1,7 @@
 use std::cmp;
 use std::str::FromStr;
 use std::fmt;
+use std::convert::Into;
 
 fn cmp_f64(a: &f64, b: &f64) -> cmp::Ordering {
     a.partial_cmp(b).unwrap_or(::std::cmp::Ordering::Equal)
@@ -121,9 +122,9 @@ impl FromStr for AggregationMethod {
     }
 }
 
-impl fmt::Display for AggregationMethod {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match *self {
+impl Into<&'static str> for AggregationMethod {
+    fn into(self) -> &'static str {
+        match self {
             AggregationMethod::Average => "average",
             AggregationMethod::Sum => "sum",
             AggregationMethod::Last => "last",
@@ -132,7 +133,13 @@ impl fmt::Display for AggregationMethod {
             AggregationMethod::AvgZero => "avg_zero",
             AggregationMethod::AbsMax => "absmax",
             AggregationMethod::AbsMin => "absmin",
-        };
+        }
+    }
+}
+
+impl fmt::Display for AggregationMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s: &str = (*self).into();
         write!(f, "{}", s)
     }
 }
