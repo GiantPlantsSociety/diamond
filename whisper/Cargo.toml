@@ -10,3 +10,7 @@ byteorder = "1"
 failure = "0.1.1"
 libc = "0.2"
 num = "0.1"
+structopt = "0.2"
+
+[dev-dependencies]
+assert_cli = "0.6"

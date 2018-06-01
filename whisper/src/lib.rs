@@ -147,7 +147,7 @@ impl WhisperMetadata {
         METADATA_SIZE + ARCHIVE_INFO_SIZE * self.archives.len()
     }
 
-    fn file_size(&self) -> usize {
+    pub fn file_size(&self) -> usize {
         self.header_size() + self.archives.iter().map(|archive| archive.points as usize * POINT_SIZE).sum::<usize>()
     }
 
