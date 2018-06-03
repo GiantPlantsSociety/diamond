@@ -96,18 +96,14 @@ fn main() -> Result<(), Error> {
 
     let meta = whisper::info(&args.path)?;
 
-    let info;
-    if let Some(field) = &args.field {
-        info = match field.as_str() {
-            "maxRetention" => meta.max_retention.to_string(),
-            "xFilesFactor" => meta.x_files_factor.to_string(),
-            "aggregationMethod" => meta.aggregation_method.to_string(),
-            "fileSize" => meta.file_size().to_string(),
-            _ => return Err(format_err!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field)),
-        }
-    } else {
-        info = format!("{:#?}", meta);
-    }
+    let info = match &args.field {
+        Some(ref field) if field=="maxRetention" =>  meta.max_retention.to_string(),
+        Some(ref field) if field=="xFilesFactor" => meta.x_files_factor.to_string(),
+        Some(ref field) if field== "aggregationMethod" => meta.aggregation_method.to_string(),
+        Some(ref field) if field=="fileSize" => meta.file_size().to_string(),
+        Some(ref field) => return Err(format_err!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field)),
+        None => format!("{:#?}", meta),
+    };
 
     println!("{}", info);
 
