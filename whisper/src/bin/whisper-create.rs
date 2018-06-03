@@ -1,9 +1,11 @@
-#[macro_use] extern crate structopt;
+#[macro_use]
+extern crate structopt;
+extern crate failure;
 extern crate whisper;
 
-use structopt::StructOpt;
-use std::process::exit;
+use failure::Error;
 use std::path::PathBuf;
+use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
 
@@ -39,16 +41,20 @@ struct Args {
     #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,
 
-    #[structopt(name = "retentions", help = r#"Specify lengths of time, for example:
+    #[structopt(
+        name = "retentions",
+        help = r#"Specify lengths of time, for example:
 60:1440      60 seconds per datapoint, 1440 datapoints = 1 day of retention
 15m:8        15 minutes per datapoint, 8 datapoints = 2 hours of retention
 1h:7d        1 hour per datapoint, 7 days of retention
 12h:2y       12 hours per datapoint, 2 years of retention
-"#, raw(required = "true", min_values = "1"))]
+"#,
+        raw(required = "true", min_values = "1")
+    )]
     retentions: Vec<Retention>,
 }
 
-// whisper-create.py 
+// whisper-create.py
 // Usage: whisper-create.py path timePerPoint:timeToStore [timePerPoint:timeToStore]*
 // whisper-create.py --estimate timePerPoint:timeToStore [timePerPoint:timeToStore]*
 
@@ -59,14 +65,13 @@ struct Args {
 // 1h:7d        1 hour per datapoint, 7 days of retention
 // 12h:2y       12 hours per datapoint, 2 years of retention
 
-
 // Options:
 //   -h, --help            show this help message and exit
 //   --xFilesFactor=XFILESFACTOR
 //   --aggregationMethod=AGGREGATIONMETHOD
 //                         Function to use when aggregating values (average, sum,
 //                         last, max, min, avg_zero, absmax, absmin)
-//   --overwrite           
+//   --overwrite
 //   --estimate            Don't create a whisper file, estimate storage
 //                         requirements based on archive definitions
 //   --sparse              Create new whisper as sparse file
@@ -87,25 +92,21 @@ struct Args {
 // whisper-create.py load.2m.wsp 60:1440 120:1440
 // Created: load.2m.wsp (34600 bytes)
 
-fn run(args: &Args) -> Result<(), String> {
+fn main() -> Result<(), Error> {
+    let args = Args::from_args();
+
     println!("whisper-create {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
 
-    let meta = whisper::WhisperMetadata::create(&args.retentions, args.x_files_factor, args.aggregation_method)
-        .map_err(|e| format!("{}", e))?;
+    let meta = whisper::WhisperMetadata::create(
+        &args.retentions,
+        args.x_files_factor,
+        args.aggregation_method,
+    )?;
 
     println!("{:#?}", meta);
 
-    whisper::create(&meta, &args.path, args.sparse)
-        .map_err(|e| format!("{}", e))?;
+    whisper::create(&meta, &args.path, args.sparse)?;
 
     Ok(())
-}
-
-fn main() {
-    let args = Args::from_args();
-    if let Err(err) = run(&args) {
-        eprintln!("{}", err);
-        exit(1);
-    }
 }

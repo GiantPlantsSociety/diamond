@@ -1,7 +1,10 @@
-#[macro_use] extern crate structopt;
-use structopt::StructOpt;
-use std::process::exit;
+#[macro_use]
+extern crate structopt;
+extern crate failure;
+
+use failure::Error;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-dump")]
@@ -54,16 +57,9 @@ struct Args {
 // 6: 0,          0
 // 7: 0,          0
 
-fn run(args: &Args) -> Result<(), String> {
+fn main() -> Result<(), Error> {
+    let args = Args::from_args();
     println!("whisper-dump {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
     Ok(())
-}
-
-fn main() {
-    let args = Args::from_args();
-    if let Err(err) = run(&args) {
-        eprintln!("{}", err);
-        exit(1);
-    }
 }
