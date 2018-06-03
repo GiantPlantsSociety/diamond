@@ -1,7 +1,10 @@
-#[macro_use] extern crate structopt;
-use structopt::StructOpt;
-use std::process::exit;
+#[macro_use]
+extern crate structopt;
+extern crate failure;
+
+use failure::Error;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-fetch")]
@@ -35,7 +38,7 @@ struct Args {
     path: PathBuf,
 }
 
-// whisper-fetch.py 
+// whisper-fetch.py
 // Usage: whisper-fetch.py [options] path
 
 // Options:
@@ -52,16 +55,9 @@ struct Args {
 //                         'zeroes' to drop all zero values. Specify 'empty' to
 //                         drop both null and zero values
 
-fn run(args: &Args) -> Result<(), String> {
+fn main() -> Result<(), Error> {
+    let args = Args::from_args();
     println!("whisper-fetch {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
     Ok(())
-}
-
-fn main() {
-    let args = Args::from_args();
-    if let Err(err) = run(&args) {
-        eprintln!("{}", err);
-        exit(1);
-    }
 }
