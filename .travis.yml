@@ -1,0 +1,12 @@
+language: rust
+cache: cargo
+sudo: false
+
+rust:
+  - nightly
+  - beta
+  - stable
+
+script:
+  - cargo build --verbose
+  - cargo test --verbose
