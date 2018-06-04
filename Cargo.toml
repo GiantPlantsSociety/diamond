@@ -1,5 +1,5 @@
 [workspace]
 members = [
     "whisper",
-    "whisper_tests"
+    "whisper_tests",
 ]
