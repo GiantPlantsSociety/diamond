@@ -905,11 +905,3 @@ fn file_diff<F1: Read + Seek, F2: Read + Seek>(fh1: &mut F1, fh2: &mut F2, ignor
 
     Ok(archive_diffs)
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
