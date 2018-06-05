@@ -1,8 +1,10 @@
 #[macro_use]
 extern crate structopt;
+extern crate chrono;
 extern crate failure;
 extern crate whisper;
 
+use chrono::prelude::*;
 use failure::Error;
 use std::fs::File;
 use std::path::PathBuf;
@@ -13,11 +15,11 @@ use whisper::WhisperMetadata;
 #[structopt(name = "whisper-dump")]
 struct Args {
     /// Show human-readable timestamps instead of unix times
-    #[structopt(long = "pretty")]
+    #[structopt(long = "pretty", requires = "time_format")]
     pretty: bool,
 
     /// Time format to use with --pretty; see time.strftime()
-    #[structopt(long = "time-format", short = "t")]
+    #[structopt(long = "time-format", short = "t", requires = "pretty")]
     time_format: Option<String>,
 
     /// Path to data file
@@ -70,7 +72,7 @@ fn main() -> Result<(), Error> {
     println!("  aggregation method: {}", &meta.aggregation_method);
     println!("  max retention: {}", &meta.max_retention);
     println!("  xFilesFactor: {}", &meta.x_files_factor);
-    println!("");
+    println!();
 
     for (i, archive) in meta.archives.iter().enumerate() {
         println!("Archive {} info:", i);
@@ -79,13 +81,22 @@ fn main() -> Result<(), Error> {
         println!("  points: {}", &archive.points);
         println!("  retention: {}", &archive.retention());
         println!("  size: {}", &archive.size());
-        println!("");
+        println!();
 
         let points = whisper::read_archive(&mut fh, &archive, 0, archive.points)?;
 
         println!("Archive {} data:", i);
         for (j, point) in points.iter().enumerate() {
-            println!("{}: {}, {}", j, &point.interval, point.value);
+            match (&args.pretty, &args.time_format) {
+                (true, Some(time_format)) => {
+                    let timestr = NaiveDateTime::from_timestamp(point.interval as i64, 0)
+                        .format(&time_format);
+                    println!("{}: {}, {}", j, timestr, &point.value);
+                }
+                (_, _) => {
+                    println!("{}: {}, {}", j, &point.interval, &point.value);
+                }
+            }
         }
     }
 
