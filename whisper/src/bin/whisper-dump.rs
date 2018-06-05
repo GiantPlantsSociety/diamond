@@ -1,10 +1,13 @@
 #[macro_use]
 extern crate structopt;
 extern crate failure;
+extern crate whisper;
 
 use failure::Error;
+use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use whisper::WhisperMetadata;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-dump")]
@@ -59,7 +62,32 @@ struct Args {
 
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
-    println!("whisper-dump {}", env!("CARGO_PKG_VERSION"));
-    println!("{:?}", args);
+
+    let mut fh = File::open(&args.path)?;
+    let meta = WhisperMetadata::read(&mut fh)?;
+
+    println!("Meta data:");
+    println!("  aggregation method: {}", &meta.aggregation_method);
+    println!("  max retention: {}", &meta.max_retention);
+    println!("  xFilesFactor: {}", &meta.x_files_factor);
+    println!("");
+
+    for (i, archive) in meta.archives.iter().enumerate() {
+        println!("Archive {} info:", i);
+        println!("  offset: {}", &archive.offset,);
+        println!("  seconds per point: {}", &archive.seconds_per_point);
+        println!("  points: {}", &archive.points);
+        println!("  retention: {}", &archive.retention());
+        println!("  size: {}", &archive.size());
+        println!("");
+
+        let points = whisper::read_archive(&mut fh, &archive, 0, archive.points)?;
+
+        println!("Archive {} data:", i);
+        for (j, point) in points.iter().enumerate() {
+            println!("{}: {}, {}", j, &point.interval, point.value);
+        }
+    }
+
     Ok(())
 }
