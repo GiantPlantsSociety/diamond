@@ -381,6 +381,7 @@ fn write_archive<F: Write + Seek>(fh: &mut F, archive: &ArchiveInfo, points: &[P
             point.write(fh)?;
         }
     } else {
+        fh.seek(io::SeekFrom::Start(archive.offset.into()))?;
         for point in points {
             point.write(fh)?;
         }
