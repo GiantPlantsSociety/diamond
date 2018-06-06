@@ -21,4 +21,12 @@ mod whisper_dump {
             .stdout().contains("USAGE")
             .unwrap();
     }
+
+    #[test]
+    fn calling_with_invalid_path() {
+        assert_cli::Assert::cargo_binary(NAME)
+            .with_args(&["invalid"])
+            .fails_with(1)
+            .unwrap();
+    }
 }
