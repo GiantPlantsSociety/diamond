@@ -1,8 +1,7 @@
 #[macro_use]
 extern crate bencher;
 extern crate whisper;
-extern crate rand;
-extern crate tempfile;
+extern crate whisper_tests;
 
 use bencher::Bencher;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -11,9 +10,7 @@ use whisper::retention::Retention;
 use whisper::suggest_archive;
 use whisper::aggregation::AggregationMethod;
 use whisper::interval::Interval;
-use rand::*;
-use tempfile::*;
-use std::path::{PathBuf, Path};
+use whisper_tests::*;
 
 const SECONDS_AGO: u32 = 3500;
 const VALUE_STEP: f64 = 0.2;
@@ -26,27 +23,6 @@ fn create_metadata() -> WhisperMetadata {
         Retention { seconds_per_point: 300, points: 12 },
     ];
     WhisperMetadata::create(&retentions, 0.1, AggregationMethod::Average).expect("Metadadata")
-}
-
-fn get_temp_dir() -> TempDir {
-    Builder::new()
-        .prefix("whisper")
-        .tempdir()
-        .expect("Temp dir created")
-}
-
-pub fn get_file_path(temp_dir: &TempDir, prefix: &str) -> PathBuf {
-    let file_name = format!("{}_{}.wsp", prefix, random_string_suffix());
-    let mut path = temp_dir.path().to_path_buf();
-    path.push(file_name);
-    path
-}
-
-fn random_string_suffix() -> String {
-    rand::thread_rng()
-        .gen_ascii_chars()
-        .take(10)
-        .collect::<String>()
 }
 
 fn current_time() -> u32 {
