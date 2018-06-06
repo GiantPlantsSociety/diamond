@@ -94,13 +94,14 @@ fn main() -> Result<(), Error> {
     println!("whisper-info {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
 
-    let meta = whisper::info(&args.path)?;
+    let file = whisper::WhisperFile::open(&args.path)?;
+    let meta = file.info();
 
     let info = match &args.field {
-        Some(ref field) if field=="maxRetention" =>  meta.max_retention.to_string(),
-        Some(ref field) if field=="xFilesFactor" => meta.x_files_factor.to_string(),
-        Some(ref field) if field== "aggregationMethod" => meta.aggregation_method.to_string(),
-        Some(ref field) if field=="fileSize" => meta.file_size().to_string(),
+        Some(ref field) if field == "maxRetention" =>  meta.max_retention.to_string(),
+        Some(ref field) if field == "xFilesFactor" => meta.x_files_factor.to_string(),
+        Some(ref field) if field == "aggregationMethod" => meta.aggregation_method.to_string(),
+        Some(ref field) if field == "fileSize" => meta.file_size().to_string(),
         Some(ref field) => return Err(format_err!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field)),
         None => format!("{:#?}", meta),
     };

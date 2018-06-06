@@ -7,7 +7,6 @@ use failure::Error;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
-use whisper::set_aggregation_method;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-set-aggregation-method")]
@@ -29,11 +28,12 @@ struct Args {
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
-    let old_aggregation_method = set_aggregation_method(
-        &args.path,
-        args.aggregation_method,
-        Some(args.x_files_factor),
-    )?;
+    let mut file = whisper::WhisperFile::open(&args.path)?;
+
+    let old_aggregation_method = file.info().aggregation_method;
+
+    file.set_x_files_factor(args.x_files_factor)?;
+    file.set_aggregation_method(args.aggregation_method)?;
 
     println!(
         "Updated aggregation method: {} ({} -> {})",

@@ -8,7 +8,6 @@ use chrono::prelude::NaiveDateTime;
 use failure::Error;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use whisper::{info, read_archive_all};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-dump")]
@@ -29,7 +28,9 @@ struct Args {
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
-    let meta = info(&args.path)?;
+    let mut file = whisper::WhisperFile::open(&args.path)?;
+
+    let meta = file.info().clone();
     println!("Meta data:");
     println!("  aggregation method: {}", &meta.aggregation_method);
     println!("  max retention: {}", &meta.max_retention);
@@ -38,14 +39,14 @@ fn main() -> Result<(), Error> {
 
     for (i, archive) in meta.archives.iter().enumerate() {
         println!("Archive {} info:", i);
-        println!("  offset: {}", &archive.offset,);
+        println!("  offset: {}", &archive.offset);
         println!("  seconds per point: {}", &archive.seconds_per_point);
         println!("  points: {}", &archive.points);
         println!("  retention: {}", &archive.retention());
         println!("  size: {}", &archive.size());
         println!();
 
-        let points = read_archive_all(&args.path, archive)?;
+        let points = file.dump(archive.seconds_per_point)?;
 
         println!("Archive {} data:", i);
         for (j, point) in points.iter().enumerate() {

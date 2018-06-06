@@ -7,6 +7,7 @@ use failure::Error;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
+use whisper::WhisperFile;
 use whisper::point::Point;
 
 #[derive(Debug, StructOpt)]
@@ -25,6 +26,9 @@ fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
-    whisper::update_many(&args.path, &args.points, now)?;
+
+    let mut file = WhisperFile::open(&args.path)?;
+    file.update_many(&args.points, now)?;
+
     Ok(())
 }
