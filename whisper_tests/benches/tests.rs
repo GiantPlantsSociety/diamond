@@ -130,11 +130,10 @@ fn test_update_fetch(bench: &mut Bencher) {
     });
 }
 
-benchmark_group!(
-benches,
-test_create,
-test_update,
-test_fetch,
-test_update_fetch,
+benchmark_group!(benches,
+    test_create,
+    test_update,
+    test_fetch,
+    test_update_fetch,
 );
 benchmark_main!(benches);
