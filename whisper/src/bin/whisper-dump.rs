@@ -4,12 +4,11 @@ extern crate chrono;
 extern crate failure;
 extern crate whisper;
 
-use chrono::prelude::*;
+use chrono::prelude::NaiveDateTime;
 use failure::Error;
-use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use whisper::WhisperMetadata;
+use whisper::{info, read_archive_all};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-dump")]
@@ -65,9 +64,7 @@ struct Args {
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
-    let mut fh = File::open(&args.path)?;
-    let meta = WhisperMetadata::read(&mut fh)?;
-
+    let meta = info(&args.path)?;
     println!("Meta data:");
     println!("  aggregation method: {}", &meta.aggregation_method);
     println!("  max retention: {}", &meta.max_retention);
@@ -83,7 +80,7 @@ fn main() -> Result<(), Error> {
         println!("  size: {}", &archive.size());
         println!();
 
-        let points = whisper::read_archive(&mut fh, &archive, 0, archive.points)?;
+        let points = read_archive_all(&args.path, archive)?;
 
         println!("Archive {} data:", i);
         for (j, point) in points.iter().enumerate() {

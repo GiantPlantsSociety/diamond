@@ -311,6 +311,11 @@ pub fn create(header: &WhisperMetadata, path: &Path, sparse: bool) -> Result<(),
     Ok(())
 }
 
+pub fn read_archive_all(path: &Path, archive: &ArchiveInfo) -> Result<Vec<Point>, io::Error> {
+    let mut fh = fs::OpenOptions::new().read(true).open(path)?;
+    read_archive(&mut fh, &archive, 0, archive.points)
+}
+
 fn read_archive<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_index: u32, until_index: u32) -> Result<Vec<Point>, io::Error> {
     let from_index = from_index % archive.points;
     let until_index = until_index % archive.points;

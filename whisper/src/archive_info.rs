@@ -8,7 +8,6 @@ pub struct ArchiveInfo {
     pub offset: u32,
     pub seconds_per_point: u32,
     pub points: u32,
-    // 'size': points * pointSize,
 }
 
 impl ArchiveInfo {
