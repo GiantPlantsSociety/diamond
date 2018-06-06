@@ -23,8 +23,6 @@ struct Args {
 
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
-    println!("whisper-update {}", env!("CARGO_PKG_VERSION"));
-    println!("{:?}", args);
 
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     whisper::update_many(&args.path, &args.points, now)?;
