@@ -63,7 +63,7 @@ use archive_info::*;
 
 const METADATA_SIZE: usize = 16;
 const ARCHIVE_INFO_SIZE: usize = 12;
-const POINT_SIZE: usize = 12;
+pub const POINT_SIZE: usize = 12;
 
 #[derive(Debug)]
 pub struct WhisperMetadata {
@@ -309,6 +309,11 @@ pub fn create(header: &WhisperMetadata, path: &Path, sparse: bool) -> Result<(),
     }
 
     Ok(())
+}
+
+pub fn read_archive_all(path: &Path, archive: &ArchiveInfo) -> Result<Vec<Point>, io::Error> {
+    let mut fh = fs::OpenOptions::new().read(true).open(path)?;
+    read_archive(&mut fh, &archive, 0, archive.points)
 }
 
 fn read_archive<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_index: u32, until_index: u32) -> Result<Vec<Point>, io::Error> {
@@ -690,7 +695,7 @@ pub fn find_archive(header: &WhisperMetadata, seconds_per_point: u32) -> Result<
  *
  * Returns a tuple of (timeInfo, valueList)
  * where timeInfo is itself a tuple of (fromTime, untilTime, step)
- * 
+ *
  * Returns None if no data can be returned
  */
 pub fn fetch(path: &Path, interval: Interval, now: u32, seconds_per_point: u32) -> Result<Option<ArchiveData>, io::Error> {

@@ -1,18 +1,22 @@
-use std::io;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use point::Point;
+use std::io;
+use POINT_SIZE;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ArchiveInfo {
     pub offset: u32,
     pub seconds_per_point: u32,
     pub points: u32,
-    // 'size': points * pointSize,
 }
 
 impl ArchiveInfo {
     pub fn retention(&self) -> u32 {
         self.seconds_per_point * self.points
+    }
+
+    pub fn size(&self) -> usize {
+        self.points as usize * POINT_SIZE
     }
 
     pub fn read<R: io::Read>(read: &mut R) -> Result<Self, io::Error> {
