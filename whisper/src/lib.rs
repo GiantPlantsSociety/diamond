@@ -63,7 +63,7 @@ use archive_info::*;
 
 const METADATA_SIZE: usize = 16;
 const ARCHIVE_INFO_SIZE: usize = 12;
-const POINT_SIZE: usize = 12;
+pub const POINT_SIZE: usize = 12;
 
 #[derive(Debug)]
 pub struct WhisperMetadata {
@@ -690,7 +690,7 @@ pub fn find_archive(header: &WhisperMetadata, seconds_per_point: u32) -> Result<
  *
  * Returns a tuple of (timeInfo, valueList)
  * where timeInfo is itself a tuple of (fromTime, untilTime, step)
- * 
+ *
  * Returns None if no data can be returned
  */
 pub fn fetch(path: &Path, interval: Interval, now: u32, seconds_per_point: u32) -> Result<Option<ArchiveData>, io::Error> {
