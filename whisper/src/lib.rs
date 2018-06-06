@@ -764,11 +764,11 @@ fn __archive_fetch<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_time:
     }
 
     // Determine from_index
-    let point_distance = (from_interval - base.interval) / step; // TODO: negative
+    let point_distance = from_interval.checked_sub(base.interval).unwrap_or(0) / step;
     let from_index = point_distance % archive.points;
 
     // Determine until_index
-    let point_distance = (until_interval - base.interval) / step; // TODO: negative
+    let point_distance = until_interval.checked_sub(base.interval).unwrap_or(0) / step;
     let until_index = point_distance % archive.points;
 
     let series = read_archive(fh, &archive, from_index, until_index)?;
