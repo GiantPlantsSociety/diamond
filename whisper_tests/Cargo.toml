@@ -9,6 +9,7 @@ repository = "https://github.com/GiantPlantsSociety/graphite-rs"
 [dependencies]
 whisper = { path = "../whisper" }
 rand = "0.5.0"
+tempfile = "3.0.2"
 
 [[bench]]
 name = "tests"
