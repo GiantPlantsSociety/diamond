@@ -65,7 +65,7 @@ const METADATA_SIZE: usize = 16;
 const ARCHIVE_INFO_SIZE: usize = 12;
 pub const POINT_SIZE: usize = 12;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WhisperMetadata {
     pub aggregation_method: AggregationMethod,
     pub max_retention: u32,
@@ -261,7 +261,8 @@ fn __set_aggregation(path: &Path, aggregation_method: Option<AggregationMethod>,
     // if LOCK:
     //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
 
-    let mut info = __read_header(&mut fh)?;
+    let old_info = __read_header(&mut fh)?;
+    let mut info = old_info.clone();
 
     if let Some(aggregation_method) = aggregation_method {
         info.aggregation_method = aggregation_method;
@@ -279,7 +280,7 @@ fn __set_aggregation(path: &Path, aggregation_method: Option<AggregationMethod>,
     // if CACHE_HEADERS and fh.name in __headerCache:
     //     del __headerCache[fh.name]
 
-    Ok(info)
+    Ok(old_info)
 }
 
 /**

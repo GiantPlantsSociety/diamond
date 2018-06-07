@@ -12,18 +12,18 @@ use whisper::set_aggregation_method;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-set-aggregation-method")]
 struct Args {
-    /// XFILESFACTOR
-    #[structopt(long = "xFilesFactor", default_value = "0.5")]
-    x_files_factor: f32,
-
-    /// Function to use when aggregating values
-    /// (average, sum, last, max, min, avg_zero, absmax, absmin)
-    #[structopt(long = "aggregationMethod", default_value = "average")]
-    aggregation_method: AggregationMethod,
-
     /// Path to data file
     #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,
+
+    /// Function to use when aggregating values
+    /// (average, sum, last, max, min, avg_zero, absmax, absmin)
+    #[structopt(name = "aggregationMethod", default_value = "average")]
+    aggregation_method: AggregationMethod,
+
+    /// XFILESFACTOR
+    #[structopt(name = "xFilesFactor", default_value = "0.5")]
+    x_files_factor: f32,
 }
 
 fn main() -> Result<(), Error> {
