@@ -6,6 +6,7 @@ extern crate whisper;
 use failure::Error;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use whisper::WhisperBuilder;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
 
@@ -98,15 +99,14 @@ fn main() -> Result<(), Error> {
     println!("whisper-create {}", env!("CARGO_PKG_VERSION"));
     println!("{:?}", args);
 
-    let meta = whisper::WhisperMetadata::create(
-        &args.retentions,
-        args.x_files_factor,
-        args.aggregation_method,
-    )?;
+    let file = WhisperBuilder::default()
+        .add_retentions(&args.retentions)
+        .x_files_factor(args.x_files_factor)
+        .aggregation_method(args.aggregation_method)
+        .sparse(args.sparse)
+        .build(args.path)?;
 
-    println!("{:#?}", meta);
-
-    whisper::create(&meta, &args.path, args.sparse)?;
+    println!("{:#?}", file.info());
 
     Ok(())
 }

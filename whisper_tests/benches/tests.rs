@@ -4,11 +4,11 @@ extern crate whisper;
 extern crate whisper_tests;
 
 use bencher::Bencher;
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-use whisper::WhisperMetadata;
+use whisper::{WhisperFile, suggest_archive};
+use whisper::builder::{WhisperBuilder, BuilderError};
 use whisper::retention::Retention;
-use whisper::suggest_archive;
-use whisper::aggregation::AggregationMethod;
 use whisper::interval::Interval;
 use whisper_tests::*;
 
@@ -16,13 +16,13 @@ const SECONDS_AGO: u32 = 3500;
 const VALUE_STEP: f64 = 0.2;
 
 
-fn create_metadata() -> WhisperMetadata {
-    let retentions = vec![
-        Retention { seconds_per_point: 1, points: 300 },
-        Retention { seconds_per_point: 60, points: 30 },
-        Retention { seconds_per_point: 300, points: 12 },
-    ];
-    WhisperMetadata::create(&retentions, 0.1, AggregationMethod::Average).expect("Metadadata")
+fn create_file(path: &Path) -> Result<WhisperFile, BuilderError> {
+    WhisperBuilder::default()
+        .add_retention(Retention { seconds_per_point: 1, points: 300 })
+        .add_retention(Retention { seconds_per_point: 60, points: 30 })
+        .add_retention(Retention { seconds_per_point: 300, points: 12 })
+        .x_files_factor(0.1)
+        .build(path)
 }
 
 fn current_time() -> u32 {
@@ -32,21 +32,19 @@ fn current_time() -> u32 {
 
 fn test_create(bench: &mut Bencher) {
     let temp_dir = get_temp_dir();
-    let meta = create_metadata();
     let mut index = 1;
     let i = &mut index;
     bench.iter(|| {
         let path = get_file_path(&temp_dir, "whisper_create");
-        whisper::create(&meta, &path, false).expect("creating");
+        create_file(&path).expect("creating");
         *i += 1;
     });
 }
 
 fn test_update(bench: &mut Bencher) {
     let temp_dir = get_temp_dir();
-    let meta = create_metadata();
     let path = get_file_path(&temp_dir, "whisper_update");
-    whisper::create(&meta, &path, false).expect("Create file for update");
+    let mut file = create_file(&path).expect("Create file for update");
 
     let mut current_value = 0.5;
     let i = &mut current_value;
@@ -54,7 +52,7 @@ fn test_update(bench: &mut Bencher) {
 
     bench.iter(|| {
         for j in 0..SECONDS_AGO {
-            whisper::update(&path, *i, now - SECONDS_AGO + j, now).expect("update");
+            file.update(*i, now - SECONDS_AGO + j, now).expect("update");
             *i += VALUE_STEP;
         }
     });
@@ -62,15 +60,14 @@ fn test_update(bench: &mut Bencher) {
 
 fn test_fetch(bench: &mut Bencher) {
     let temp_dir = get_temp_dir();
-    let meta = create_metadata();
     let path = get_file_path(&temp_dir, "whisper_fetch");
-    whisper::create(&meta, &path, false).expect("Create file for fetching");
+    let mut file = create_file(&path).expect("Create file for fetching");
 
     let mut current_value = 0.5;
     let now = current_time();
 
     for j in 0..SECONDS_AGO {
-        whisper::update(&path, current_value, now - SECONDS_AGO + j, now).expect("update");
+        file.update(current_value, now - SECONDS_AGO + j, now).expect("update");
         current_value += VALUE_STEP;
     };
 
@@ -78,16 +75,15 @@ fn test_fetch(bench: &mut Bencher) {
     let until_time = from_time + 1000;
     let interval = Interval::new(from_time, until_time).expect("interval");
     bench.iter(|| {
-        let archive = suggest_archive(&meta, interval, now).expect("Archive");
-        whisper::fetch(&path, interval, now, archive.seconds_per_point).expect("fetch");
+        let seconds_per_point = suggest_archive(&file, interval, now).expect("Archive");
+        file.fetch(seconds_per_point, interval, now).expect("fetch");
     });
 }
 
 fn test_update_fetch(bench: &mut Bencher) {
     let temp_dir = get_temp_dir();
-    let meta = create_metadata();
     let path = get_file_path(&temp_dir, "whisper_update");
-    whisper::create(&meta, &path, false).expect("Create file for update");
+    let mut file = create_file(&path).expect("Create file for update");
 
     let mut current_value = 0.5;
     let i = &mut current_value;
@@ -98,11 +94,11 @@ fn test_update_fetch(bench: &mut Bencher) {
     let interval = Interval::new(from_time, until_time).expect("interval");
     bench.iter(|| {
         for j in 0..SECONDS_AGO {
-            whisper::update(&path, *i, now - SECONDS_AGO + j, now).expect("update");
+            file.update(*i, now - SECONDS_AGO + j, now).expect("update");
             *i += VALUE_STEP;
         }
-        let archive = suggest_archive(&meta, interval, now).expect("Archive");
-        whisper::fetch(&path, interval, now, archive.seconds_per_point).expect("fetch");
+        let seconds_per_point = suggest_archive(&file, interval, now).expect("Archive");
+        file.fetch(seconds_per_point, interval, now).expect("fetch");
     });
 }
 

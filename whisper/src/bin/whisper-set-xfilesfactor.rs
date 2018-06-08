@@ -6,7 +6,6 @@ extern crate whisper;
 use failure::Error;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use whisper::set_x_files_factor;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -26,7 +25,11 @@ struct Args {
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
-    let old_x_files_factor = set_x_files_factor(&args.path, args.x_files_factor)?;
+    let mut file = whisper::WhisperFile::open(&args.path)?;
+
+    let old_x_files_factor = file.info().x_files_factor;
+
+    file.set_x_files_factor(args.x_files_factor)?;
 
     println!(
         "Updated xFilesFactor: {} ({} -> {})",
