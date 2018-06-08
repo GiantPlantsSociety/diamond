@@ -13,6 +13,10 @@ impl Interval {
         }
     }
 
+    pub fn past(until: u32, duration: u32) -> Self {
+        Self { from: until - duration, until }
+    }
+
     pub fn from(&self) -> u32 {
         self.from
     }

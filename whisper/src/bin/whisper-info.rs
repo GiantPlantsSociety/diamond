@@ -67,7 +67,8 @@ fn format_info(meta: &whisper::WhisperMetadata, json: bool) -> Result<(), Error>
 }
 
 fn run(args: &Args) -> Result<(), Error> {
-    let meta = whisper::info(&args.path)?;
+    let file = whisper::WhisperFile::open(&args.path)?;
+    let meta = file.info();
 
     match &args.field {
         Some(ref field) if field == "maxRetention"      => println!("{}", meta.max_retention),

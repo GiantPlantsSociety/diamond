@@ -52,17 +52,18 @@ pub mod aggregation;
 pub mod retention;
 pub mod point;
 pub mod archive_info;
+pub mod builder;
 mod fallocate;
 
-use error::{InvalidConfiguration};
 use interval::*;
 use aggregation::*;
-use retention::*;
 use point::*;
 use archive_info::*;
 
-const METADATA_SIZE: usize = 16;
-const ARCHIVE_INFO_SIZE: usize = 12;
+pub use builder::WhisperBuilder;
+
+pub const METADATA_SIZE: usize = 16;
+pub const ARCHIVE_INFO_SIZE: usize = 12;
 pub const POINT_SIZE: usize = 12;
 
 #[derive(Debug, Clone)]
@@ -74,46 +75,6 @@ pub struct WhisperMetadata {
 }
 
 impl WhisperMetadata {
-    pub fn create(retentions: &[Retention], x_files_factor: impl Into<Option<f32>>, aggregation_method: impl Into<Option<AggregationMethod>>) -> Result<Self, InvalidConfiguration> {
-        let x = match x_files_factor.into() {
-            None => 0.5,
-            Some(value) if value >= 0.0 && value < 1.0 => value,
-            Some(value) => return Err(InvalidConfiguration::InvalidXFilesFactor(value)),
-        };
-
-        if retentions.is_empty() {
-            return Err(InvalidConfiguration::NoArchives);
-        }
-
-        let mut archives: Vec<_> = retentions.iter().map(|retention| ArchiveInfo {
-            offset: 0,
-            seconds_per_point: retention.seconds_per_point,
-            points: retention.points,
-        }).collect();
-
-        archives.sort_by_key(|a| a.seconds_per_point);
-
-        validate_archive_list(&archives)?;
-
-        // update offsets
-        let mut offset = METADATA_SIZE + ARCHIVE_INFO_SIZE * archives.len();
-        for archive in &mut archives {
-            archive.offset = offset as u32;
-            offset += archive.points as usize * POINT_SIZE;
-        }
-
-        let max_retention = archives.iter().map(|archive| archive.retention()).max().unwrap();
-
-        let header = WhisperMetadata {
-            aggregation_method: aggregation_method.into().unwrap_or(AggregationMethod::Average),
-            max_retention,
-            x_files_factor: x,
-            archives,
-        };
-
-        Ok(header)
-    }
-
     pub fn read<R: Read + Seek>(fh: &mut R) -> Result<Self, io::Error> {
         fh.seek(io::SeekFrom::Start(0))?;
 
@@ -151,7 +112,7 @@ impl WhisperMetadata {
         self.header_size() + self.archives.iter().map(|archive| archive.points as usize * POINT_SIZE).sum::<usize>()
     }
 
-    pub fn write_metadata<W: Write>(&self, w: &mut W) -> Result<(), io::Error> {
+    fn write_metadata<W: Write>(&self, w: &mut W) -> Result<(), io::Error> {
         w.write_u32::<BigEndian>(self.aggregation_method.to_type())?;
         w.write_u32::<BigEndian>(self.max_retention)?;
         w.write_f32::<BigEndian>(self.x_files_factor)?;
@@ -159,7 +120,7 @@ impl WhisperMetadata {
         Ok(())
     }
 
-    pub fn write<W: Write>(&self, w: &mut W) -> Result<(), io::Error> {
+    fn write<W: Write>(&self, w: &mut W) -> Result<(), io::Error> {
         self.write_metadata(w)?;
         for archive in &self.archives {
             archive.write(w)?;
@@ -168,42 +129,135 @@ impl WhisperMetadata {
     }
 }
 
-/**
- * Validates an archiveList.
- *
- * An ArchiveList must:
- * 1. No archive may be a duplicate of another.
- * 2. Higher precision archives' precision must evenly divide all lower precision archives' precision.
- * 3. Lower precision archives must cover larger time intervals than higher precision archives.
- * 4. Each archive must have at least enough points to consolidate to the next archive
- */
-fn validate_archive_list(archives: &[ArchiveInfo]) -> Result<(), InvalidConfiguration> {
-    for (i, pair) in archives.windows(2).enumerate() {
-        let archive = &pair[0];
-        let next_archive = &pair[1];
+pub struct WhisperFile {
+    metadata: WhisperMetadata,
+    file: fs::File,
+}
 
-        if archive.seconds_per_point >= next_archive.seconds_per_point {
-            return Err(InvalidConfiguration::SamePrecision(i, *archive, *next_archive));
+impl WhisperFile {
+    fn create(header: WhisperMetadata, path: &Path, sparse: bool) -> Result<Self, io::Error> {
+        let mut metainfo_bytes = Vec::<u8>::new();
+        header.write(&mut metainfo_bytes)?;
+
+        let mut fh = fs::OpenOptions::new().read(true).write(true).create_new(true).open(path)?;
+
+        // if LOCK {
+        //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        // }
+
+        fh.write_all(&metainfo_bytes)?;
+        if sparse {
+            fh.seek(io::SeekFrom::Start(header.file_size() as u64 - 1))?;
+            fh.write_all(&[0u8])?;
+        } else {
+            fallocate::fallocate(&mut fh, header.header_size(), header.file_size() - header.header_size())?;
         }
 
-        if next_archive.seconds_per_point % archive.seconds_per_point != 0 {
-            return Err(InvalidConfiguration::UndividablePrecision(i, *archive, *next_archive));
-        }
+        fh.sync_all()?;
 
-        let retention = archive.retention();
-        let next_retention = next_archive.retention();
-
-        if next_retention <= retention {
-            return Err(InvalidConfiguration::BadRetention(i, retention, next_retention));
-        }
-
-        let points_per_consolidation = next_archive.seconds_per_point / archive.seconds_per_point;
-        if archive.points < points_per_consolidation {
-            return Err(InvalidConfiguration::NotEnoughPoints(i + 1, points_per_consolidation, archive.points));
-        }
+        Ok(Self {
+            metadata: header.clone(),
+            file: fh,
+        })
     }
 
-    Ok(())
+    pub fn open(path: &Path) -> Result<Self, io::Error> {
+        let mut file = fs::OpenOptions::new().read(true).write(true).open(path)?;
+        let metadata = __read_header(&mut file)?;
+        Ok(Self {
+            metadata,
+            file,
+        })
+    }
+
+    pub fn info(&self) -> &WhisperMetadata {
+        &self.metadata
+    }
+
+    pub fn set_x_files_factor(&mut self, x_files_factor: f32) -> Result<(), io::Error> {
+        if x_files_factor < 0.0 || x_files_factor > 1.0 {
+            return Err(io::Error::new(io::ErrorKind::Other, format!("Bad x_files_factor {}", x_files_factor)));
+        }
+
+        // if LOCK:
+        //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+
+        self.file.seek(io::SeekFrom::Start(0))?;
+        self.metadata.x_files_factor = x_files_factor; // TODO: transactional update
+        self.metadata.write_metadata(&mut self.file)?;
+        self.file.sync_data()?;
+
+        Ok(())
+    }
+
+    pub fn set_aggregation_method(&mut self, aggregation_method: AggregationMethod) -> Result<(), io::Error> {
+        // if LOCK:
+        //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+
+        self.file.seek(io::SeekFrom::Start(0))?;
+        self.metadata.aggregation_method = aggregation_method; // TODO: transactional update
+        self.metadata.write_metadata(&mut self.file)?;
+        self.file.sync_data()?;
+
+        Ok(())
+    }
+
+    pub fn update(&mut self, value: f64, timestamp: u32, now: u32) -> Result<(), io::Error> {
+        // if LOCK:
+        //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        file_update(&mut self.file, &self.metadata, value, timestamp, now)
+    }
+
+    pub fn update_many(&mut self, points: &[Point], now: u32) -> Result<(), io::Error> {
+        if points.is_empty() {
+            return Ok(());
+        }
+
+        // if LOCK:
+        //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+
+        // if CAN_FADVISE and FADVISE_RANDOM:
+        //     posix_fadvise(fh.fileno(), 0, 0, POSIX_FADV_RANDOM)
+
+        let mut points_vec = points.to_vec();
+        points_vec.sort_by_key(|p| std::u32::MAX - p.interval); // Order points by timestamp, newest first
+        file_update_many(&mut self.file, &self.metadata, &points_vec, now)
+    }
+
+    fn find_archive(&self, seconds_per_point: u32) -> Result<ArchiveInfo, io::Error> {
+        self.metadata.archives.iter()
+            .find(|archive| archive.seconds_per_point == seconds_per_point)
+            .map(|a| a.to_owned())
+            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Archive not found"))
+    }
+
+    pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
+        let archive = self.find_archive(seconds_per_point)?;
+        file_fetch(
+            &mut self.file,
+            &self.metadata,
+            &archive,
+            interval,
+            now,
+        )
+    }
+
+    pub fn dump(&mut self, seconds_per_point: u32) -> Result<Vec<Point>, io::Error> {
+        let archive = self.find_archive(seconds_per_point)?;
+        read_archive(&mut self.file, &archive, 0, archive.points)
+    }
+}
+
+pub fn suggest_archive(file: &WhisperFile, interval: Interval, now: u32) -> Option<u32> {
+    let meta = file.info();
+
+    let adjusted = Interval::past(now, meta.max_retention)
+        .intersection(interval).ok()?;
+
+    meta.archives.iter()
+        .filter(|archive| Interval::past(now, archive.retention()).contains(adjusted))
+        .map(|archive| archive.seconds_per_point)
+        .next()
 }
 
 fn __read_header<R: Read + Seek>(fh: &mut R) -> Result<WhisperMetadata, io::Error> {
@@ -221,100 +275,6 @@ fn __read_header<R: Read + Seek>(fh: &mut R) -> Result<WhisperMetadata, io::Erro
     // }
 
     Ok(info)
-}
-
-/**
- * Sets the xFilesFactor for file in path
- *
- * path is a string pointing to a whisper file
- * xFilesFactor is a float between 0 and 1
- *
- * returns the old xFilesFactor
- */
-pub fn set_x_files_factor(path: &Path, x_files_factor: f32) -> Result<f32, io::Error> {
-    let info = __set_aggregation(path, None, Some(x_files_factor))?;
-    Ok(info.x_files_factor)
-}
-
-/**
- * Sets the aggregationMethod for file in path
- *
- * path is a string pointing to the whisper file
- * aggregationMethod specifies the method to use when propagating data
- * xFilesFactor specifies the fraction of data points in a propagation interval
- * that must have known values for a propagation to occur. If None, the
- * existing xFilesFactor in path will not be changed
- *
- * returns the old aggregationMethod
- */
-pub fn set_aggregation_method(path: &Path, aggregation_method: AggregationMethod, x_files_factor: Option<f32>) -> Result<AggregationMethod, io::Error> {
-    let info = __set_aggregation(path, Some(aggregation_method), x_files_factor)?;
-    Ok(info.aggregation_method)
-}
-
-/**
- * Set aggregationMethod and or xFilesFactor for file in path
- */
-fn __set_aggregation(path: &Path, aggregation_method: Option<AggregationMethod>, x_files_factor: Option<f32>) -> Result<WhisperMetadata, io::Error> {
-    let mut fh = fs::OpenOptions::new().read(true).write(true).open(path)?;
-
-    // if LOCK:
-    //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-
-    let old_info = __read_header(&mut fh)?;
-    let mut info = old_info.clone();
-
-    if let Some(aggregation_method) = aggregation_method {
-        info.aggregation_method = aggregation_method;
-    }
-    if let Some(x_files_factor) = x_files_factor {
-        // if x_files_factor < 0.0 || x_files_factor > 1.0 {
-        //     return Err(Error::InvalidXFilesFactor(x_files_factor));
-        // }
-        info.x_files_factor = x_files_factor;
-    }
-
-    fh.seek(io::SeekFrom::Start(0))?;
-    info.write_metadata(&mut fh)?;
-
-    // if CACHE_HEADERS and fh.name in __headerCache:
-    //     del __headerCache[fh.name]
-
-    Ok(old_info)
-}
-
-/**
- * create(path,archiveList,xFilesFactor=0.5,aggregationMethod='average')
- *
- * path               is a string
- * archiveList        is a list of archives, each of which is of the form (secondsPerPoint, numberOfPoints)
- * xFilesFactor       specifies the fraction of data points in a propagation interval that must have known values for a propagation to occur
- * aggregationMethod  specifies the function to use when propagating data
- */
-pub fn create(header: &WhisperMetadata, path: &Path, sparse: bool) -> Result<(), io::Error> {
-    let mut metainfo_bytes = Vec::<u8>::new();
-    header.write(&mut metainfo_bytes)?;
-
-    let mut fh = fs::OpenOptions::new().write(true).create_new(true).open(path)?;
-
-    // if LOCK {
-    //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-    // }
-
-    fh.write_all(&metainfo_bytes)?;
-    if sparse {
-        fh.seek(io::SeekFrom::Start(header.file_size() as u64 - 1))?;
-        fh.write_all(&[0u8])?;
-    } else {
-        fallocate::fallocate(&mut fh, header.header_size(), header.file_size() - header.header_size())?;
-    }
-
-    Ok(())
-}
-
-pub fn read_archive_all(path: &Path, archive: &ArchiveInfo) -> Result<Vec<Point>, io::Error> {
-    let mut fh = fs::OpenOptions::new().read(true).open(path)?;
-    read_archive(&mut fh, &archive, 0, archive.points)
 }
 
 fn read_archive<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_index: u32, until_index: u32) -> Result<Vec<Point>, io::Error> {
@@ -454,27 +414,7 @@ fn __propagate<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMetadata, tim
     }
 }
 
-/**
- * update(path, value, timestamp=None)
- *
- * path is a string
- * value is a float
- * timestamp is either an int or float
- */
-pub fn update(path: &Path, value: f64, timestamp: u32, now: u32) -> Result<(), io::Error> {
-    let mut fh = fs::OpenOptions::new().read(true).write(true).open(path)?;
-    // if CAN_FADVISE and FADVISE_RANDOM:
-    //     posix_fadvise(fh.fileno(), 0, 0, POSIX_FADV_RANDOM)
-
-    file_update(&mut fh, value, timestamp, now)
-}
-
-fn file_update(fh: &mut fs::File, value: f64, timestamp: u32, now: u32) -> Result<(), io::Error> {
-    // if LOCK:
-    //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-
-    let header = __read_header(fh)?;
-
+fn file_update(fh: &mut fs::File, header: &WhisperMetadata, value: f64, timestamp: u32, now: u32) -> Result<(), io::Error> {
     if now >= timestamp + header.max_retention || now < timestamp {
         return Err(io::Error::new(io::ErrorKind::Other, "Timestamp not covered by any archives in this database."));
     }
@@ -504,32 +444,7 @@ fn file_update(fh: &mut fs::File, value: f64, timestamp: u32, now: u32) -> Resul
     Ok(())
 }
 
-/**
- * update_many(path,points)
- *
- * path is a string
- * points is a list of (timestamp,value) points
- */
-pub fn update_many(path: &Path, points: &[Point], now: u32) -> Result<(), io::Error> {
-    if points.is_empty() {
-        return Ok(());
-    }
-
-    let mut points_vec = points.to_vec();
-    points_vec.sort_by_key(|p| std::u32::MAX - p.interval); // Order points by timestamp, newest first
-
-    let mut fh = fs::OpenOptions::new().read(true).write(true).open(path)?;
-    // if CAN_FADVISE and FADVISE_RANDOM:
-    //     posix_fadvise(fh.fileno(), 0, 0, POSIX_FADV_RANDOM)
-
-    file_update_many(&mut fh, &points_vec, now)
-}
-
-fn file_update_many(fh: &mut fs::File, points: &[Point], now: u32) -> Result<(), io::Error> {
-    // if LOCK:
-    //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-
-    let header = __read_header(fh)?;
+fn file_update_many(fh: &mut fs::File, header: &WhisperMetadata, points: &[Point], now: u32) -> Result<(), io::Error> {
     let mut archive_index = 0;
     let mut current_points = vec![];
 
@@ -641,12 +556,6 @@ fn __archive_update_many<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMet
     Ok(())
 }
 
-pub fn info(path: &Path) -> Result<WhisperMetadata, io::Error> {
-    let mut fh = fs::File::open(path)?;
-    let info = __read_header(&mut fh)?;
-    Ok(info)
-}
-
 pub struct ArchiveData {
     pub from_interval: u32,
     pub until_interval: u32,
@@ -663,70 +572,15 @@ impl ArchiveData {
     }
 }
 
-fn available_interval(header: &WhisperMetadata, now: u32) -> Result<Interval, String> {
-    Interval::new(now - header.max_retention, now)
-}
-
-fn available_interval_ai(ai: &ArchiveInfo, now: u32) -> Interval {
-    Interval::new(now - ai.retention(), now).unwrap()
-}
-
-pub fn suggest_archive(header: &WhisperMetadata, interval: Interval, now: u32) -> Option<&ArchiveInfo> {
-    let available = available_interval(header, now).ok()?;
-    let adjusted = available.intersection(interval).ok()?;
-    header.archives.iter().find(|archive| available_interval_ai(archive, now).contains(adjusted))
-}
-
-pub fn find_archive(header: &WhisperMetadata, seconds_per_point: u32) -> Result<&ArchiveInfo, String> {
-    for archive in &header.archives {
-        if archive.seconds_per_point == seconds_per_point {
-            return Ok(archive);
-        }
-    }
-    Err(format!("Invalid granularity: {}", seconds_per_point))
-}
-
-/**
- * fetch(path,fromTime,untilTime=None,archiveToSelect=None)
- *
- * path is a string
- * fromTime is an epoch time
- * untilTime is also an epoch time, but defaults to now.
- * archiveToSelect is the requested granularity, but defaults to None.
- *
- * Returns a tuple of (timeInfo, valueList)
- * where timeInfo is itself a tuple of (fromTime, untilTime, step)
- *
- * Returns None if no data can be returned
- */
-pub fn fetch(path: &Path, interval: Interval, now: u32, seconds_per_point: u32) -> Result<Option<ArchiveData>, io::Error> {
-    // if now is None:
-    //     now = int(time.time())
-    // if untilTime is None:
-    //     untilTime = now
-
-    let mut fh = fs::OpenOptions::new().read(true).open(path)?;
-
-    let header = __read_header(&mut fh)?;
-
-    let archive = find_archive(&header, seconds_per_point)
-        .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
-
-    file_fetch(&mut fh, &header, &archive, interval, now)
-}
-
 fn file_fetch<F: Read + Seek>(fh: &mut F, header: &WhisperMetadata, archive: &ArchiveInfo, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
-    let available = available_interval(&header, now)
-        .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
+    let available = Interval::past(now, header.max_retention);
 
     if !interval.intersects(available) {
         // Range is in the future or beyond retention
         return Ok(None);
     }
 
-    let interval = available_interval(&header, now)
-        .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?
-        .intersection(interval)
+    let interval = available.intersection(interval)
         .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
     __archive_fetch(fh, archive, interval.from(), interval.until()).map(Some)
