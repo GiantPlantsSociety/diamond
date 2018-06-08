@@ -2,11 +2,14 @@
 extern crate structopt;
 #[macro_use]
 extern crate failure;
+#[macro_use]
+extern crate serde_json;
 extern crate whisper;
 
 use failure::Error;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use std::process::exit;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-info")]
@@ -23,90 +26,66 @@ struct Args {
     field: Option<String>,
 }
 
-// whisper-info.py
-// Usage: whisper-info.py [options] path [field]
+fn format_info(meta: &whisper::WhisperMetadata, json: bool) -> Result<(), Error> {
+    if json {
+        let john = json!({
+            "maxRetention": &meta.max_retention,
+            "xFilesFactor": &meta.x_files_factor,
+            "aggregationMethod": &meta.aggregation_method.to_string(),
+            "fileSize": &meta.file_size(),
+            "archives": &meta.archives
+                .iter()
+                .map(|a| json!({
+                    "retention": a.retention(),
+                    "secondsPerPoint": a.seconds_per_point,
+                    "points": a.points,
+                    "size": a.size(),
+                    "offset": a.offset,
+                    }))
+                .collect::<Vec<_>>()
+        });
+        println!("{}", serde_json::to_string_pretty(&john)?);
+    } else {
+        println!("maxRetention: {}", &meta.max_retention);
+        println!("xFilesFactor: {}", &meta.x_files_factor);
+        println!("aggregationMethod: {}", &meta.aggregation_method);
+        println!("fileSize: {}", &meta.file_size());
+        println!();
 
-// Options:
-//   -h, --help  show this help message and exit
-//   --json      Output results in JSON form
+        for (i, archive) in meta.archives.iter().enumerate() {
+            println!("Archive {}", i);
+            println!("retention: {}", &archive.retention());
+            println!("secondsPerPoint: {}", &archive.seconds_per_point);
+            println!("points: {}", &archive.points);
+            println!("size: {}", &archive.size());
+            println!("offset: {}", &archive.offset);
+            println!();
+        }
+    }
 
-// whisper-info.py load.1m.wsp
-// maxRetention: 86400
-// xFilesFactor: 0.5
-// aggregationMethod: average
-// fileSize: 17308
-//
-// Archive 0
-// retention: 86400
-// secondsPerPoint: 60
-// points: 1440
-// size: 17280
-// offset: 28
-//
+    Ok(())
+}
 
-// whisper-info.py load.1m.wsp size
-// Unknown field "size". Valid fields are maxRetention,xFilesFactor,aggregationMethod,archives,fileSize
-
-// whisper-info.py load.1m.wsp fileSize
-// 17308
-
-// whisper-info.py load.1m.wsp --json
-// {
-//   "maxRetention": 86400,
-//   "xFilesFactor": 0.5,
-//   "aggregationMethod": "average",
-//   "archives": [
-//     {
-//       "retention": 86400,
-//       "secondsPerPoint": 60,
-//       "points": 1440,
-//       "size": 17280,
-//       "offset": 28
-//     }
-//   ],
-//   "fileSize": 17308
-// }
-
-// whisper-info.py load.2m.wsp
-// maxRetention: 172800
-// xFilesFactor: 0.5
-// aggregationMethod: average
-// fileSize: 34600
-//
-// Archive 0
-// retention: 86400
-// secondsPerPoint: 60
-// points: 1440
-// size: 17280
-// offset: 40
-//
-// Archive 1
-// retention: 172800
-// secondsPerPoint: 120
-// points: 1440
-// size: 17280
-// offset: 17320
-//
-
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
-    println!("whisper-info {}", env!("CARGO_PKG_VERSION"));
-    println!("{:?}", args);
-
+fn run(args: &Args) -> Result<(), Error> {
     let file = whisper::WhisperFile::open(&args.path)?;
     let meta = file.info();
 
-    let info = match &args.field {
-        Some(ref field) if field == "maxRetention" =>  meta.max_retention.to_string(),
-        Some(ref field) if field == "xFilesFactor" => meta.x_files_factor.to_string(),
-        Some(ref field) if field == "aggregationMethod" => meta.aggregation_method.to_string(),
-        Some(ref field) if field == "fileSize" => meta.file_size().to_string(),
+    match &args.field {
+        Some(ref field) if field == "maxRetention"      => println!("{}", meta.max_retention),
+        Some(ref field) if field == "xFilesFactor"      => println!("{}", meta.x_files_factor),
+        Some(ref field) if field == "aggregationMethod" => println!("{}", meta.aggregation_method),
+        Some(ref field) if field == "fileSize"          => println!("{}", meta.file_size()),
         Some(ref field) => return Err(format_err!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field)),
-        None => format!("{:#?}", meta),
+        None => format_info(&meta, args.json)?,
     };
 
-    println!("{}", info);
-
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
