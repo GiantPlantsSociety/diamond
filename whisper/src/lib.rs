@@ -586,7 +586,10 @@ fn file_fetch<F: Read + Seek>(fh: &mut F, header: &WhisperMetadata, archive: &Ar
     let interval = available.intersection(interval)
         .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
-    __archive_fetch(fh, archive, interval).map(Some)
+    let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point)
+        .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
+
+    __archive_fetch(fh, archive, adjusted_interval).map(Some)
 }
 
 fn adjust_instant(instant: u32, step: u32) -> u32 {
@@ -612,35 +615,34 @@ fn adjust_interval(interval: &Interval, step: u32) -> Result<Interval, String> {
  */
 fn __archive_fetch<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<ArchiveData, io::Error> {
     let step = archive.seconds_per_point;
-    let adjusted_interval = adjust_interval(&interval, step).unwrap();
 
     fh.seek(io::SeekFrom::Start(archive.offset.into()))?;
     let base = Point::read(fh)?;
 
     if base.interval == 0 {
-        let points = (adjusted_interval.until() - adjusted_interval.from()) / step;
+        let points = (interval.until() - interval.from()) / step;
         let mut values = Vec::new();
         for _i in 0..points {
             values.push(None);
         }
         Ok(ArchiveData {
-            from_interval: adjusted_interval.from(),
-            until_interval: adjusted_interval.until(),
+            from_interval: interval.from(),
+            until_interval: interval.until(),
             step,
             values,
         })
     } else {
-        let from_index = instant_offset(archive, base.interval, adjusted_interval.from());
-        let until_index = instant_offset(archive, base.interval, adjusted_interval.until());
+        let from_index = instant_offset(archive, base.interval, interval.from());
+        let until_index = instant_offset(archive, base.interval, interval.until());
 
         let series = read_archive(fh, &archive, from_index, until_index)?;
 
         // And finally we construct a list of values
-        let values = points_to_values(&series, adjusted_interval.from(), step);
+        let values = points_to_values(&series, interval.from(), step);
 
         Ok(ArchiveData {
-            from_interval: adjusted_interval.from(),
-            until_interval: adjusted_interval.until(),
+            from_interval: interval.from(),
+            until_interval: interval.until(),
             step,
             values,
         })
@@ -694,7 +696,8 @@ fn file_merge<F1: Read + Seek, F2: Read + Write + Seek>(fh_src: &mut F1, fh_dst:
 
         let from = u32::max(time_from, now - archive.retention());
         let interval = Interval::new(from, time_to).unwrap();
-        let data = __archive_fetch(fh_src, &archive, interval)?;
+        let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point).unwrap();
+        let data = __archive_fetch(fh_src, &archive, adjusted_interval)?;
 
         let points = data.points();
         if !points.is_empty() {
@@ -747,8 +750,10 @@ fn file_diff<F1: Read + Seek, F2: Read + Seek>(fh1: &mut F1, fh2: &mut F2, ignor
     for (index, archive) in archives.iter().enumerate() {
         let start_time = now - archive.retention();
         let interval = Interval::new(start_time, until_time).unwrap();
-        let data1 = __archive_fetch(fh1, archive, interval)?;
-        let data2 = __archive_fetch(fh2, archive, interval)?;
+        let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point).unwrap();
+
+        let data1 = __archive_fetch(fh1, archive, adjusted_interval)?;
+        let data2 = __archive_fetch(fh2, archive, adjusted_interval)?;
 
         let start = u32::min(data1.from_interval, data2.from_interval);
         let end = u32::max(data1.until_interval, data2.until_interval);
