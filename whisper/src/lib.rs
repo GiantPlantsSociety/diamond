@@ -277,6 +277,21 @@ fn __read_header<R: Read + Seek>(fh: &mut R) -> Result<WhisperMetadata, io::Erro
     Ok(info)
 }
 
+fn instant_offset(archive: &ArchiveInfo, base_interval: u32, instant: u32) -> u32 {
+    #[inline]
+    fn modulo(a: u32, b: u32) -> u32 {
+        (a + b) % b
+    }
+
+    if base_interval == 0 {
+        0
+    } else {
+        let instant_aligned = modulo(instant / archive.seconds_per_point, archive.points);
+        let base_aligned = modulo(base_interval / archive.seconds_per_point, archive.points);
+        modulo(archive.points + instant_aligned - base_aligned, archive.points)
+    }
+}
+
 fn read_archive<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_index: u32, until_index: u32) -> Result<Vec<Point>, io::Error> {
     let from_index = from_index % archive.points;
     let until_index = until_index % archive.points;
@@ -307,22 +322,10 @@ fn read_archive<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_index: u
 }
 
 fn write_archive_point<F: Read + Write + Seek>(fh: &mut F, archive: &ArchiveInfo, point: &Point) -> Result<(), io::Error> {
-    let point_size = 12;
-
     let base = archive.read_base(fh)?;
-
-    let index = if base.interval == 0 {
-        // This file's first update
-        0
-    } else {
-        // Not our first propagated update to this lower archive
-        let distance = (point.interval - base.interval) / archive.seconds_per_point;
-        distance % archive.points
-    };
-
-    fh.seek(io::SeekFrom::Start((archive.offset + index * point_size).into()))?;
+    let index = instant_offset(archive, base.interval, point.interval);
+    fh.seek(io::SeekFrom::Start((archive.offset + index * POINT_SIZE as u32).into()))?;
     point.write(fh)?;
-
     Ok(())
 }
 
@@ -330,8 +333,8 @@ fn write_archive<F: Write + Seek>(fh: &mut F, archive: &ArchiveInfo, points: &[P
     let point_size = 12;
 
     let first_interval = points[0].interval;
-    let point_distance = (first_interval - base_interval) / archive.seconds_per_point;
-    let offset = point_distance % archive.points;
+
+    let offset = instant_offset(archive, base_interval, first_interval);
 
     let available_tail_space = (archive.points - offset) as usize;
 
@@ -618,13 +621,8 @@ fn __archive_fetch<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_time:
         })
     }
 
-    // Determine from_index
-    let point_distance = (from_interval - base.interval) / step; // TODO: negative
-    let from_index = point_distance % archive.points;
-
-    // Determine until_index
-    let point_distance = (until_interval - base.interval) / step; // TODO: negative
-    let until_index = point_distance % archive.points;
+    let from_index = instant_offset(archive, base.interval, from_interval);
+    let until_index = instant_offset(archive, base.interval, until_interval);
 
     let series = read_archive(fh, &archive, from_index, until_index)?;
 
@@ -765,4 +763,31 @@ fn file_diff<F1: Read + Seek, F2: Read + Seek>(fh1: &mut F1, fh2: &mut F2, ignor
     }
 
     Ok(archive_diffs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_instant_offset() {
+        let archive = ArchiveInfo { offset: 100_000, seconds_per_point: 1, points: 60 };
+
+        assert_eq!(instant_offset(&archive, 0, 0), 0);
+        assert_eq!(instant_offset(&archive, 0, 1), 0);
+
+        assert_eq!(instant_offset(&archive, 10, 10), 0);
+        assert_eq!(instant_offset(&archive, 10, 11), 1);
+        assert_eq!(instant_offset(&archive, 10, 12), 2);
+        assert_eq!(instant_offset(&archive, 10, 9), 59);
+        assert_eq!(instant_offset(&archive, 10, 8), 58);
+
+        assert_eq!(instant_offset(&archive, 10, 50), 40);
+        assert_eq!(instant_offset(&archive, 10, 69), 59);
+        assert_eq!(instant_offset(&archive, 10, 70), 0);
+
+        assert_eq!(instant_offset(&archive, 10, 120 + 50), 40);
+        assert_eq!(instant_offset(&archive, 10, 120 + 69), 59);
+        assert_eq!(instant_offset(&archive, 10, 120 + 70), 0);
+    }
 }
