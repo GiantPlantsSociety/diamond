@@ -4,11 +4,12 @@ extern crate failure;
 extern crate whisper;
 
 use failure::Error;
+use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use whisper::WhisperBuilder;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
+use whisper::WhisperBuilder;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-create")]
@@ -25,7 +26,7 @@ struct Args {
     #[structopt(long = "sparse")]
     sparse: bool,
 
-    /// Create new whisper and use fallocate
+    /// Create new whisper and use fallocate, default behavior, left for compatibility
     #[structopt(long = "fallocate")]
     fallocate: bool,
 
@@ -55,58 +56,78 @@ struct Args {
     retentions: Vec<Retention>,
 }
 
-// whisper-create.py
-// Usage: whisper-create.py path timePerPoint:timeToStore [timePerPoint:timeToStore]*
-// whisper-create.py --estimate timePerPoint:timeToStore [timePerPoint:timeToStore]*
+fn byte_format(number: usize) -> String {
+    let units = ["bytes", "KB", "MB"];
+    let mut size = number as f64;
+    let mut unit = "GB";
 
-// timePerPoint and timeToStore specify lengths of time, for example:
+    for u in &units {
+        if size < 1024.0 {
+            unit = u;
+            break;
+        }
+        size /= 1024.0;
+    }
+    format!("{:.3}{}", size, unit)
+}
 
-// 60:1440      60 seconds per datapoint, 1440 datapoints = 1 day of retention
-// 15m:8        15 minutes per datapoint, 8 datapoints = 2 hours of retention
-// 1h:7d        1 hour per datapoint, 7 days of retention
-// 12h:2y       12 hours per datapoint, 2 years of retention
+fn estimate_info(retentions: &[Retention]) {
+    for (i, retention) in retentions.iter().enumerate() {
+        println!(
+            "Archive {}: {} points of {}s precision",
+            i, &retention.points, &retention.seconds_per_point
+        );
+    }
 
-// Options:
-//   -h, --help            show this help message and exit
-//   --xFilesFactor=XFILESFACTOR
-//   --aggregationMethod=AGGREGATIONMETHOD
-//                         Function to use when aggregating values (average, sum,
-//                         last, max, min, avg_zero, absmax, absmin)
-//   --overwrite
-//   --estimate            Don't create a whisper file, estimate storage
-//                         requirements based on archive definitions
-//   --sparse              Create new whisper as sparse file
-//   --fallocate           Create new whisper and use fallocate
+    let total_points: usize = retentions.iter().map(|x| x.points as usize).sum();
 
-// whisper-create.py load.1m.wsp 60:1440
-// Created: load.1m.wsp (17308 bytes)
+    let size = (whisper::METADATA_SIZE + (retentions.len() * whisper::ARCHIVE_INFO_SIZE)
+        + (total_points * whisper::POINT_SIZE)) as usize;
+    let disk_size = (size as f64 / 4096.0).ceil() as usize * 4096;
 
-// whisper-create.py load.1m.wsp 60:1440 60:1440
-// [ERROR] A Whisper database may not be configured having two archives with the same precision (archive0: (60, 1440), archive1: (60, 1440))
+    println!();
+    println!(
+        "Estimated Whisper DB Size: {} ({} bytes on disk with 4k blocks)",
+        byte_format(size),
+        disk_size
+    );
+    println!();
 
-// whisper-create.py load.1m.wsp 60:1440 120:2880
-// [ERROR] File load.1m.wsp already exists!
+    let numbers = [1, 5, 10, 50, 100, 500];
 
-// whisper-create.py load.2m.wsp 60:1440 120:2880
-// Created: load.2m.wsp (51880 bytes)
-
-// whisper-create.py load.2m.wsp 60:1440 120:1440
-// Created: load.2m.wsp (34600 bytes)
+    for number in &numbers {
+        println!(
+            "Estimated storage requirement for {}k metrics: {}",
+            number,
+            byte_format(number * 1000_usize * disk_size)
+        );
+    }
+}
 
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
-    println!("whisper-create {}", env!("CARGO_PKG_VERSION"));
-    println!("{:?}", args);
+    if args.estimate {
+        estimate_info(&args.retentions);
+    } else {
+        if args.overwrite && args.path.exists() {
+            println!(
+                "Overwriting existing file: {}",
+                &args.path.to_str().unwrap()
+            );
+            fs::remove_file(&args.path)?;
+        }
 
-    let file = WhisperBuilder::default()
-        .add_retentions(&args.retentions)
-        .x_files_factor(args.x_files_factor)
-        .aggregation_method(args.aggregation_method)
-        .sparse(args.sparse)
-        .build(args.path)?;
+        WhisperBuilder::default()
+            .add_retentions(&args.retentions)
+            .x_files_factor(args.x_files_factor)
+            .aggregation_method(args.aggregation_method)
+            .sparse(args.sparse)
+            .build(&args.path)?;
 
-    println!("{:#?}", file.info());
+        let size = args.path.metadata()?.len();
+        println!("Created: {} ({} bytes)", &args.path.to_str().unwrap(), size);
+    }
 
     Ok(())
 }
