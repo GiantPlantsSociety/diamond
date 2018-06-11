@@ -1,8 +1,7 @@
 #[macro_use]
 extern crate structopt;
-#[macro_use]
-extern crate serde_json;
 extern crate chrono;
+extern crate serde_json;
 #[macro_use]
 extern crate failure;
 extern crate whisper;
@@ -57,7 +56,7 @@ fn is_not_null(value: &Option<f64>) -> bool {
 }
 
 fn is_not_empty(value: &Option<f64>) -> bool {
-    value.is_some() && value != &Some(0_f64)
+    is_not_null(value) && is_not_zero(value)
 }
 
 fn is_any(_value: &Option<f64>) -> bool {
@@ -76,8 +75,6 @@ fn main() -> Result<(), Error> {
 
     let seconds_per_point = whisper::suggest_archive(&file, interval, now)
         .ok_or(err_msg("No data in selected timerange"))?;
-    let archive = file.fetch(seconds_per_point, interval, now)?
-        .ok_or(err_msg("No data in selected timerange"))?;
 
     let filter = match args.drop {
         Some(ref s) if s == "nulls" => is_not_null,
@@ -87,33 +84,31 @@ fn main() -> Result<(), Error> {
         Some(ref s) => return Err(format_err!("No such drop option {}.", s)),
     };
 
-    let values: Vec<String> = archive
-        .values
-        .into_iter()
-        .filter(&filter)
-        .map(|v| v.map(|x| x.to_string()).unwrap_or("None".to_owned()))
-        .collect();
+    let archive = file.fetch(seconds_per_point, interval, now)?
+        .ok_or(err_msg("No data in selected timerange"))?
+        .filter_out(&filter);
 
     if args.json {
-        let john = json!({
-            "start": archive.from_interval,
-            "end": archive.until_interval,
-            "step": archive.step,
-            "values": values,
-            });
-
-        println!("{}", serde_json::to_string_pretty(&john)?);
+        println!("{}", serde_json::to_string_pretty(&archive)?);
     } else {
-        for (index, value) in values.iter().enumerate() {
+        for (index, value) in archive.values.iter().enumerate() {
             let time = archive.from_interval + archive.step * index as u32;
 
             match (&args.pretty, &args.time_format) {
                 (true, Some(time_format)) => {
                     let timestr =
                         NaiveDateTime::from_timestamp(i64::from(time), 0).format(&time_format);
-                    println!("{}\t{}", timestr, value);
+                    println!(
+                        "{}\t{}",
+                        timestr,
+                        value.map(|x| x.to_string()).unwrap_or("None".to_owned())
+                    );
                 }
-                (_, _) => println!("{}\t{}", time, value),
+                (_, _) => println!(
+                    "{}\t{}",
+                    time,
+                    value.map(|x| x.to_string()).unwrap_or("None".to_owned())
+                ),
             }
         }
     }
