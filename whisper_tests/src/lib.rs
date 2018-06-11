@@ -1,10 +1,16 @@
 extern crate rand;
 extern crate tempfile;
+extern crate assert_cli;
 
+
+use std::fs;
 use std::path::PathBuf;
+use std::ffi::{OsStr, OsString};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 use tempfile::{TempDir, Builder};
+use assert_cli::Assert;
+
 
 pub fn get_temp_dir() -> TempDir {
     Builder::new()
@@ -20,9 +26,39 @@ pub fn get_file_path(temp_dir: &TempDir, prefix: &str) -> PathBuf {
     path
 }
 
+pub fn copy_test_file(temp_dir: &TempDir, filename: &str) -> PathBuf {
+    let file_path = PathBuf::new()
+        .join("data")
+        .join(filename);
+
+    let tmp_file_path = temp_dir.path()
+        .join(filename);
+
+    fs::copy(&file_path, &tmp_file_path).unwrap();
+
+    tmp_file_path
+}
+
 pub fn random_string(len: usize) -> String {
     thread_rng()
         .sample_iter(&Alphanumeric)
         .take(len)
         .collect::<String>()
+}
+
+pub fn get_binary_command(binary_name: &str) -> Assert {
+    Assert::command(
+        &vec![
+            OsStr::new("cargo"),
+            OsStr::new("run"),
+            #[cfg(not(debug_assertions))]
+            OsStr::new("--release"),
+            OsStr::new("--quiet"),
+            OsStr::new("-p"),
+            OsStr::new("whisper"),
+            OsStr::new("--bin"),
+            OsStr::new(binary_name),
+            OsStr::new("--"),
+        ]
+    )
 }

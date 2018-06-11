@@ -1,20 +1,17 @@
 extern crate assert_cli;
 extern crate unindent;
-
-mod common;
+extern crate whisper_tests;
 
 #[cfg(test)]
 mod whisper_info {
-    use assert_cli;
-
+    use whisper_tests::*;
     use unindent::unindent;
-    use super::common;
 
     const NAME: &str = "whisper-info";
 
     #[test]
     fn calling_without_args() {
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .fails_with(1)
             .stderr().contains("USAGE")
             .unwrap();
@@ -22,7 +19,7 @@ mod whisper_info {
 
     #[test]
     fn calling_help() {
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&["--help"])
             .stdout().contains("USAGE")
             .unwrap();
@@ -30,7 +27,7 @@ mod whisper_info {
 
     #[test]
     fn calling_with_invalid_path() {
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&["invalid"])
             .fails_with(1)
             .stderr().contains("No such file or directory (os error 2)")
@@ -39,10 +36,10 @@ mod whisper_info {
 
     #[test]
     fn calling_as_plain_for_unknown() {
-        let temp_dir = common::get_temp_dir();
-        let path = common::copy_test_file(&temp_dir, "info.wsp");
+        let temp_dir = get_temp_dir();
+        let path = copy_test_file(&temp_dir, "info.wsp");
 
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&[ path.to_str().unwrap(), "unknown" ])
             .fails_with(1)
             .stderr().contains("Unknown field \"unknown\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize")
@@ -51,10 +48,10 @@ mod whisper_info {
 
     #[test]
     fn calling_as_plain_for_max_retention() {
-        let temp_dir = common::get_temp_dir();
-        let path = common::copy_test_file(&temp_dir, "info.wsp");
+        let temp_dir = get_temp_dir();
+        let path = copy_test_file(&temp_dir, "info.wsp");
 
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&[ path.to_str().unwrap(), "maxRetention" ])
             .stdout().contains("172800")
             .unwrap();
@@ -62,10 +59,10 @@ mod whisper_info {
 
     #[test]
     fn calling_as_plain_for_x_files_factor() {
-        let temp_dir = common::get_temp_dir();
-        let path = common::copy_test_file(&temp_dir, "info.wsp");
+        let temp_dir = get_temp_dir();
+        let path = copy_test_file(&temp_dir, "info.wsp");
 
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&[ path.to_str().unwrap(), "xFilesFactor" ])
             .stdout().contains("0.5")
             .unwrap();
@@ -73,10 +70,10 @@ mod whisper_info {
 
     #[test]
     fn calling_as_plain_for_aggregation_method() {
-        let temp_dir = common::get_temp_dir();
-        let path = common::copy_test_file(&temp_dir, "info.wsp");
+        let temp_dir = get_temp_dir();
+        let path = copy_test_file(&temp_dir, "info.wsp");
 
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&[ path.to_str().unwrap(), "aggregationMethod" ])
             .stdout().contains("average")
             .unwrap();
@@ -84,10 +81,10 @@ mod whisper_info {
 
     #[test]
     fn calling_as_plain_for_file_size() {
-        let temp_dir = common::get_temp_dir();
-        let path = common::copy_test_file(&temp_dir, "info.wsp");
+        let temp_dir = get_temp_dir();
+        let path = copy_test_file(&temp_dir, "info.wsp");
 
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&[ path.to_str().unwrap(), "fileSize" ])
             .stdout().contains("34600")
             .unwrap();
@@ -95,10 +92,10 @@ mod whisper_info {
 
     #[test]
     fn calling_as_plain() {
-        let temp_dir = common::get_temp_dir();
-        let path = common::copy_test_file(&temp_dir, "info.wsp");
+        let temp_dir = get_temp_dir();
+        let path = copy_test_file(&temp_dir, "info.wsp");
 
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&[ path.to_str().unwrap() ])
             .stdout().contains(
                 unindent("
@@ -133,10 +130,10 @@ mod whisper_info {
 
     #[test]
     fn calling_as_json() {
-        let temp_dir = common::get_temp_dir();
-        let path = common::copy_test_file(&temp_dir, "info.wsp");
+        let temp_dir = get_temp_dir();
+        let path = copy_test_file(&temp_dir, "info.wsp");
 
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&[ path.to_str().unwrap(), "--json" ])
             .stdout().contains(
                 unindent(r#"

@@ -1,14 +1,15 @@
 extern crate assert_cli;
+extern crate whisper_tests;
 
 #[cfg(test)]
-mod whisper_create {
-    use assert_cli;
+mod whisper_fetch {
+    use whisper_tests::*;
 
-    const NAME: &str = "whisper-create";
+    const NAME: &str = "whisper-fetch";
 
     #[test]
     fn calling_without_args() {
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .fails_with(1)
             .stderr().contains("USAGE")
             .unwrap();
@@ -16,7 +17,7 @@ mod whisper_create {
 
     #[test]
     fn calling_help() {
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&["--help"])
             .stdout().contains("USAGE")
             .unwrap();

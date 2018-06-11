@@ -1,14 +1,15 @@
 extern crate assert_cli;
+extern crate whisper_tests;
 
 #[cfg(test)]
-mod find_corrupt_whisper_files {
-    use assert_cli;
+mod whisper_dump {
+    use whisper_tests::*;
 
-    const NAME: &str = "find-corrupt-whisper-files";
+    const NAME: &str = "whisper-dump";
 
     #[test]
     fn calling_without_args() {
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .fails_with(1)
             .stderr().contains("USAGE")
             .unwrap();
@@ -16,7 +17,7 @@ mod find_corrupt_whisper_files {
 
     #[test]
     fn calling_help() {
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&["--help"])
             .stdout().contains("USAGE")
             .unwrap();
@@ -24,7 +25,7 @@ mod find_corrupt_whisper_files {
 
     #[test]
     fn calling_with_invalid_path() {
-        assert_cli::Assert::cargo_binary(NAME)
+        get_binary_command(NAME)
             .with_args(&["invalid"])
             .fails_with(1)
             .unwrap();
