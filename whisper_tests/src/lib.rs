@@ -5,7 +5,7 @@ extern crate assert_cli;
 
 use std::fs;
 use std::path::PathBuf;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 use tempfile::{TempDir, Builder};
