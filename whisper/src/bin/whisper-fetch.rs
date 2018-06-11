@@ -1,10 +1,20 @@
 #[macro_use]
 extern crate structopt;
+#[macro_use]
+extern crate serde_json;
+extern crate chrono;
+#[macro_use]
 extern crate failure;
+extern crate whisper;
 
-use failure::Error;
+use chrono::prelude::NaiveDateTime;
+use failure::{err_msg, Error};
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
+
+use whisper::interval::Interval;
+use whisper::WhisperFile;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-fetch")]
@@ -25,7 +35,7 @@ struct Args {
     #[structopt(long = "pretty")]
     pretty: bool,
 
-    /// Time format to use with --pretty; see time.strftime()
+    /// Time format to use with --pretty; see https://docs.rs/chrono/0.4.0/chrono/format/strftime/index.html
     #[structopt(long = "time-format", short = "t")]
     time_format: Option<String>,
 
@@ -38,26 +48,75 @@ struct Args {
     path: PathBuf,
 }
 
-// whisper-fetch.py
-// Usage: whisper-fetch.py [options] path
+fn is_not_zero(value: &Option<f64>) -> bool {
+    value != &Some(0_f64)
+}
 
-// Options:
-//   -h, --help            show this help message and exit
-//   --from=_FROM          Unix epoch time of the beginning of your requested
-//                         interval (default: 24 hours ago)
-//   --until=UNTIL         Unix epoch time of the end of your requested interval
-//                         (default: now)
-//   --json                Output results in JSON form
-//   --pretty              Show human-readable timestamps instead of unix times
-//   -t TIME_FORMAT, --time-format=TIME_FORMAT
-//                         Time format to use with --pretty; see time.strftime()
-//   --drop=DROP           Specify 'nulls' to drop all null values. Specify
-//                         'zeroes' to drop all zero values. Specify 'empty' to
-//                         drop both null and zero values
+fn is_not_null(value: &Option<f64>) -> bool {
+    value.is_some()
+}
+
+fn is_not_empty(value: &Option<f64>) -> bool {
+    value.is_some() && value != &Some(0_f64)
+}
+
+fn is_any(_value: &Option<f64>) -> bool {
+    true
+}
 
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
-    println!("whisper-fetch {}", env!("CARGO_PKG_VERSION"));
-    println!("{:?}", args);
+
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
+    let from = args.from.unwrap_or(now - 86400);
+    let until = args.until.unwrap_or(now);
+
+    let interval = Interval::new(from, until).map_err(err_msg)?;
+    let mut file = WhisperFile::open(&args.path)?;
+
+    let seconds_per_point = whisper::suggest_archive(&file, interval, now)
+        .ok_or(err_msg("No data in selected timerange"))?;
+    let archive = file.fetch(seconds_per_point, interval, now)?
+        .ok_or(err_msg("No data in selected timerange"))?;
+
+    let filter = match args.drop {
+        Some(ref s) if s == "nulls" => is_not_null,
+        Some(ref s) if s == "zeroes" => is_not_zero,
+        Some(ref s) if s == "empty" => is_not_empty,
+        None => is_any,
+        Some(ref s) => return Err(format_err!("No such drop option {}.", s)),
+    };
+
+    let values: Vec<String> = archive
+        .values
+        .into_iter()
+        .filter(&filter)
+        .map(|v| v.map(|x| x.to_string()).unwrap_or("None".to_owned()))
+        .collect();
+
+    if args.json {
+        let john = json!({
+            "start": archive.from_interval,
+            "end": archive.until_interval,
+            "step": archive.step,
+            "values": values,
+            });
+
+        println!("{}", serde_json::to_string_pretty(&john)?);
+    } else {
+        for (index, value) in values.iter().enumerate() {
+            let time = archive.from_interval + archive.step * index as u32;
+
+            match (&args.pretty, &args.time_format) {
+                (true, Some(time_format)) => {
+                    let timestr =
+                        NaiveDateTime::from_timestamp(i64::from(time), 0).format(&time_format);
+                    println!("{}\t{}", timestr, value);
+                }
+                (_, _) => println!("{}\t{}", time, value),
+            }
+        }
+    }
+
     Ok(())
 }
