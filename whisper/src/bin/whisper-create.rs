@@ -1,9 +1,11 @@
 #[macro_use]
 extern crate structopt;
 extern crate failure;
+extern crate humansize;
 extern crate whisper;
 
 use failure::Error;
+use humansize::{file_size_opts as options, FileSize};
 use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -56,21 +58,6 @@ struct Args {
     retentions: Vec<Retention>,
 }
 
-fn byte_format(number: usize) -> String {
-    let units = ["bytes", "KB", "MB"];
-    let mut size = number as f64;
-    let mut unit = "GB";
-
-    for u in &units {
-        if size < 1024.0 {
-            unit = u;
-            break;
-        }
-        size /= 1024.0;
-    }
-    format!("{:.3}{}", size, unit)
-}
-
 fn estimate_info(retentions: &[Retention]) {
     for (i, retention) in retentions.iter().enumerate() {
         println!(
@@ -85,10 +72,15 @@ fn estimate_info(retentions: &[Retention]) {
         + (total_points * whisper::POINT_SIZE)) as usize;
     let disk_size = (size as f64 / 4096.0).ceil() as usize * 4096;
 
+    let custom_options = options::FileSizeOpts {
+        decimal_places: 3,
+        ..options::CONVENTIONAL
+    };
+
     println!();
     println!(
         "Estimated Whisper DB Size: {} ({} bytes on disk with 4k blocks)",
-        byte_format(size),
+        size.file_size(&custom_options).unwrap(),
         disk_size
     );
     println!();
@@ -99,7 +91,9 @@ fn estimate_info(retentions: &[Retention]) {
         println!(
             "Estimated storage requirement for {}k metrics: {}",
             number,
-            byte_format(number * 1000_usize * disk_size)
+            (number * 1000_usize * disk_size)
+                .file_size(&custom_options)
+                .unwrap()
         );
     }
 }
