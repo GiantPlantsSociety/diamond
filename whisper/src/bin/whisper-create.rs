@@ -61,50 +61,54 @@ fn byte_format(number: usize) -> String {
     let mut size = number as f64;
     let mut unit = "GB";
 
-    for u in units.iter() {
+    for u in &units {
         if size < 1024.0 {
             unit = u;
             break;
         }
-        size = size / 1024.0;
+        size /= 1024.0;
     }
     format!("{:.3}{}", size, unit)
+}
+
+fn estimate_info(retentions: &[Retention]) {
+    for (i, retention) in retentions.iter().enumerate() {
+        println!(
+            "Archive {}: {} points of {}s precision",
+            i, &retention.points, &retention.seconds_per_point
+        );
+    }
+
+    let total_points: usize = retentions.iter().map(|x| x.points as usize).sum();
+
+    let size = (whisper::METADATA_SIZE + (retentions.len() * whisper::ARCHIVE_INFO_SIZE)
+        + (total_points * whisper::POINT_SIZE)) as usize;
+    let disk_size = (size as f64 / 4096.0).ceil() as usize * 4096;
+
+    println!();
+    println!(
+        "Estimated Whisper DB Size: {} ({} bytes on disk with 4k blocks)",
+        byte_format(size),
+        disk_size
+    );
+    println!();
+
+    let numbers = [1, 5, 10, 50, 100, 500];
+
+    for number in &numbers {
+        println!(
+            "Estimated storage requirement for {}k metrics: {}",
+            number,
+            byte_format(number * 1000_usize * disk_size)
+        );
+    }
 }
 
 fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
     if args.estimate {
-        for (i, retention) in args.retentions.iter().enumerate() {
-            println!(
-                "Archive {}: {} points of {}s precision",
-                i, &retention.points, &retention.seconds_per_point
-            );
-        }
-
-        let total_points: usize = args.retentions.iter().map(|x| x.points as usize).sum();
-
-        let size = (whisper::METADATA_SIZE + (args.retentions.len() * whisper::ARCHIVE_INFO_SIZE)
-            + (total_points * whisper::POINT_SIZE)) as usize;
-        let disk_size = (size as f64 / 4096.0).ceil() as usize * 4096;
-
-        println!();
-        println!(
-            "Estimated Whisper DB Size: {} ({} bytes on disk with 4k blocks)",
-            byte_format(size),
-            disk_size
-        );
-        println!();
-
-        let numbers = [1, 5, 10, 50, 100, 500];
-
-        for number in numbers.iter() {
-            println!(
-                "Estimated storage requirement for {}k metrics: {}",
-                number,
-                byte_format(number * 1000_usize * disk_size)
-            );
-        }
+        estimate_info(&args.retentions);
     } else {
         if args.overwrite && args.path.exists() {
             println!(
