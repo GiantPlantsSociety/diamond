@@ -616,36 +616,32 @@ fn adjust_interval(interval: &Interval, step: u32) -> Result<Interval, String> {
 fn __archive_fetch<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<ArchiveData, io::Error> {
     let step = archive.seconds_per_point;
 
-    fh.seek(io::SeekFrom::Start(archive.offset.into()))?;
-    let base = Point::read(fh)?;
+    let points = archive_fetch_interval(fh, archive, interval)?;
+    let values = match points {
+        None => {
+            let count = (interval.until() - interval.from()) / step;
+            vec![None; count as usize]
+        },
+        Some(points) => points_to_values(&points, interval.from(), step),
+    };
 
+    Ok(ArchiveData {
+        from_interval: interval.from(),
+        until_interval: interval.until(),
+        step,
+        values,
+    })
+}
+
+fn archive_fetch_interval<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<Option<Vec<Point>>, io::Error> {
+    let base = archive.read_base(fh)?;
     if base.interval == 0 {
-        let points = (interval.until() - interval.from()) / step;
-        let mut values = Vec::new();
-        for _i in 0..points {
-            values.push(None);
-        }
-        Ok(ArchiveData {
-            from_interval: interval.from(),
-            until_interval: interval.until(),
-            step,
-            values,
-        })
+        Ok(None)
     } else {
         let from_index = instant_offset(archive, base.interval, interval.from());
         let until_index = instant_offset(archive, base.interval, interval.until());
-
-        let series = read_archive(fh, &archive, from_index, until_index)?;
-
-        // And finally we construct a list of values
-        let values = points_to_values(&series, interval.from(), step);
-
-        Ok(ArchiveData {
-            from_interval: interval.from(),
-            until_interval: interval.until(),
-            step,
-            values,
-        })
+        let points = read_archive(fh, &archive, from_index, until_index)?;
+        Ok(Some(points))
     }
 }
 
