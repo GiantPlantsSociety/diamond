@@ -47,18 +47,16 @@ pub fn random_string(len: usize) -> String {
 }
 
 pub fn get_binary_command(binary_name: &str) -> Assert {
-    Assert::command(
-        &vec![
-            OsStr::new("cargo"),
-            OsStr::new("run"),
-            #[cfg(not(debug_assertions))]
-            OsStr::new("--release"),
-            OsStr::new("--quiet"),
-            OsStr::new("-p"),
-            OsStr::new("whisper"),
-            OsStr::new("--bin"),
-            OsStr::new(binary_name),
-            OsStr::new("--"),
-        ]
-    )
+    Assert::command(&[
+        OsStr::new("cargo"),
+        OsStr::new("run"),
+        #[cfg(not(debug_assertions))]
+        OsStr::new("--release"),
+        OsStr::new("--quiet"),
+        OsStr::new("-p"),
+        OsStr::new("whisper"),
+        OsStr::new("--bin"),
+        OsStr::new(binary_name),
+        OsStr::new("--"),
+    ])
 }
