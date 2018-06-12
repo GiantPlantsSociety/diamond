@@ -693,10 +693,8 @@ fn file_merge<F1: Read + Seek, F2: Read + Write + Seek>(fh_src: &mut F1, fh_dst:
         let from = u32::max(time_from, now - archive.retention());
         let interval = Interval::new(from, time_to).unwrap();
         let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point).unwrap();
-        let data = __archive_fetch(fh_src, &archive, adjusted_interval)?;
 
-        let points = data.points();
-        if !points.is_empty() {
+        if let Some(points) = archive_fetch_interval(fh_src, &archive, adjusted_interval)? {
             __archive_update_many(fh_dst, &header_dst, index, &points)?;
         }
     }
