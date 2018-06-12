@@ -7,6 +7,7 @@ use failure::Error;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
+use std::process::exit;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-set-aggregation-method")]
@@ -25,9 +26,7 @@ struct Args {
     x_files_factor: f32,
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
+fn run(args: &Args) -> Result<(), Error> {
     let mut file = whisper::WhisperFile::open(&args.path)?;
 
     let old_aggregation_method = file.info().aggregation_method;
@@ -43,4 +42,12 @@ fn main() -> Result<(), Error> {
     );
 
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
