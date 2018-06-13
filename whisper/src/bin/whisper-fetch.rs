@@ -9,6 +9,7 @@ extern crate whisper;
 use chrono::prelude::NaiveDateTime;
 use failure::{err_msg, Error};
 use std::path::PathBuf;
+use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 
@@ -63,9 +64,7 @@ fn is_any(_value: &Option<f64>) -> bool {
     true
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
+fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let from = args.from.unwrap_or(now - 86400);
     let until = args.until.unwrap_or(now);
@@ -115,4 +114,12 @@ fn main() -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
