@@ -4,14 +4,18 @@ use num::range_step;
 use super::*;
 use interval::Interval;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiffPoint {
     pub interval: u32,
     pub value1: Option<f64>,
     pub value2: Option<f64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiffArchive {
+    #[serde(rename = "archive")]
     pub index: usize,
+    #[serde(rename = "points")]
     pub diffs: Vec<DiffPoint>,
     pub total: usize,
 }
