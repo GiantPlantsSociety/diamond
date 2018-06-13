@@ -91,24 +91,25 @@ fn main() -> Result<(), Error> {
     if args.json {
         println!("{}", serde_json::to_string_pretty(&archive)?);
     } else {
+        let time_format = match (&args.pretty, &args.time_format) {
+            (true, Some(time_format)) => Some(time_format),
+            _ => None,
+        };
+
         for (index, value) in archive.values.iter().enumerate() {
             let time = archive.from_interval + archive.step * index as u32;
 
-            match (&args.pretty, &args.time_format) {
-                (true, Some(time_format)) => {
-                    let timestr =
-                        NaiveDateTime::from_timestamp(i64::from(time), 0).format(&time_format);
-                    println!(
-                        "{}\t{}",
-                        timestr,
-                        value.map(|x| x.to_string()).unwrap_or("None".to_owned())
-                    );
+            match time_format {
+                Some(ftime) => {
+                    let timestr = NaiveDateTime::from_timestamp(i64::from(time), 0).format(&ftime);
+                    print!("{}\t", timestr);
                 }
-                (_, _) => println!(
-                    "{}\t{}",
-                    time,
-                    value.map(|x| x.to_string()).unwrap_or("None".to_owned())
-                ),
+                None => print!("{}\t", time),
+            }
+
+            match value {
+                Some(v) => println!("{}", v),
+                None => println!("None"),
             }
         }
     }
