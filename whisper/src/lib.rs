@@ -6,6 +6,8 @@ extern crate lazy_static;
 extern crate byteorder;
 extern crate libc;
 extern crate num;
+#[macro_use]
+extern crate serde_derive;
 
 use std::io::{self, Read, Write, Seek};
 use std::fs;
@@ -559,8 +561,11 @@ fn __archive_update_many<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMet
     Ok(())
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ArchiveData {
+    #[serde(rename = "start")]
     pub from_interval: u32,
+    #[serde(rename = "end")]
     pub until_interval: u32,
     pub step: u32,
     pub values: Vec<Option<f64>>,
@@ -572,6 +577,13 @@ impl ArchiveData {
             .zip(&self.values)
             .filter_map(|(interval, value)| value.map(|value| Point { interval, value }))
             .collect()
+    }
+
+    pub fn filter_out(&self, f: &Fn(&Option<f64>) -> bool) -> ArchiveData {
+        ArchiveData {
+            values: self.values.clone().into_iter().filter(f).collect(),
+            ..*self
+        }
     }
 }
 

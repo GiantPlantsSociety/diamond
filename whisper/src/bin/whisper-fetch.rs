@@ -1,8 +1,7 @@
 #[macro_use]
 extern crate structopt;
-#[macro_use]
-extern crate serde_json;
 extern crate chrono;
+extern crate serde_json;
 #[macro_use]
 extern crate failure;
 extern crate whisper;
@@ -10,6 +9,7 @@ extern crate whisper;
 use chrono::prelude::NaiveDateTime;
 use failure::{err_msg, Error};
 use std::path::PathBuf;
+use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 
@@ -57,16 +57,14 @@ fn is_not_null(value: &Option<f64>) -> bool {
 }
 
 fn is_not_empty(value: &Option<f64>) -> bool {
-    value.is_some() && value != &Some(0_f64)
+    is_not_null(value) && is_not_zero(value)
 }
 
 fn is_any(_value: &Option<f64>) -> bool {
     true
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
+fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let from = args.from.unwrap_or(now - 86400);
     let until = args.until.unwrap_or(now);
@@ -75,8 +73,6 @@ fn main() -> Result<(), Error> {
     let mut file = WhisperFile::open(&args.path)?;
 
     let seconds_per_point = whisper::suggest_archive(&file, interval, now)
-        .ok_or(err_msg("No data in selected timerange"))?;
-    let archive = file.fetch(seconds_per_point, interval, now)?
         .ok_or(err_msg("No data in selected timerange"))?;
 
     let filter = match args.drop {
@@ -87,36 +83,43 @@ fn main() -> Result<(), Error> {
         Some(ref s) => return Err(format_err!("No such drop option {}.", s)),
     };
 
-    let values: Vec<String> = archive
-        .values
-        .into_iter()
-        .filter(&filter)
-        .map(|v| v.map(|x| x.to_string()).unwrap_or("None".to_owned()))
-        .collect();
+    let archive = file.fetch(seconds_per_point, interval, now)?
+        .ok_or(err_msg("No data in selected timerange"))?
+        .filter_out(&filter);
 
     if args.json {
-        let john = json!({
-            "start": archive.from_interval,
-            "end": archive.until_interval,
-            "step": archive.step,
-            "values": values,
-            });
-
-        println!("{}", serde_json::to_string_pretty(&john)?);
+        println!("{}", serde_json::to_string_pretty(&archive)?);
     } else {
-        for (index, value) in values.iter().enumerate() {
+        let time_format = match (&args.pretty, &args.time_format) {
+            (true, Some(time_format)) => Some(time_format),
+            _ => None,
+        };
+
+        for (index, value) in archive.values.iter().enumerate() {
             let time = archive.from_interval + archive.step * index as u32;
 
-            match (&args.pretty, &args.time_format) {
-                (true, Some(time_format)) => {
-                    let timestr =
-                        NaiveDateTime::from_timestamp(i64::from(time), 0).format(&time_format);
-                    println!("{}\t{}", timestr, value);
+            match time_format {
+                Some(ftime) => {
+                    let timestr = NaiveDateTime::from_timestamp(i64::from(time), 0).format(&ftime);
+                    print!("{}\t", timestr);
                 }
-                (_, _) => println!("{}\t{}", time, value),
+                None => print!("{}\t", time),
+            }
+
+            match value {
+                Some(v) => println!("{}", v),
+                None => println!("None"),
             }
         }
     }
 
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
