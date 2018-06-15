@@ -601,7 +601,9 @@ fn file_fetch<F: Read + Seek>(fh: &mut F, header: &WhisperMetadata, archive: &Ar
     let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point)
         .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
-    __archive_fetch(fh, archive, adjusted_interval).map(Some)
+    let data = __archive_fetch(fh, archive, adjusted_interval)?;
+
+    Ok(Some(data))
 }
 
 fn adjust_instant(instant: u32, step: u32) -> u32 {
