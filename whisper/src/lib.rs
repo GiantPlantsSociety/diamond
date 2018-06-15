@@ -235,13 +235,20 @@ impl WhisperFile {
 
     pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
         let archive = self.find_archive(seconds_per_point)?;
-        file_fetch(
-            &mut self.file,
-            &self.metadata,
-            &archive,
-            interval,
-            now,
-        )
+        let available = Interval::past(now, self.metadata.max_retention);
+
+        if !interval.intersects(available) {
+            // Range is in the future or beyond retention
+            return Ok(None);
+        }
+
+        let interval = available.intersection(interval)
+            .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
+
+        let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point)
+            .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
+
+        __archive_fetch(&mut self.file, &archive, adjusted_interval).map(Some)
     }
 
     pub fn dump(&mut self, seconds_per_point: u32) -> Result<Vec<Point>, io::Error> {
@@ -585,23 +592,6 @@ impl ArchiveData {
             ..*self
         }
     }
-}
-
-fn file_fetch<F: Read + Seek>(fh: &mut F, header: &WhisperMetadata, archive: &ArchiveInfo, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
-    let available = Interval::past(now, header.max_retention);
-
-    if !interval.intersects(available) {
-        // Range is in the future or beyond retention
-        return Ok(None);
-    }
-
-    let interval = available.intersection(interval)
-        .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
-
-    let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point)
-        .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
-
-    __archive_fetch(fh, archive, adjusted_interval).map(Some)
 }
 
 fn adjust_instant(instant: u32, step: u32) -> u32 {
