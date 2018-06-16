@@ -39,30 +39,36 @@ fn is_whisper_file(path: &Path) -> bool {
     path.extension() == Some(std::ffi::OsStr::new("wsp"))
 }
 
-fn walk_dir(dir: &Path, delete_corrupt: bool) {
+fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error> {
     WalkDir::new(dir)
         .min_depth(1)
         .into_iter()
-        .filter_map(|entry| match entry {
-            Ok(ref entry) if is_whisper_file(entry.path()) => Some(entry.path().to_path_buf()),
-            _ => None,
+        .map(|entry| match entry {
+            Ok(ref entry) if entry.path().is_dir() && verbose => {
+                println!("Scanning {}...", entry.path().canonicalize().unwrap().display());
+            }
+            Ok(ref entry) if is_whisper_file(entry.path()) => {
+                delete_corrupt_file(&entry.path(), delete_corrupt);
+            }
+            _ => (),
         })
-        .map(|file| delete_corrupt_file(&file, delete_corrupt))
-        .collect()
+        .collect::<()>();
+
+    Ok(())
 }
 
 fn delete_corrupt_file(file: &Path, delete_corrupt: bool) {
     match whisper::WhisperFile::open(file) {
         Ok(whisper_file) => {
             let x: u32 = whisper_file.info().archives.iter().map(|a| a.points).sum();
-            println!("{:?}: {} points", file, x);
+            println!("{}: {} points", file.canonicalize().unwrap().display(), x);
         }
         _ => {
             if delete_corrupt {
-                eprintln!("Deleting corrupt Whisper file: {:?}", file);
+                eprintln!("Deleting corrupt Whisper file: {}", file.display());
                 remove_file(file).expect("Deleting File");
             } else {
-                eprintln!("Corrupt Whisper file: {:?}", file);
+                eprintln!("Corrupt Whisper file: {}", file.display());
             }
         }
     }
@@ -73,15 +79,15 @@ fn main() -> Result<(), Error> {
 
     for dir in &args.directories {
         if !dir.is_dir() {
-            eprintln!("{:?} is not a directory or not exist!", dir);
+            eprintln!("{} is not a directory or not exist!", dir.display());
             exit(1);
         }
 
         if args.verbose {
-            println!("Scanning {:?}...", dir);
+            println!("Scanning {}...", dir.canonicalize()?.display());
         }
 
-        walk_dir(dir, args.delete_corrupt);
+        walk_dir(dir, args.delete_corrupt, args.verbose)?;
     }
 
     Ok(())
