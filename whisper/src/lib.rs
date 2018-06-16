@@ -56,6 +56,7 @@ pub mod point;
 pub mod archive_info;
 pub mod builder;
 mod fallocate;
+pub mod diff;
 
 use interval::*;
 use aggregation::*;
@@ -248,7 +249,9 @@ impl WhisperFile {
         let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point)
             .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
-        __archive_fetch(&mut self.file, &archive, adjusted_interval).map(Some)
+        let data = __archive_fetch(&mut self.file, &archive, adjusted_interval)?;
+
+        Ok(Some(data))
     }
 
     pub fn dump(&mut self, seconds_per_point: u32) -> Result<Vec<Point>, io::Error> {
@@ -701,86 +704,6 @@ fn file_merge<F1: Read + Seek, F2: Read + Write + Seek>(fh_src: &mut F1, fh_dst:
         }
     }
     Ok(())
-}
-
-pub struct DiffPoint {
-    pub interval: u32,
-    pub value1: Option<f64>,
-    pub value2: Option<f64>,
-}
-
-pub struct DiffArchive {
-    pub index: usize,
-    pub diffs: Vec<DiffPoint>,
-    pub total: usize,
-}
-
-/** Compare two whisper databases. Each file must have the same archive configuration */
-pub fn diff(path1: &Path, path2: &Path, ignore_empty: bool, until_time: u32, now: u32) -> Result<Vec<DiffArchive>, io::Error> {
-    // if now is None:
-    //     now = int(time.time())
-    // if until_time:
-    //     untilTime = until_time
-    // else:
-    //     untilTime = now
-
-    let mut fh1 = fs::File::open(path1)?;
-    let mut fh2 = fs::File::open(path2)?;
-
-    file_diff(&mut fh1, &mut fh2, ignore_empty, until_time, now)
-}
-
-fn file_diff<F1: Read + Seek, F2: Read + Seek>(fh1: &mut F1, fh2: &mut F2, ignore_empty: bool, mut until_time: u32, now: u32) -> Result<Vec<DiffArchive>, io::Error> {
-    let metadata1 = WhisperMetadata::read(fh1)?;
-    let metadata2 = WhisperMetadata::read(fh2)?;
-
-    if metadata1.archives != metadata2.archives {
-        return Err(io::Error::new(io::ErrorKind::Other, "Archive configurations are unalike. Resize the input before diffing"));
-    }
-
-    let mut archives = metadata1.archives.clone();
-    archives.sort_by_key(|a| a.retention());
-
-    let mut archive_diffs = Vec::new();
-
-    for (index, archive) in archives.iter().enumerate() {
-        let start_time = now - archive.retention();
-        let interval = Interval::new(start_time, until_time).unwrap();
-        let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point).unwrap();
-
-        let data1 = __archive_fetch(fh1, archive, adjusted_interval)?;
-        let data2 = __archive_fetch(fh2, archive, adjusted_interval)?;
-
-        let start = u32::min(data1.from_interval, data2.from_interval);
-        let end = u32::max(data1.until_interval, data2.until_interval);
-        let archive_step = u32::min(data1.step, data2.step);
-
-        let points: Vec<DiffPoint> = range_step(start, end, archive_step)
-            .enumerate()
-            .map(|(index, interval)| DiffPoint {
-                interval,
-                value1: data1.values[index],
-                value2: data2.values[index],
-            })
-            .filter(|p|
-                if ignore_empty {
-                    p.value1.is_some() && p.value2.is_some()
-                } else {
-                    p.value1.is_some() || p.value2.is_some()
-                }
-            )
-            .collect();
-
-        let total = points.len();
-
-        let diffs = points.into_iter().filter(|p| p.value1 != p.value2).collect();
-
-        archive_diffs.push(DiffArchive { index, diffs, total });
-
-        until_time = u32::min(start_time, until_time);
-    }
-
-    Ok(archive_diffs)
 }
 
 #[cfg(test)]
