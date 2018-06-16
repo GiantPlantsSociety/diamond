@@ -2,6 +2,7 @@
 extern crate structopt;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
 extern crate failure;
 extern crate serde_json;
 extern crate whisper;
@@ -157,12 +158,8 @@ fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
     for filename in &[&args.path_a, &args.path_b] {
-        if !filename.exists() {
-            eprintln!(
-                "[ERROR] File \"{}\" does not exist!",
-                filename.to_str().unwrap()
-            );
-            exit(1);
+        if !filename.is_file() {
+            return Err(format_err!("[ERROR] File {:#?} does not exist!", filename));
         }
     }
 
@@ -176,8 +173,8 @@ fn main() -> Result<(), Error> {
             .collect();
 
     let diff_rich = DiffArchiveJson {
-        path_a: args.path_a.clone().to_str().unwrap().to_owned(),
-        path_b: args.path_b.clone().to_str().unwrap().to_owned(),
+        path_a: args.path_a.display().to_string(),
+        path_b: args.path_b.display().to_string(),
         archives: diff_raw,
     };
 
