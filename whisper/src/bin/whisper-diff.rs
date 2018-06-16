@@ -7,13 +7,13 @@ extern crate serde_json;
 extern crate whisper;
 
 use failure::Error;
+use std::fmt;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::diff;
 use whisper::diff::DiffArchive;
-
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-diff")]
@@ -74,11 +74,76 @@ struct DiffArchiveSummary {
     points: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct DiffArchiveJson {
     path_a: String,
     path_b: String,
     archives: Vec<DiffArchiveContainer>,
+}
+
+fn format_none(float: Option<f64>) -> String {
+    match float {
+        Some(x) => format!("{:.1}", x),
+        None => format!("None"),
+    }
+}
+
+impl fmt::Display for DiffArchiveJson {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for archive in &self.archives {
+            if f.alternate() {
+                writeln!(
+                    f,
+                    "Archive {} ({} of {} datapoints differ)",
+                    archive.inner.index, archive.points, archive.inner.total
+                )?;
+                writeln!(
+                    f,
+                    "{:>7} {:>11} {:>13} {:>13}",
+                    "", "timestamp", "value_a", "value_b"
+                )?;
+                for point in &archive.inner.diffs {
+                    writeln!(
+                        f,
+                        "{:>7} {:>11} {:>13} {:>13}",
+                        "",
+                        point.interval,
+                        format_none(point.value1),
+                        format_none(point.value2)
+                    )?;
+                }
+            } else {
+                for point in &archive.inner.diffs {
+                    writeln!(
+                        f,
+                        "{} {} {} {}",
+                        &archive.inner.index,
+                        point.interval,
+                        format_none(point.value1),
+                        format_none(point.value2)
+                    )?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+struct DiffHeader();
+impl fmt::Display for DiffHeader {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "{:>7} {:>11} {:>13} {:>13}",
+                "archive", "timestamp", "value_a", "value_b"
+            )?;
+        } else {
+            write!(f, "archive timestamp value_a value_b")?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -104,19 +169,33 @@ fn main() -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let until = args.until.unwrap_or(now);
 
-    let diff: Vec<DiffArchiveContainer> =
+    let diff_raw: Vec<DiffArchiveContainer> =
         diff::diff(&args.path_a, &args.path_b, args.ignore_empty, until, now)?
             .iter()
             .map(|x| (*x).to_owned().into())
             .collect();
 
-    let diff_json = DiffArchiveJson {
+    let diff_rich = DiffArchiveJson {
         path_a: args.path_a.clone().to_str().unwrap().to_owned(),
         path_b: args.path_b.clone().to_str().unwrap().to_owned(),
-        archives: diff,
+        archives: diff_raw,
     };
 
-    println!("{}", serde_json::to_string_pretty(&diff_json)?);
+    if args.json {
+        println!("{}", serde_json::to_string_pretty(&diff_rich)?);
+    } else {
+        if !args.columns {
+            if !args.no_headers {
+                println!("{:#}", DiffHeader {});
+            }
+            print!("{:#}", diff_rich);
+        } else {
+            if !args.no_headers {
+                println!("{}", DiffHeader {});
+            }
+            print!("{}", diff_rich);
+        }
+    }
 
     Ok(())
 }
