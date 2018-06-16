@@ -50,6 +50,7 @@ mod fallocate;
 pub mod diff;
 pub mod merge;
 pub mod fill;
+pub mod resize;
 
 use crate::interval::*;
 use crate::aggregation::*;
