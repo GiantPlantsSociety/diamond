@@ -40,38 +40,38 @@ fn is_whisper_file(path: &Path) -> bool {
 }
 
 fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error> {
-    WalkDir::new(dir)
-        .min_depth(1)
-        .into_iter()
-        .map(|entry| match entry {
-            Ok(ref entry) if entry.path().is_dir() && verbose => {
-                println!("Scanning {}...", entry.path().canonicalize().unwrap().display());
-            }
+    for entry in WalkDir::new(dir).min_depth(1).into_iter() {
+        match entry {
+            Ok(ref entry) if entry.path().is_dir() && verbose => println!(
+                "Scanning {}...", entry.path().canonicalize()?.display()
+            ),
             Ok(ref entry) if is_whisper_file(entry.path()) => {
-                delete_corrupt_file(&entry.path(), delete_corrupt);
+                delete_corrupt_file(&entry.path(), delete_corrupt)?
             }
+            Err(e) => eprintln!("{}", e),
             _ => (),
-        })
-        .collect::<()>();
+        }
+    }
 
     Ok(())
 }
 
-fn delete_corrupt_file(file: &Path, delete_corrupt: bool) {
+fn delete_corrupt_file(file: &Path, delete_corrupt: bool)  -> Result<(), Error> {
     match whisper::WhisperFile::open(file) {
         Ok(whisper_file) => {
             let x: u32 = whisper_file.info().archives.iter().map(|a| a.points).sum();
-            println!("{}: {} points", file.canonicalize().unwrap().display(), x);
+            println!("{}: {} points", file.canonicalize()?.display(), x);
         }
         _ => {
             if delete_corrupt {
-                eprintln!("Deleting corrupt Whisper file: {}", file.display());
-                remove_file(file).expect("Deleting File");
+                eprintln!("Deleting corrupt Whisper file: {}", file.canonicalize()?.display());
+                remove_file(file)?;
             } else {
-                eprintln!("Corrupt Whisper file: {}", file.display());
+                eprintln!("Corrupt Whisper file: {}", file.canonicalize()?.display());
             }
         }
     }
+    Ok(())
 }
 
 fn main() -> Result<(), Error> {
