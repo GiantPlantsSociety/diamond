@@ -11,27 +11,20 @@ use std::process::exit;
 use structopt::StructOpt;
 use walkdir::WalkDir;
 
+/// Find and (optionally) delete corrupt Whisper data files.
 #[derive(Debug, StructOpt)]
-#[structopt(
-    name = "find-corrupt-whisper-files",
-    about = "Find and (optionally) delete corrupt Whisper data files."
-)]
+#[structopt(name = "find-corrupt-whisper-files")]
 struct Args {
     /// Delete reported files.
-    #[structopt(long = "delete-corrupt", help = "Delete reported files")]
+    #[structopt(long = "delete-corrupt")]
     delete_corrupt: bool,
 
     /// Display progress info.
-    #[structopt(long = "verbose", help = "Display progress info")]
+    #[structopt(long = "verbose")]
     verbose: bool,
 
     /// Directory containing Whisper files.
-    #[structopt(
-        name = "WHISPER_DIR",
-        help = "Directory containing Whisper files",
-        parse(from_os_str),
-        raw(required = "true", min_values = "1")
-    )]
+    #[structopt(name = "WHISPER_DIR", parse(from_os_str), raw(required = "true", min_values = "1"))]
     directories: Vec<PathBuf>,
 }
 
