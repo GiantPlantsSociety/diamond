@@ -42,21 +42,23 @@ fn is_whisper_file(path: &Path) -> bool {
 fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error> {
     for entry in WalkDir::new(dir).min_depth(1).into_iter() {
         match entry {
-            Ok(ref entry) if entry.path().is_dir() && verbose => {
+            Ok(ref entry) if verbose && entry.file_type().is_dir() => {
                 println!("Scanning {}...", entry.path().canonicalize()?.display())
             }
             Ok(ref entry) if is_whisper_file(entry.path()) => {
                 delete_corrupt_file(&entry.path(), delete_corrupt)?
             }
-            Err(e) => eprintln!("{}", e),
-            _ => (),
+            Err(e) => {
+                eprintln!("{}", e)
+            }
+            _ => {}
         }
     }
 
     Ok(())
 }
 
-fn delete_corrupt_file(file: &Path, delete_corrupt: bool)  -> Result<(), Error> {
+fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<(), Error> {
     match whisper::WhisperFile::open(file) {
         Ok(whisper_file) => {
             let x: u32 = whisper_file.info().archives.iter().map(|a| a.points).sum();
