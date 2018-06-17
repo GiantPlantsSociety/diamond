@@ -1,20 +1,21 @@
 #[macro_use]
 extern crate structopt;
 #[macro_use]
-extern crate serde_derive;
-#[macro_use]
 extern crate failure;
 extern crate serde_json;
 extern crate whisper;
 
 use failure::Error;
-use std::fmt;
 use std::path::PathBuf;
-use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::diff;
 use whisper::diff::DiffArchive;
+use whisper::diff::DiffArchiveInfo;
+use whisper::diff::DiffArchiveShort;
+use whisper::diff::DiffArchiveSummary;
+use whisper::diff::DiffHeader;
+use whisper::diff::DiffSummaryHeader;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-diff")]
@@ -52,106 +53,50 @@ struct Args {
     json: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct DiffArchiveContainer {
-    #[serde(flatten)]
-    inner: DiffArchive,
-    points: usize,
-}
-
-impl From<DiffArchive> for DiffArchiveContainer {
-    fn from(w: DiffArchive) -> DiffArchiveContainer {
-        DiffArchiveContainer {
-            points: w.diffs.len(),
-            inner: w,
+fn print_details(
+    diff: &DiffArchiveInfo,
+    json: bool,
+    columns: bool,
+    no_headers: bool,
+) -> Result<(), Error> {
+    if json {
+        println!("{}", serde_json::to_string_pretty(diff)?);
+    } else if !columns {
+        if !no_headers {
+            println!("{:#}", DiffHeader {});
         }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct DiffArchiveSummary {
-    archive: u32,
-    total: u32,
-    points: u32,
-}
-
-#[derive(Serialize, Deserialize)]
-struct DiffArchiveJson {
-    path_a: String,
-    path_b: String,
-    archives: Vec<DiffArchiveContainer>,
-}
-
-fn format_none(float: Option<f64>) -> String {
-    match float {
-        Some(x) => format!("{:.1}", x),
-        None => format!("None"),
-    }
-}
-
-impl fmt::Display for DiffArchiveJson {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for archive in &self.archives {
-            if f.alternate() {
-                writeln!(
-                    f,
-                    "Archive {} ({} of {} datapoints differ)",
-                    archive.inner.index, archive.points, archive.inner.total
-                )?;
-                writeln!(
-                    f,
-                    "{:>7} {:>11} {:>13} {:>13}",
-                    "", "timestamp", "value_a", "value_b"
-                )?;
-                for point in &archive.inner.diffs {
-                    writeln!(
-                        f,
-                        "{:>7} {:>11} {:>13} {:>13}",
-                        "",
-                        point.interval,
-                        format_none(point.value1),
-                        format_none(point.value2)
-                    )?;
-                }
-            } else {
-                for point in &archive.inner.diffs {
-                    writeln!(
-                        f,
-                        "{} {} {} {}",
-                        &archive.inner.index,
-                        point.interval,
-                        format_none(point.value1),
-                        format_none(point.value2)
-                    )?;
-                }
-            }
+        print!("{:#}", diff);
+    } else {
+        if !no_headers {
+            println!("{}", DiffHeader {});
         }
-
-        Ok(())
+        print!("{}", diff);
     }
+
+    Ok(())
 }
 
-struct DiffHeader();
-impl fmt::Display for DiffHeader {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if f.alternate() {
-            write!(
-                f,
-                "{:>7} {:>11} {:>13} {:>13}",
-                "archive", "timestamp", "value_a", "value_b"
-            )?;
-        } else {
-            write!(f, "archive timestamp value_a value_b")?;
+fn print_summary(
+    diff: &DiffArchiveSummary,
+    json: bool,
+    columns: bool,
+    no_headers: bool,
+) -> Result<(), Error> {
+    if json {
+        println!("{}", serde_json::to_string_pretty(diff)?);
+    } else if !columns {
+        if !no_headers {
+            println!("{:#}", DiffSummaryHeader {});
         }
-        Ok(())
+        print!("{:#}", diff);
+    } else {
+        if !no_headers {
+            println!("{}", DiffSummaryHeader {});
+        }
+        print!("{}", diff);
     }
-}
 
-#[derive(Debug, Serialize, Deserialize)]
-struct DiffArchiveSummaryJson {
-    path_a: PathBuf,
-    path_b: PathBuf,
-    archives: Vec<DiffArchiveContainer>,
+    Ok(())
 }
 
 fn main() -> Result<(), Error> {
@@ -166,33 +111,25 @@ fn main() -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let until = args.until.unwrap_or(now);
 
-    let diff_raw: Vec<DiffArchiveContainer> =
-        diff::diff(&args.path_a, &args.path_b, args.ignore_empty, until, now)?
-            .iter()
-            .map(|x| (*x).to_owned().into())
-            .collect();
+    let diff_raw = diff::diff(&args.path_a, &args.path_b, args.ignore_empty, until, now)?;
 
-    let diff_rich = DiffArchiveJson {
-        path_a: args.path_a.display().to_string(),
-        path_b: args.path_b.display().to_string(),
-        archives: diff_raw,
-    };
+    if args.summary {
+        let short_diff: Vec<DiffArchiveShort> =
+            diff_raw.iter().map(|x| (*x).to_owned().into()).collect();
 
-    if args.json {
-        println!("{}", serde_json::to_string_pretty(&diff_rich)?);
+        let diff_rich = DiffArchiveSummary {
+            path_a: args.path_a.display().to_string(),
+            path_b: args.path_b.display().to_string(),
+            archives: short_diff,
+        };
+        print_summary(&diff_rich, args.json, args.columns, args.no_headers)?;
     } else {
-        if !args.columns {
-            if !args.no_headers {
-                println!("{:#}", DiffHeader {});
-            }
-            print!("{:#}", diff_rich);
-        } else {
-            if !args.no_headers {
-                println!("{}", DiffHeader {});
-            }
-            print!("{}", diff_rich);
-        }
+        let diff_rich = DiffArchiveInfo {
+            path_a: args.path_a.display().to_string(),
+            path_b: args.path_b.display().to_string(),
+            archives: diff_raw,
+        };
+        print_details(&diff_rich, args.json, args.columns, args.no_headers)?;
     }
-
     Ok(())
 }
