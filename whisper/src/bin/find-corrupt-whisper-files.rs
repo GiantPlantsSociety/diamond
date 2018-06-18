@@ -69,9 +69,7 @@ fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<(), Error> {
     Ok(())
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
+fn run(args: &Args) -> Result<(), Error> {
     for dir in &args.directories {
         if !dir.is_dir() {
             eprintln!("{} is not a directory or not exist!", dir.display());
@@ -86,4 +84,12 @@ fn main() -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
