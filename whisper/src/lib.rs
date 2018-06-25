@@ -667,15 +667,10 @@ pub fn merge(path_src: &Path, path_dst: &Path, time_from: u32, time_to: u32, now
     // else:
     //     fromTime = 0
 
-    let mut fh_src = fs::OpenOptions::new().read(true).open(path_src)?;
-    let mut fh_dst = fs::OpenOptions::new().read(true).write(true).open(path_dst)?;
-    file_merge(&mut fh_src, &mut fh_dst, time_from, time_to, now)
-}
+    let mut file_src = WhisperFile::open(path_src)?;
+    let mut file_dst = WhisperFile::open(path_dst)?;
 
-fn file_merge<F1: Read + Seek, F2: Read + Write + Seek>(fh_src: &mut F1, fh_dst: &mut F2, time_from: u32, time_to: u32, now: u32) -> Result<(), io::Error> {
-    let header_src = __read_header(fh_src)?;
-    let header_dst = __read_header(fh_dst)?;
-    if header_src.archives != header_dst.archives {
+    if file_src.info().archives != file_dst.info().archives {
         return Err(io::Error::new(io::ErrorKind::Other, "Archive configurations are unalike. Resize the input before merging"));
     }
 
@@ -684,10 +679,10 @@ fn file_merge<F1: Read + Seek, F2: Read + Write + Seek>(fh_src: &mut F1, fh_dst:
         return Err(io::Error::new(io::ErrorKind::Other, "time_to must be >= time_from"));
     }
 
-    let mut archives = header_src.archives.clone();
+    let mut archives = file_src.info().archives.clone();
     archives.sort_by_key(|archive| archive.retention());
 
-    for (index, archive) in archives.iter().enumerate() {
+    for archive in &archives {
         // if time_to is too old, skip this archive
         if time_to < now - archive.retention() {
             continue;
@@ -695,10 +690,11 @@ fn file_merge<F1: Read + Seek, F2: Read + Write + Seek>(fh_src: &mut F1, fh_dst:
 
         let from = u32::max(time_from, now - archive.retention());
         let interval = Interval::new(from, time_to).unwrap();
-        let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point).unwrap();
 
-        if let Some(points) = archive_fetch_interval(fh_src, &archive, adjusted_interval)? {
-            __archive_update_many(fh_dst, &header_dst, index, &points)?;
+        let (_adjusted_interval, points) = file_src.fetch_points(archive.seconds_per_point, interval, now)?;
+
+        if let Some(ref points) = points {
+            file_dst.update_many(points, now)?;
         }
     }
     Ok(())
