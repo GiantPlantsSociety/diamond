@@ -167,7 +167,7 @@ impl WhisperFile {
 
     pub fn open(path: &Path) -> Result<Self, io::Error> {
         let mut file = fs::OpenOptions::new().read(true).write(true).open(path)?;
-        let metadata = __read_header(&mut file)?;
+        let metadata = WhisperMetadata::read(&mut file)?;
         Ok(Self {
             metadata,
             file,
@@ -277,23 +277,6 @@ pub fn suggest_archive(file: &WhisperFile, interval: Interval, now: u32) -> Opti
         .filter(|archive| Interval::past(now, archive.retention()).contains(adjusted))
         .map(|archive| archive.seconds_per_point)
         .next()
-}
-
-fn __read_header<R: Read + Seek>(fh: &mut R) -> Result<WhisperMetadata, io::Error> {
-    // if CACHE_HEADERS {
-    //     info = __headerCache.get(fh.name)
-    //     if info {
-    //         return info
-    //     }
-    // }
-
-    let info = WhisperMetadata::read(fh)?;
-
-    // if CACHE_HEADERS {
-    //     __headerCache[fh.name] = info
-    // }
-
-    Ok(info)
 }
 
 fn instant_offset(archive: &ArchiveInfo, base_interval: u32, instant: u32) -> u32 {
