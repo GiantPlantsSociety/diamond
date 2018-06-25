@@ -619,23 +619,9 @@ fn adjust_interval(interval: &Interval, step: u32) -> Result<Interval, String> {
  * archive on a read and request data older than the archive's retention
  */
 fn __archive_fetch<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<ArchiveData, io::Error> {
-    let step = archive.seconds_per_point;
-
     let points = archive_fetch_interval(fh, archive, interval)?;
-    let values = match points {
-        None => {
-            let count = (interval.until() - interval.from()) / step;
-            vec![None; count as usize]
-        },
-        Some(points) => points_to_values(&points, interval.from(), step),
-    };
-
-    Ok(ArchiveData {
-        from_interval: interval.from(),
-        until_interval: interval.until(),
-        step,
-        values,
-    })
+    let data = points_to_data(&points, interval, archive.seconds_per_point);
+    Ok(data)
 }
 
 fn archive_fetch_interval<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<Option<Vec<Point>>, io::Error> {
@@ -647,6 +633,23 @@ fn archive_fetch_interval<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, int
         let until_index = instant_offset(archive, base.interval, interval.until());
         let points = read_archive(fh, &archive, from_index, until_index)?;
         Ok(Some(points))
+    }
+}
+
+fn points_to_data(points: &Option<Vec<Point>>, interval: Interval, seconds_per_point: u32) -> ArchiveData {
+    let values = match points {
+        None => {
+            let count = (interval.until() - interval.from()) / seconds_per_point;
+            vec![None; count as usize]
+        },
+        Some(points) => points_to_values(&points, interval.from(), seconds_per_point),
+    };
+
+    ArchiveData {
+        from_interval: interval.from(),
+        until_interval: interval.until(),
+        step: seconds_per_point,
+        values,
     }
 }
 
