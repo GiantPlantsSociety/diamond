@@ -234,13 +234,13 @@ impl WhisperFile {
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Archive not found"))
     }
 
-    pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
+    pub fn fetch_points(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<(Interval, Option<Vec<Point>>), io::Error> {
         let archive = self.find_archive(seconds_per_point)?;
         let available = Interval::past(now, self.metadata.max_retention);
 
         if !interval.intersects(available) {
             // Range is in the future or beyond retention
-            return Ok(None);
+            return Ok((interval, None));
         }
 
         let interval = available.intersection(interval)
@@ -250,8 +250,13 @@ impl WhisperFile {
             .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
         let points = archive_fetch_interval(&mut self.file, &archive, adjusted_interval)?;
-        let data = points_to_data(&points, interval, archive.seconds_per_point);
 
+        Ok((adjusted_interval, points))
+    }
+
+    pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
+        let (adjusted_interval, points) = self.fetch_points(seconds_per_point, interval, now)?;
+        let data = points_to_data(&points, adjusted_interval, seconds_per_point);
         Ok(Some(data))
     }
 
