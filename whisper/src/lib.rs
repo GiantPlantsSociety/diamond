@@ -249,7 +249,8 @@ impl WhisperFile {
         let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point)
             .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
-        let data = __archive_fetch(&mut self.file, &archive, adjusted_interval)?;
+        let points = archive_fetch_interval(&mut self.file, &archive, adjusted_interval)?;
+        let data = points_to_data(&points, interval, archive.seconds_per_point);
 
         Ok(Some(data))
     }
@@ -611,17 +612,6 @@ fn adjust_interval(interval: &Interval, step: u32) -> Result<Interval, String> {
     } else {
         Interval::new(from_interval, until_interval)
     }
-}
-
-/**
- * Fetch data from a single archive. Note that checks for validity of the time
- * period requested happen above this level so it's possible to wrap around the
- * archive on a read and request data older than the archive's retention
- */
-fn __archive_fetch<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<ArchiveData, io::Error> {
-    let points = archive_fetch_interval(fh, archive, interval)?;
-    let data = points_to_data(&points, interval, archive.seconds_per_point);
-    Ok(data)
 }
 
 fn archive_fetch_interval<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<Option<Vec<Point>>, io::Error> {
