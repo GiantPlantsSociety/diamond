@@ -57,6 +57,7 @@ pub mod archive_info;
 pub mod builder;
 mod fallocate;
 pub mod diff;
+pub mod merge;
 
 use interval::*;
 use aggregation::*;
@@ -166,7 +167,7 @@ impl WhisperFile {
 
     pub fn open(path: &Path) -> Result<Self, io::Error> {
         let mut file = fs::OpenOptions::new().read(true).write(true).open(path)?;
-        let metadata = __read_header(&mut file)?;
+        let metadata = WhisperMetadata::read(&mut file)?;
         Ok(Self {
             metadata,
             file,
@@ -234,13 +235,13 @@ impl WhisperFile {
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Archive not found"))
     }
 
-    pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
+    pub fn fetch_points(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<(Interval, Option<Vec<Point>>), io::Error> {
         let archive = self.find_archive(seconds_per_point)?;
         let available = Interval::past(now, self.metadata.max_retention);
 
         if !interval.intersects(available) {
             // Range is in the future or beyond retention
-            return Ok(None);
+            return Ok((interval, None));
         }
 
         let interval = available.intersection(interval)
@@ -249,8 +250,14 @@ impl WhisperFile {
         let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point)
             .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
-        let data = __archive_fetch(&mut self.file, &archive, adjusted_interval)?;
+        let points = archive_fetch_interval(&mut self.file, &archive, adjusted_interval)?;
 
+        Ok((adjusted_interval, points))
+    }
+
+    pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
+        let (adjusted_interval, points) = self.fetch_points(seconds_per_point, interval, now)?;
+        let data = points_to_data(&points, adjusted_interval, seconds_per_point);
         Ok(Some(data))
     }
 
@@ -270,23 +277,6 @@ pub fn suggest_archive(file: &WhisperFile, interval: Interval, now: u32) -> Opti
         .filter(|archive| Interval::past(now, archive.retention()).contains(adjusted))
         .map(|archive| archive.seconds_per_point)
         .next()
-}
-
-fn __read_header<R: Read + Seek>(fh: &mut R) -> Result<WhisperMetadata, io::Error> {
-    // if CACHE_HEADERS {
-    //     info = __headerCache.get(fh.name)
-    //     if info {
-    //         return info
-    //     }
-    // }
-
-    let info = WhisperMetadata::read(fh)?;
-
-    // if CACHE_HEADERS {
-    //     __headerCache[fh.name] = info
-    // }
-
-    Ok(info)
 }
 
 fn instant_offset(archive: &ArchiveInfo, base_interval: u32, instant: u32) -> u32 {
@@ -613,31 +603,6 @@ fn adjust_interval(interval: &Interval, step: u32) -> Result<Interval, String> {
     }
 }
 
-/**
- * Fetch data from a single archive. Note that checks for validity of the time
- * period requested happen above this level so it's possible to wrap around the
- * archive on a read and request data older than the archive's retention
- */
-fn __archive_fetch<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<ArchiveData, io::Error> {
-    let step = archive.seconds_per_point;
-
-    let points = archive_fetch_interval(fh, archive, interval)?;
-    let values = match points {
-        None => {
-            let count = (interval.until() - interval.from()) / step;
-            vec![None; count as usize]
-        },
-        Some(points) => points_to_values(&points, interval.from(), step),
-    };
-
-    Ok(ArchiveData {
-        from_interval: interval.from(),
-        until_interval: interval.until(),
-        step,
-        values,
-    })
-}
-
 fn archive_fetch_interval<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<Option<Vec<Point>>, io::Error> {
     let base = archive.read_base(fh)?;
     if base.interval == 0 {
@@ -650,60 +615,21 @@ fn archive_fetch_interval<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, int
     }
 }
 
-/**
- * Merges the data from one whisper file into another. Each file must have
- * the same archive configuration. time_from and time_to can optionally be
- * specified for the merge.
- */
-pub fn merge(path_src: &Path, path_dst: &Path, time_from: u32, time_to: u32, now: u32) -> Result<(), io::Error> {
-    // if now is None:
-    //     now = int(time.time())
+fn points_to_data(points: &Option<Vec<Point>>, interval: Interval, seconds_per_point: u32) -> ArchiveData {
+    let values = match points {
+        None => {
+            let count = (interval.until() - interval.from()) / seconds_per_point;
+            vec![None; count as usize]
+        },
+        Some(points) => points_to_values(&points, interval.from(), seconds_per_point),
+    };
 
-    // if (time_to is not None):
-    //     untilTime = time_to
-    // else:
-    //     untilTime = now
-
-    // if (time_from is not None):
-    //     fromTime = time_from
-    // else:
-    //     fromTime = 0
-
-    let mut fh_src = fs::OpenOptions::new().read(true).open(path_src)?;
-    let mut fh_dst = fs::OpenOptions::new().read(true).write(true).open(path_dst)?;
-    file_merge(&mut fh_src, &mut fh_dst, time_from, time_to, now)
-}
-
-fn file_merge<F1: Read + Seek, F2: Read + Write + Seek>(fh_src: &mut F1, fh_dst: &mut F2, time_from: u32, time_to: u32, now: u32) -> Result<(), io::Error> {
-    let header_src = __read_header(fh_src)?;
-    let header_dst = __read_header(fh_dst)?;
-    if header_src.archives != header_dst.archives {
-        return Err(io::Error::new(io::ErrorKind::Other, "Archive configurations are unalike. Resize the input before merging"));
+    ArchiveData {
+        from_interval: interval.from(),
+        until_interval: interval.until(),
+        step: seconds_per_point,
+        values,
     }
-
-    // Sanity check: do not mix the from/to values.
-    if time_to < time_from {
-        return Err(io::Error::new(io::ErrorKind::Other, "time_to must be >= time_from"));
-    }
-
-    let mut archives = header_src.archives.clone();
-    archives.sort_by_key(|archive| archive.retention());
-
-    for (index, archive) in archives.iter().enumerate() {
-        // if time_to is too old, skip this archive
-        if time_to < now - archive.retention() {
-            continue;
-        }
-
-        let from = u32::max(time_from, now - archive.retention());
-        let interval = Interval::new(from, time_to).unwrap();
-        let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point).unwrap();
-
-        if let Some(points) = archive_fetch_interval(fh_src, &archive, adjusted_interval)? {
-            __archive_update_many(fh_dst, &header_dst, index, &points)?;
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
