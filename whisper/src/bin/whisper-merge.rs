@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
+use whisper::merge::merge;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-merge")]
@@ -46,7 +47,7 @@ fn main() -> Result<(), Error> {
     let from = args.from.unwrap_or(0);
     let until = args.until.unwrap_or(now);
 
-    whisper::merge(&args.from_path, &args.to_path, from, until, now)?;
+    merge(&args.from_path, &args.to_path, from, until, now)?;
 
     Ok(())
 }
