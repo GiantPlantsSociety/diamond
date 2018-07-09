@@ -34,7 +34,7 @@ fn issue34_merge_2_files() {
     create_and_update(&path1, &[now - 60, now - 180, now - 300], now);
     let mut file2 = create_and_update(&path2, &[now - 120, now - 360, now - 480], now);
 
-    whisper::merge(&path1, &path2, 0, now, now).unwrap();
+    whisper::merge::merge(&path1, &path2, 0, now, now).unwrap();
 
     let points = file2.dump(60).unwrap();
     assert_eq!(points[0].interval, now-60, "it should be first timestamp: now-60");
