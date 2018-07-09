@@ -1,5 +1,6 @@
 use std::io;
 use std::path::Path;
+use itertools::Itertools;
 use super::*;
 use interval::Interval;
 
@@ -51,6 +52,25 @@ pub fn merge(path_src: &Path, path_dst: &Path, time_from: u32, time_to: u32, now
         if let Some(ref points) = points {
             file_dst.update_many(points, now)?;
         }
+    }
+    Ok(())
+}
+
+pub fn merge_all(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), io::Error> {
+    let mut src = WhisperFile::open(path_src)?;
+    let mut dst = WhisperFile::open(path_dst)?;
+
+    if src.info().archives != dst.info().archives {
+        return Err(io::Error::new(io::ErrorKind::Other, "Archive configurations are unalike. Resize the input before merging"));
+    }
+
+    let archives = src.info().archives
+        .clone().into_iter()
+        .sorted_by_key(|archive| archive.retention());
+
+    for archive in &archives {
+        let points = src.dump(archive.seconds_per_point)?;
+        dst.update_many(&points, now)?;
     }
     Ok(())
 }
