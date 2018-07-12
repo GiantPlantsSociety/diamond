@@ -34,11 +34,8 @@ fn main() -> Result<(), Error> {
     let args = Args::from_args();
 
     for filename in &[&args.from_path, &args.to_path] {
-        if !filename.exists() {
-            eprintln!(
-                "[ERROR] File \"{}\" does not exist!",
-                filename.to_str().unwrap()
-            );
+        if !filename.is_file() {
+            eprintln!("[ERROR] File \"{:?}\" does not exist!", filename);
             exit(1);
         }
     }
