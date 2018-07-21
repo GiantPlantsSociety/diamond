@@ -7,15 +7,13 @@ extern crate whisper;
 
 use failure::Error;
 use std::path::PathBuf;
+use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::diff;
-use whisper::diff::DiffArchive;
-use whisper::diff::DiffArchiveInfo;
-use whisper::diff::DiffArchiveShort;
-use whisper::diff::DiffArchiveSummary;
-use whisper::diff::DiffHeader;
-use whisper::diff::DiffSummaryHeader;
+use whisper::diff::{
+    DiffArchiveInfo, DiffArchiveShort, DiffArchiveSummary, DiffHeader, DiffSummaryHeader,
+};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-diff")]
@@ -99,9 +97,7 @@ fn print_summary(
     Ok(())
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
+fn run(args: &Args) -> Result<(), Error> {
     for filename in &[&args.path_a, &args.path_b] {
         if !filename.is_file() {
             return Err(format_err!("[ERROR] File {:#?} does not exist!", filename));
@@ -132,4 +128,12 @@ fn main() -> Result<(), Error> {
         print_details(&diff_rich, args.json, args.columns, args.no_headers)?;
     }
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
