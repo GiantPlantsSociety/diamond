@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate structopt;
+#[macro_use]
 extern crate failure;
 extern crate whisper;
 
@@ -30,13 +31,13 @@ struct Args {
     until: Option<u32>,
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
+fn run(args: &Args) -> Result<(), Error> {
     for filename in &[&args.from_path, &args.to_path] {
         if !filename.is_file() {
-            eprintln!("[ERROR] File \"{:?}\" does not exist!", filename);
-            exit(1);
+            return Err(format_err!(
+                "[ERROR] File \"{:?}\" does not exist!",
+                filename
+            ));
         }
     }
 
@@ -47,4 +48,12 @@ fn main() -> Result<(), Error> {
     merge(&args.from_path, &args.to_path, from, until, now)?;
 
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
