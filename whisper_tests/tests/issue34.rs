@@ -1,6 +1,6 @@
+extern crate rand;
 extern crate whisper;
 extern crate whisper_tests;
-extern crate rand;
 
 use std::path::PathBuf;
 use whisper::retention::*;
@@ -17,7 +17,8 @@ fn create_and_update(path: &PathBuf, timestamps: &[u32], now: u32) -> WhisperFil
         .unwrap();
 
     for timestamp in timestamps {
-        file.update(rand::random(),*timestamp,now).unwrap();
+        println!("Timestamp: {}", timestamp);
+        file.update(rand::random(), *timestamp, now).unwrap();
     }
     file
 }
@@ -31,11 +32,24 @@ fn issue34_merge_2_files() {
 
     let now = 1528240800;
 
-    create_and_update(&path1, &[now - 60, now - 180, now - 300], now);
+    let mut file1 = create_and_update(&path1, &[now - 60, now - 180, now - 300], now);
     let mut file2 = create_and_update(&path2, &[now - 120, now - 360, now - 480], now);
 
-    whisper::merge::merge(&path1, &path2, 0, now, now).unwrap();
+    let points1 = file1.dump(60).unwrap();
+    let points2 = file2.dump(60).unwrap();
 
+    whisper::merge::merge(&path1, &path2, 0, now, now).unwrap();
     let points = file2.dump(60).unwrap();
-    assert_eq!(points[0].interval, now-60, "it should be first timestamp: now-60");
+
+    assert_eq!(
+        points[0].interval,
+        now - 60,
+        "it should be first timestamp from file1(now-60)
+File1: Points dump: {:?}
+File2: Points dump: {:?}
+Merged: Points dump: {:?}",
+        &points1,
+        &points2,
+        &points
+    );
 }
