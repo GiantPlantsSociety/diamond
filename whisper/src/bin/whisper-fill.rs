@@ -30,14 +30,12 @@ struct Args {
 
 fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
-
     fill(&args.src, &args.dst, now, now)?;
     Ok(())
 }
 
 fn main() {
     let args = Args::from_args();
-    println!("{:?}", args);
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);
