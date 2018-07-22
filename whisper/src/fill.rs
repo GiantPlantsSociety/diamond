@@ -4,8 +4,6 @@ use std::io;
 use std::path::Path;
 
 fn fill(src: &Path, dst: &Path, tstart: u32, mut tstop: u32, now: u32) -> Result<(), io::Error> {
-    //     # find oldest point in time, stored by both files
-    //     src_time = int(time.time()) - srcHeader['maxRetention']
     let mut file_src = WhisperFile::open(src)?;
     let mut file_dst = WhisperFile::open(dst)?;
 
@@ -21,7 +19,6 @@ fn fill(src: &Path, dst: &Path, tstart: u32, mut tstop: u32, now: u32) -> Result
 
     // we want to retain as much precision as we can, hence we do backwards
     // walk in time
-
     // skip forward at max 'step' points at a time
 
     for archive in &archives {
@@ -34,19 +31,23 @@ fn fill(src: &Path, dst: &Path, tstart: u32, mut tstop: u32, now: u32) -> Result
         let from_time = if rtime > tstart { rtime } else { tstart };
 
         let interval = Interval::new(from_time, until_time).unwrap();
-        // let data_src = file_dst
-        //    .fetch(archive.seconds_per_point, interval, now)?
-        //    .unwrap();
-
-        // let mut start = data_src.from_interval;
-        // let end = data_src.until_interval;
-        // let archive_step = data_src.step;
 
         let (_adjusted_interval, points) =
             file_src.fetch_points(archive.seconds_per_point, interval, now)?;
 
         if let Some(ref points) = points {
-            file_dst.update_many(points, now)?;
+            // filter zero points
+            let mut points_to_write: Vec<Point> = points
+                .clone()
+                .into_iter()
+                .filter(|point| point.interval != 0)
+                .collect();
+
+            // order points by timestamp, newest first
+            points_to_write.sort_by_key(|point| point.interval);
+            points_to_write.reverse();
+
+            file_dst.update_many(&points_to_write, now)?;
         }
 
         tstop = from_time;
