@@ -8,6 +8,7 @@ use failure::Error;
 use humansize::{file_size_opts as options, FileSize};
 use std::fs;
 use std::path::PathBuf;
+use std::process::exit;
 use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
@@ -98,9 +99,7 @@ fn estimate_info(retentions: &[Retention]) {
     }
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
+fn run(args: &Args) -> Result<(), Error> {
     if args.estimate {
         estimate_info(&args.retentions);
     } else {
@@ -124,4 +123,12 @@ fn main() -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
