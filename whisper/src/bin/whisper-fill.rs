@@ -5,42 +5,28 @@ extern crate walkdir;
 extern crate whisper;
 
 use failure::Error;
-use std::fs::remove_file;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 use std::process::exit;
+use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
-use walkdir::WalkDir;
+use whisper::fill::fill_archives;
 
-
+/// Copies data from src to dst, if missing.
 #[derive(Debug, StructOpt)]
-#[structopt(
-    name = "whisper-fill",
-    about = "Copies data from src to dst, if missing."
-)]
+#[structopt(name = "whisper-fill")]
 struct Args {
-    /// Lock whisper files
-    #[structopt(long = "lock", help = "Lock whisper files")]
+    /// Lock whisper files (is not implemented)
+    #[structopt(long = "lock")]
     lock: bool,
 
     /// Source whisper file.
-    #[structopt(
-        name = "SRC",
-        help = "Source whisper file",
-        parse(from_os_str),
-        raw(required = "true")
-    )]
+    #[structopt(name = "SRC", parse(from_os_str))]
     src: PathBuf,
 
     /// Destination whisper file.
-    #[structopt(
-        name = "DST",
-        help = "Destination whisper file",
-        parse(from_os_str),
-        raw(required = "true")
-    )]
+    #[structopt(name = "DST", parse(from_os_str))]
     dst: PathBuf,
 }
-
 
 // # whisper-fill: unlike whisper-merge, don't overwrite data that's
 // # already present in the target file, but instead, only add the missing
@@ -77,7 +63,6 @@ struct Args {
 //             def g(obj):
 //                 return tuple(obj[item] for item in items)
 //         return g
-
 
 // def fill(src, dst, tstart, tstop):
 //     # fetch range start-stop from src, taking values from the highest
@@ -121,7 +106,6 @@ struct Args {
 //         if tstart == tstop:
 //             return
 
-
 // def fill_archives(src, dst, startFrom):
 //     header = whisper.info(dst)
 //     archives = header['archives']
@@ -150,7 +134,6 @@ struct Args {
 
 //         startFrom = fromTime
 
-
 // def main():
 
 //         if len(args) != 2:
@@ -167,17 +150,17 @@ struct Args {
 //         fill_archives(src, dst, startFrom)
 
 fn run(args: &Args) -> Result<(), Error> {
-    
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
+    // fill_archives(&args.src, &args.dst, now, now)?;
     Ok(())
 }
 
 fn main() {
     let args = Args::from_args();
     println!("{:?}", args);
-    // if let Err(err) = run(&args) {
-    //     eprintln!("{}", err);
-    //     exit(1);
-    // }
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
