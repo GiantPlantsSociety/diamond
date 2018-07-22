@@ -15,7 +15,7 @@ use whisper::fill::fill;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-fill")]
 struct Args {
-    /// Lock whisper files (is not implemented)
+    /// Lock whisper files (is not implemented).
     #[structopt(long = "lock")]
     lock: bool,
 
