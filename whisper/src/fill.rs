@@ -7,9 +7,11 @@ fn fill_interval(
     src: &Path,
     dst: &Path,
     tstart: u32,
-    mut tstop: u32,
+    tsuntil: u32,
     now: u32,
 ) -> Result<(), io::Error> {
+    let mut tstop = tsuntil;
+
     let mut file_src = WhisperFile::open(src)?;
     let mut file_dst = WhisperFile::open(dst)?;
 
@@ -66,7 +68,8 @@ fn fill_interval(
     Ok(())
 }
 
-pub fn fill(src: &Path, dst: &Path, mut start_from: u32, now: u32) -> Result<(), io::Error> {
+pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error> {
+    let mut start_from = from;
     let mut file_dst = WhisperFile::open(dst)?;
 
     let mut archives = file_dst.info().archives.clone();
