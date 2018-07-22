@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
-use whisper::fill::fill_archives;
+use whisper::fill::fill;
 
 /// Copies data from src to dst, if missing.
 #[derive(Debug, StructOpt)]
@@ -31,7 +31,7 @@ struct Args {
 fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
-    fill_archives(&args.src, &args.dst, now, now)?;
+    fill(&args.src, &args.dst, now, now)?;
     Ok(())
 }
 

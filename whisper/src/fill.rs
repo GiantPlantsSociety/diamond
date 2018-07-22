@@ -3,7 +3,13 @@ use interval::Interval;
 use std::io;
 use std::path::Path;
 
-fn fill(src: &Path, dst: &Path, tstart: u32, mut tstop: u32, now: u32) -> Result<(), io::Error> {
+fn fill_interval(
+    src: &Path,
+    dst: &Path,
+    tstart: u32,
+    mut tstop: u32,
+    now: u32,
+) -> Result<(), io::Error> {
     let mut file_src = WhisperFile::open(src)?;
     let mut file_dst = WhisperFile::open(dst)?;
 
@@ -60,13 +66,7 @@ fn fill(src: &Path, dst: &Path, tstart: u32, mut tstop: u32, now: u32) -> Result
     Ok(())
 }
 
-pub fn fill_archives(
-    src: &Path,
-    dst: &Path,
-    mut start_from: u32,
-    now: u32,
-) -> Result<(), io::Error> {
-    // let mut file_src = WhisperFile::open(src)?;
+pub fn fill(src: &Path, dst: &Path, mut start_from: u32, now: u32) -> Result<(), io::Error> {
     let mut file_dst = WhisperFile::open(dst)?;
 
     let mut archives = file_dst.info().archives.clone();
@@ -94,11 +94,11 @@ pub fn fill_archives(
                 gapstart = start;
             } else if v.is_some() && gapstart > 0 {
                 if (start - gapstart) > archive.seconds_per_point {
-                    fill(src, dst, gapstart - step, start, now)?;
+                    fill_interval(src, dst, gapstart - step, start, now)?;
                 }
                 gapstart = 0;
             } else if (gapstart > 0) && (start == (end - step)) {
-                fill(src, dst, gapstart - step, start, now)?;
+                fill_interval(src, dst, gapstart - step, start, now)?;
             }
             start += step;
         }
