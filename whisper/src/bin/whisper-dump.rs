@@ -44,7 +44,9 @@ fn run(args: &Args) -> Result<(), Error> {
         println!("  retention: {}", &archive.retention());
         println!("  size: {}", &archive.size());
         println!();
+    }
 
+    for (i, archive) in meta.archives.iter().enumerate() {
         let points = file.dump(archive.seconds_per_point)?;
 
         println!("Archive {} data:", i);
@@ -53,13 +55,14 @@ fn run(args: &Args) -> Result<(), Error> {
                 (true, Some(time_format)) => {
                     let timestr = NaiveDateTime::from_timestamp(point.interval as i64, 0)
                         .format(&time_format);
-                    println!("{}: {}, {}", j, timestr, &point.value);
+                    println!("{}: {}, {:>10}", j, timestr, &point.value);
                 }
                 (_, _) => {
-                    println!("{}: {}, {}", j, &point.interval, &point.value);
+                    println!("{}: {}, {:>10}", j, &point.interval, &point.value);
                 }
             }
         }
+        println!();
     }
 
     Ok(())
