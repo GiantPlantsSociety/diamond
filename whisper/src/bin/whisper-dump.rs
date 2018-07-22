@@ -7,6 +7,7 @@ extern crate whisper;
 use chrono::prelude::NaiveDateTime;
 use failure::Error;
 use std::path::PathBuf;
+use std::process::exit;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -25,9 +26,7 @@ struct Args {
     path: PathBuf,
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
-
+fn run(args: &Args) -> Result<(), Error> {
     let mut file = whisper::WhisperFile::open(&args.path)?;
 
     let meta = file.info().clone();
@@ -64,4 +63,12 @@ fn main() -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
