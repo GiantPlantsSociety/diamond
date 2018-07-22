@@ -152,7 +152,7 @@ struct Args {
 fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
-    // fill_archives(&args.src, &args.dst, now, now)?;
+    fill_archives(&args.src, &args.dst, now, now)?;
     Ok(())
 }
 

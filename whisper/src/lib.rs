@@ -58,6 +58,7 @@ pub mod builder;
 mod fallocate;
 pub mod diff;
 pub mod merge;
+pub mod fill;
 
 use interval::*;
 use aggregation::*;
