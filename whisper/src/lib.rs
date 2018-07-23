@@ -455,9 +455,7 @@ fn file_update_many(fh: &mut fs::File, header: &WhisperMetadata, points: &[Point
     let mut current_points = vec![];
 
     for point in points {
-        let age = now - point.interval;
-
-        while header.archives[archive_index].retention() < age {  // We can't fit any more points in this archive
+        while point.interval + header.archives[archive_index].retention() < now {  // We can't fit any more points in this archive
             if !current_points.is_empty() { // Commit all the points we've found that it can fit
                 current_points.reverse();  // Put points in chronological order
                 __archive_update_many(fh, &header, archive_index, &current_points)?;
