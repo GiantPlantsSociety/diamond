@@ -8,8 +8,10 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::builder::WhisperBuilder;
 use whisper::retention::Retention;
+use whisper::WhisperFile;
 
 fn main() -> Result<(), Error> {
     let stdin = io::stdin();
@@ -26,15 +28,21 @@ fn main() -> Result<(), Error> {
 
         let file_path: PathBuf = metric_path.into();
 
-        if !file_path.exists() {
-            let dir_path = file_path.parent().unwrap();
-            fs::create_dir_all(&dir_path)?;
+        let mut file = match file_path.exists() {
+            false => {
+                let dir_path = file_path.parent().unwrap();
+                fs::create_dir_all(&dir_path)?;
 
-            let mut file = WhisperBuilder::default()
-                .add_retention(retention.clone())
-                .build(&file_path)
-                .unwrap();
-        }
+                WhisperBuilder::default()
+                    .add_retention(retention.clone())
+                    .build(&file_path)
+                    .unwrap()
+            }
+            true => WhisperFile::open(&file_path)?,
+        };
+
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
+        file.update(&metric.point, now)?;
     }
     Ok(())
 }
