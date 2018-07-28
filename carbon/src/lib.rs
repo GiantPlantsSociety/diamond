@@ -1,7 +1,10 @@
+#[macro_use]
+extern crate failure;
+
 use failure::Error;
+use std::convert::From;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::convert::From;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
@@ -85,7 +88,6 @@ impl From<PathBuf> for MetricPath {
         MetricPath(metric_path)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

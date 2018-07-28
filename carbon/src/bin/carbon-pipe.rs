@@ -1,20 +1,23 @@
-#[macro_use]
+extern crate carbon;
 extern crate failure;
 extern crate whisper;
 
+use carbon::{MetricPath, MetricPoint};
 use failure::Error;
-use std::io::{self, BufRead};
 use std::fs;
+use std::io::{self, BufRead};
 use std::path::PathBuf;
-use whisper::*;
-
-
-mod metrics;
-use metrics::*;
+use whisper::builder::WhisperBuilder;
+use whisper::retention::Retention;
 
 fn main() -> Result<(), Error> {
     let stdin = io::stdin();
-    let dir = '.';
+    let _dir = '.';
+
+    let retention = Retention {
+        seconds_per_point: 60,
+        points: 10,
+    };
 
     for line in stdin.lock().lines() {
         let metric: MetricPoint = line?.parse()?;
@@ -27,9 +30,11 @@ fn main() -> Result<(), Error> {
             let dir_path = file_path.parent().unwrap();
             fs::create_dir_all(&dir_path)?;
 
-            whisper::create(&meta, &file_path, true)?;
+            let mut file = WhisperBuilder::default()
+                .add_retention(retention.clone())
+                .build(&file_path)
+                .unwrap();
         }
-        // println!("{}", line.unwrap());
     }
     Ok(())
 }
