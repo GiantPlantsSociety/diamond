@@ -1,16 +1,12 @@
 #[macro_use]
 extern crate failure;
+extern crate whisper;
 
 use failure::Error;
 use std::convert::From;
 use std::path::PathBuf;
 use std::str::FromStr;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Point {
-    pub timestamp: u32,
-    pub value: f64,
-}
+use whisper::point::Point;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MetricPoint {
@@ -38,7 +34,7 @@ impl FromStr for MetricPoint {
         Ok(MetricPoint {
             name: name.to_owned(),
             point: Point {
-                timestamp: timestamp.parse()?,
+                interval: timestamp.parse()?,
                 value: value.parse()?,
             },
         })
@@ -91,7 +87,7 @@ impl From<PathBuf> for MetricPath {
 
 #[cfg(test)]
 mod tests {
-    use metrics::{MetricPath, MetricPoint, Point};
+    use super::*;
     use std::path::Path;
 
     #[test]
@@ -105,8 +101,8 @@ mod tests {
             MetricPoint {
                 name: "this.is.correct".to_owned(),
                 point: Point {
-                    timestamp: 1,
-                    value: 123_f32,
+                    interval: 1,
+                    value: 123_f64,
                 }
             },
             "It should be matched"

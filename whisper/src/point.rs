@@ -3,7 +3,7 @@ use error::ParseError;
 use std::io;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
     pub interval: u32,
     pub value: f64,

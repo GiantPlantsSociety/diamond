@@ -5,7 +5,8 @@ extern crate whisper;
 use carbon::{MetricPath, MetricPoint};
 use failure::Error;
 use std::fs;
-use std::io::{self, BufRead};
+use std::io;
+use std::io::BufRead;
 use std::path::PathBuf;
 use whisper::builder::WhisperBuilder;
 use whisper::retention::Retention;
@@ -21,7 +22,6 @@ fn main() -> Result<(), Error> {
 
     for line in stdin.lock().lines() {
         let metric: MetricPoint = line?.parse()?;
-
         let metric_path: MetricPath = metric.name.parse()?;
 
         let file_path: PathBuf = metric_path.into();
