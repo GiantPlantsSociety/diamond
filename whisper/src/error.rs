@@ -4,6 +4,8 @@ use failure::*;
 pub enum Error {
     #[fail(display = "{}", _0)]
     Io(#[cause] ::std::io::Error),
+    #[fail(display = "[ERROR] File {:#?} does not exist!", _0)]
+    FileNotFound(PathBuf),
 }
 
 #[derive(Debug, PartialEq, Fail)]

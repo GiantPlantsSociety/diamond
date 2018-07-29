@@ -76,8 +76,8 @@ fn run(args: &Args) -> Result<(), Error> {
 
     resize(
         &path,
-        args.newfile.clone(),
-        args.retentions.clone(),
+        &args.newfile,
+        &args.retentions,
         x_files_factor,
         aggregation_method,
         args.aggregate,
