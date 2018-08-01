@@ -207,10 +207,10 @@ impl WhisperFile {
         Ok(())
     }
 
-    pub fn update(&mut self, value: f64, timestamp: u32, now: u32) -> Result<(), io::Error> {
+    pub fn update(&mut self, point: &Point,  now: u32) -> Result<(), io::Error> {
         // if LOCK:
         //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-        file_update(&mut self.file, &self.metadata, value, timestamp, now)
+        file_update(&mut self.file, &self.metadata, point, now)
     }
 
     pub fn update_many(&mut self, points: &[Point], now: u32) -> Result<(), io::Error> {
@@ -420,7 +420,9 @@ fn __propagate<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMetadata, tim
     }
 }
 
-fn file_update(fh: &mut fs::File, header: &WhisperMetadata, value: f64, timestamp: u32, now: u32) -> Result<(), io::Error> {
+fn file_update(fh: &mut fs::File, header: &WhisperMetadata, point: &Point, now: u32) -> Result<(), io::Error> {
+    let timestamp = point.interval;
+
     if now >= timestamp + header.max_retention || now < timestamp {
         return Err(io::Error::new(io::ErrorKind::Other, "Timestamp not covered by any archives in this database."));
     }
@@ -434,9 +436,9 @@ fn file_update(fh: &mut fs::File, header: &WhisperMetadata, value: f64, timestam
 
     // First we update the highest-precision archive
     let interval = timestamp - (timestamp % archive.seconds_per_point);
-    let point = Point { interval, value };
+    let adjusted_point = Point { interval, value: point.value };
 
-    write_archive_point(fh, archive, &point)?;
+    write_archive_point(fh, archive, &adjusted_point)?;
 
     // Now we propagate the update to lower-precision archives
     for pair in header.archives[archive_index..].windows(2) {
