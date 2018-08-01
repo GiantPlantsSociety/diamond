@@ -87,7 +87,7 @@ impl WhisperBuilder {
     pub fn build(self, path: impl AsRef<Path>) -> Result<WhisperFile, BuilderError> {
         let sparse = self.sparse;
         let metadata = self.into_metadata()?;
-        let file = WhisperFile::create(metadata, path.as_ref(), sparse).map_err(BuilderError::Io)?;
+        let file = WhisperFile::create(&metadata, path.as_ref(), sparse).map_err(BuilderError::Io)?;
         Ok(file)
     }
 }

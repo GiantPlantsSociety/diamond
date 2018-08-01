@@ -34,7 +34,7 @@ impl FromStr for Point {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Point, Self::Err> {
-        let segments: Vec<&str> = s.split(":").collect();
+        let segments: Vec<&str> = s.split(':').collect();
 
         let (interval, value) = match segments.len() {
             2 => (segments[0], segments[1]),

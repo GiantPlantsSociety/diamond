@@ -138,7 +138,7 @@ pub struct WhisperFile {
 }
 
 impl WhisperFile {
-    fn create(header: WhisperMetadata, path: &Path, sparse: bool) -> Result<Self, io::Error> {
+    fn create(header: &WhisperMetadata, path: &Path, sparse: bool) -> Result<Self, io::Error> {
         let mut metainfo_bytes = Vec::<u8>::new();
         header.write(&mut metainfo_bytes)?;
 
@@ -246,7 +246,7 @@ impl WhisperFile {
         let interval = available.intersection(interval)
             .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
-        let adjusted_interval = adjust_interval(&interval, archive.seconds_per_point)
+        let adjusted_interval = adjust_interval(interval, archive.seconds_per_point)
             .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
         let points = archive_fetch_interval(&mut self.file, &archive, adjusted_interval)?;
@@ -594,7 +594,7 @@ fn adjust_instant_up(instant: u32, step: u32) -> u32 {
     (instant + step - 1) / step * step
 }
 
-fn adjust_interval(interval: &Interval, step: u32) -> Result<Interval, String> {
+fn adjust_interval(interval: Interval, step: u32) -> Result<Interval, String> {
     let from_interval = adjust_instant(interval.from(), step);
     let until_interval = adjust_instant_up(interval.until(), step);
 

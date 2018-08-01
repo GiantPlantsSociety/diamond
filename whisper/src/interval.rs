@@ -17,23 +17,23 @@ impl Interval {
         Self { from: until - duration, until }
     }
 
-    pub fn from(&self) -> u32 {
+    pub fn from(self) -> u32 {
         self.from
     }
 
-    pub fn until(&self) -> u32 {
+    pub fn until(self) -> u32 {
         self.until
     }
 
-    pub fn contains(&self, other: Interval) -> bool {
+    pub fn contains(self, other: Interval) -> bool {
         self.from <= other.from && other.until <= self.until
     }
 
-    pub fn intersects(&self, other: Interval) -> bool {
+    pub fn intersects(self, other: Interval) -> bool {
         self.from <= other.until && self.until >= other.from
     }
 
-    pub fn intersection(&self, other: Interval) -> Result<Interval, String> {
+    pub fn intersection(self, other: Interval) -> Result<Interval, String> {
         Interval::new(
             u32::max(self.from, other.from),
             u32::min(self.until, other.until)
