@@ -1,50 +1,10 @@
 use failure::Error;
-use std::path::PathBuf;
+
+use whisper::builder;
+use whisper::builder::*;
 use whisper::point::*;
 use whisper::retention::*;
-use whisper::*;
 use whisper_tests::*;
-
-fn create_and_update(path: &PathBuf, timestamps: &[u32], now: u32) -> Result<WhisperFile, Error>  {
-    let mut file = WhisperBuilder::default()
-        .add_retention(Retention {
-            seconds_per_point: 60,
-            points: 10,
-        })
-        .build(path)?;
-
-    for timestamp in timestamps {
-        file.update(
-            &Point {
-                interval: *timestamp,
-                value: rand::random(),
-            },
-            now,
-        )?;
-    }
-    Ok(file)
-}
-
-fn create_and_update_many(path: &PathBuf, timestamps: &[u32], now: u32) -> Result<WhisperFile, Error> {
-    let mut file = WhisperBuilder::default()
-        .add_retention(Retention {
-            seconds_per_point: 60,
-            points: 10,
-        })
-        .build(path)?;
-
-    let points: Vec<Point> = timestamps
-        .iter()
-        .map(|interval| Point {
-            interval: *interval,
-            value: rand::random(),
-        })
-        .collect();
-
-    file.update_many(&points, now)?;
-
-    Ok(file)
-}
 
 #[test]
 fn test_merge_update() -> Result<(), Error> {
@@ -55,8 +15,8 @@ fn test_merge_update() -> Result<(), Error> {
 
     let now = 1528240800;
 
-    let mut _file1 = create_and_update(&path1, &[now - 60, now - 180, now - 300], now)?;
-    let mut file2 = create_and_update(&path2, &[now - 120, now - 360, now - 480], now)?;
+    let mut _file1 = create_and_update_many(&path1, &[now - 60, now - 180, now - 300], now)?;
+    let mut file2 = create_and_update_many(&path2, &[now - 120, now - 360, now - 480], now)?;
 
     whisper::merge::merge(&path1, &path2, 0, now, now)?;
     let points = file2.dump(60)?;

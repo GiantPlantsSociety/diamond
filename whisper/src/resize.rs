@@ -1,15 +1,92 @@
 use crate::aggregation::AggregationMethod;
 use crate::builder::WhisperBuilder;
+use crate::error;
 use crate::interval::Interval;
 
 use crate::point::Point;
 use crate::retention::Retention;
 use crate::WhisperFile;
 
-use failure::{err_msg, Error, format_err};
+use failure::Error;
 use std::fs::{remove_file, rename};
+use std::io;
 use std::path::PathBuf;
 use std::process::exit;
+
+fn migrate_aggregate(path_src: &PathBuf, path_dst: &PathBuf, now: u32) -> Result<(), Error> {
+    let mut file_src = WhisperFile::open(&path_src)?;
+    let mut file_dst = WhisperFile::open(&path_dst)?;
+
+    let meta = file_src.info().clone();
+    let mut until = now;
+
+    for archive in &meta.archives {
+        let interval =
+            Interval::new(0, until).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+        let (adjusted_interval, data) =
+            file_src.fetch_points(archive.seconds_per_point, interval, now)?;
+
+        if let Some(ref data) = data {
+            let mut points_to_write: Vec<Point> = data
+                .clone()
+                .into_iter()
+                .filter(|point| point != &Point::default())
+                .collect();
+
+            points_to_write.sort_by_key(|point| point.interval);
+
+            println!(
+                "({},{},{})",
+                &adjusted_interval.from(),
+                &adjusted_interval.until(),
+                &archive.seconds_per_point
+            );
+
+            let values = points_to_write
+                .iter()
+                .map(|point| point.interval.to_string())
+                .collect::<Vec<String>>()
+                .join(" ");
+
+            println!("timepoints_to_update: {}", values);
+
+            until = points_to_write.get(0).map(|x| x.interval).unwrap_or(now);
+            file_dst.update_many(&points_to_write, now)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn migrate_nonaggregate(path_src: &PathBuf, path_dst: &PathBuf, now: u32) -> Result<(), Error> {
+    let mut file_src = WhisperFile::open(&path_src)?;
+    let mut file_dst = WhisperFile::open(&path_dst)?;
+
+    let interval = Interval::new(0, now).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+    let meta = file_src.info().clone();
+    let mut archives = meta.archives;
+    archives.sort_by_key(|archive| archive.retention());
+
+    for archive in &archives {
+        let (_adjusted_interval, data) =
+            file_src.fetch_points(archive.seconds_per_point, interval, now)?;
+
+        if let Some(ref data) = data {
+            let mut points_to_write: Vec<Point> = data
+                .clone()
+                .into_iter()
+                .filter(|point| point != &Point::default())
+                .collect();
+
+            points_to_write.sort_by_key(|point| point.interval);
+            file_dst.update_many(&points_to_write, now)?;
+        }
+    }
+
+    Ok(())
+}
 
 fn migrate_points(
     path_src: &PathBuf,
@@ -18,77 +95,15 @@ fn migrate_points(
     now: u32,
 ) -> Result<(), Error> {
     if !path_src.is_file() {
-        return Err(format_err!(
-            "[ERROR] File {} does not exist!\n",
-            path_src.display()
-        ));
+        return Err(error::Error::FileNotExist(path_src.clone()).into());
     }
 
-    let mut file_src = WhisperFile::open(&path_src)?;
-    let meta = file_src.info().clone();
-
-    let mut file_dst = WhisperFile::open(&path_dst)?;
-
     if aggregate {
-        // This is where data will be interpolated (best effort)
         println!("Migrating data with aggregation...");
-        let mut until = now;
-
-        for archive in &meta.archives {
-            let interval = Interval::new(0, until).map_err(err_msg)?;
-
-            let (adjusted_interval, data) =
-                file_src.fetch_points(archive.seconds_per_point, interval, now)?;
-
-            if let Some(ref data) = data {
-                let mut points_to_write: Vec<Point> = data.clone()
-                    .into_iter()
-                    .filter(|point| point != &Point::default())
-                    .collect();
-
-                points_to_write.sort_by_key(|point| point.interval);
-
-                println!(
-                    "({},{},{})",
-                    &adjusted_interval.from(),
-                    &adjusted_interval.until(),
-                    &archive.seconds_per_point
-                );
-                // timepoints_to_update = range(fromTime, untilTime, step)
-                // print("timepoints_to_update: %s" % timepoints_to_update)
-                let values = points_to_write
-                    .iter()
-                    .map(|point| point.interval.to_string())
-                    .collect::<Vec<String>>()
-                    .join(" ");
-
-                println!("timepoints_to_update: {}", values);
-
-                until = points_to_write.get(0).map(|x| x.interval).unwrap_or(now);
-                file_dst.update_many(&points_to_write, now)?;
-            }
-        }
+        migrate_aggregate(path_src, path_dst, now)?;
     } else {
         println!("Migrating data without aggregation...");
-        let interval = Interval::new(0, now).map_err(err_msg)?;
-
-        let mut archives = meta.archives;
-        archives.sort_by_key(|archive| archive.retention());
-
-        for archive in &archives {
-            let (_adjusted_interval, data) =
-                file_src.fetch_points(archive.seconds_per_point, interval, now)?;
-
-            if let Some(ref data) = data {
-                let mut points_to_write: Vec<Point> = data.clone()
-                    .into_iter()
-                    .filter(|point| point != &Point::default())
-                    .collect();
-
-                points_to_write.sort_by_key(|point| point.interval);
-                file_dst.update_many(&points_to_write, now)?;
-            }
-        }
+        migrate_nonaggregate(path_src, path_dst, now)?;
     }
 
     Ok(())

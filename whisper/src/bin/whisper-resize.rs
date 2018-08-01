@@ -1,4 +1,4 @@
-use failure::{Error, format_err};
+use failure::Error;
 
 use std::path::PathBuf;
 use std::process::exit;
@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 
 use whisper::aggregation::AggregationMethod;
+use whisper::error;
 use whisper::resize::resize;
 use whisper::retention::Retention;
 
@@ -60,10 +61,7 @@ fn run(args: &Args) -> Result<(), Error> {
     let path = &args.path;
 
     if !path.is_file() {
-        return Err(format_err!(
-            "[ERROR] File {} does not exist!\n",
-            path.display()
-        ));
+        return Err(error::Error::FileNotExist(path.to_path_buf()).into());
     }
 
     let whisper_file = whisper::WhisperFile::open(&path)?;

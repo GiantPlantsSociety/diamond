@@ -1,11 +1,12 @@
 use failure::*;
+use std::path::PathBuf;
 
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "{}", _0)]
     Io(#[cause] ::std::io::Error),
     #[fail(display = "[ERROR] File {:#?} does not exist!", _0)]
-    FileNotFound(PathBuf),
+    FileNotExist(PathBuf),
 }
 
 #[derive(Debug, PartialEq, Fail)]
@@ -17,5 +18,3 @@ pub enum ParseError {
     #[fail(display = "{}", _0)]
     ParseIntError(#[cause] ::std::num::ParseIntError),
 }
-
-// type Result<T> = ::std::result::Result<T, Error>;
