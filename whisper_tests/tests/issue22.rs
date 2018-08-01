@@ -1,8 +1,9 @@
 extern crate whisper;
 extern crate whisper_tests;
 
-use whisper::*;
+use whisper::point::*;
 use whisper::retention::*;
+use whisper::*;
 use whisper_tests::*;
 
 #[test]
@@ -17,8 +18,8 @@ fn issue22() {
 
     let now = 1000;
 
-    file.update(100.0, now - 1, now).unwrap();
-    file.update(200.0, now - 2, now).unwrap();
+    file.update(&Point { interval: now - 1, value: 100.0 }, now).unwrap();
+    file.update(&Point { interval: now - 2, value: 200.0 }, now).unwrap();
 
     let points = file.dump(1).unwrap();
 
