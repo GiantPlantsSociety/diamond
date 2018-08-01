@@ -94,7 +94,7 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
         let mut gapstart: Option<u32> = None;
 
         for v in data_dst.values {
-            if !(v.is_some()) && !(gapstart.is_some()) {
+            if v.is_none() && gapstart.is_none() {
                 gapstart = Some(start);
             } else if v.is_some() && gapstart.is_some() {
                 let gapstart_unwrap = gapstart.unwrap();
@@ -102,7 +102,7 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
                     fill_interval(src, dst, gapstart_unwrap, start, now)?;
                 }
                 gapstart = None;
-            } else if (gapstart.is_some()) && (start == (end - step)) {
+            } else if gapstart.is_some() && (start == (end - step)) {
                 fill_interval(src, dst, gapstart.unwrap(), start, now)?;
             }
             start += step;
