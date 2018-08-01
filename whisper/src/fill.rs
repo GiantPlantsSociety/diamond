@@ -76,7 +76,8 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
     archives.sort_by_key(|a| a.retention());
 
     for archive in &archives {
-        let from_time = now - archive.retention();
+        let mut from_time = now - archive.retention();
+
         if from_time >= start_from {
             continue;
         }
@@ -90,18 +91,19 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
         let end = data_dst.until_interval;
         let step = data_dst.step;
 
-        let mut gapstart = 0;
+        let mut gapstart: Option<u32> = None;
 
         for v in data_dst.values {
-            if !(v.is_some()) && !(gapstart > 0) {
-                gapstart = start;
-            } else if v.is_some() && gapstart > 0 {
-                if (start - gapstart) > archive.seconds_per_point {
-                    fill_interval(src, dst, gapstart - step, start, now)?;
+            if v.is_none() && gapstart.is_none() {
+                gapstart = Some(start);
+            } else if v.is_some() && gapstart.is_some() {
+                let gapstart_unwrap = gapstart.unwrap();
+                if (start - gapstart_unwrap) > archive.seconds_per_point {
+                    fill_interval(src, dst, gapstart_unwrap, start, now)?;
                 }
-                gapstart = 0;
-            } else if (gapstart > 0) && (start == (end - step)) {
-                fill_interval(src, dst, gapstart - step, start, now)?;
+                gapstart = None;
+            } else if gapstart.is_some() && (start == (end - step)) {
+                fill_interval(src, dst, gapstart.unwrap(), start, now)?;
             }
             start += step;
         }
