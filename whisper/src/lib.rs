@@ -5,7 +5,6 @@ extern crate regex;
 extern crate lazy_static;
 extern crate byteorder;
 extern crate libc;
-extern crate num;
 #[macro_use]
 extern crate serde_derive;
 
@@ -14,7 +13,6 @@ use std::fs;
 use std::path::Path;
 use std::collections::HashSet;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use num::range_step;
 
 /*
 # This module is an implementation of the Whisper database API
@@ -572,7 +570,7 @@ pub struct ArchiveData {
 
 impl ArchiveData {
     pub fn points(&self) -> Vec<Point> {
-        range_step(self.from_interval, self.until_interval, self.step)
+        (self.from_interval..self.until_interval).step_by(self.step as usize)
             .zip(&self.values)
             .filter_map(|(interval, value)| value.map(|value| Point { interval, value }))
             .collect()
