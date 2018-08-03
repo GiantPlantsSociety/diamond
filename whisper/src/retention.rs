@@ -26,7 +26,7 @@ pub struct Retention {
 }
 
 impl Retention {
-    pub fn retention(&self) -> u32 {
+    pub fn retention(self) -> u32 {
         self.seconds_per_point * self.points
     }
 }

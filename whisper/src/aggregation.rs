@@ -38,7 +38,7 @@ impl AggregationMethod {
         }
     }
 
-    pub fn to_type(&self) -> u32 {
+    pub fn to_type(self) -> u32 {
         match self {
             AggregationMethod::Average => 1,
             AggregationMethod::Sum => 2,
@@ -51,7 +51,7 @@ impl AggregationMethod {
         }
     }
 
-    pub fn aggregate(&self, values: &[Option<f64>]) -> Result<f64, &'static str> {
+    pub fn aggregate(self, values: &[Option<f64>]) -> Result<f64, &'static str> {
         match self {
             AggregationMethod::Average => {
                 let sum: f64 = values.iter().filter_map(|v| *v).sum();

@@ -53,7 +53,7 @@ fn run(args: &Args) -> Result<(), Error> {
         for (j, point) in points.iter().enumerate() {
             match (&args.pretty, &args.time_format) {
                 (true, Some(time_format)) => {
-                    let timestr = NaiveDateTime::from_timestamp(point.interval as i64, 0)
+                    let timestr = NaiveDateTime::from_timestamp(i64::from(point.interval), 0)
                         .format(&time_format);
                     println!("{}: {}, {:>10}", j, timestr, &point.value);
                 }

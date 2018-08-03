@@ -73,7 +73,7 @@ fn run(args: &Args) -> Result<(), Error> {
     let mut file = WhisperFile::open(&args.path)?;
 
     let seconds_per_point = whisper::suggest_archive(&file, interval, now)
-        .ok_or(err_msg("No data in selected timerange"))?;
+        .ok_or_else(|| err_msg("No data in selected timerange"))?;
 
     let filter = match args.drop {
         Some(ref s) if s == "nulls" => is_not_null,
@@ -84,7 +84,7 @@ fn run(args: &Args) -> Result<(), Error> {
     };
 
     let archive = file.fetch(seconds_per_point, interval, now)?
-        .ok_or(err_msg("No data in selected timerange"))?
+        .ok_or_else(|| err_msg("No data in selected timerange"))?
         .filter_out(&filter);
 
     if args.json {
