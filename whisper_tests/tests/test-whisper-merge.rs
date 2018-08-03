@@ -18,7 +18,13 @@ fn create_and_update(path: &PathBuf, timestamps: &[u32], now: u32) -> WhisperFil
         .unwrap();
 
     for timestamp in timestamps {
-        file.update(rand::random(), *timestamp, now).unwrap();
+        file.update(
+            &Point {
+                interval: *timestamp,
+                value: rand::random(),
+            },
+            now,
+        ).unwrap();
     }
     file
 }

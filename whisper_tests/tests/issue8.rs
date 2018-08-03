@@ -1,9 +1,9 @@
 extern crate whisper;
 extern crate whisper_tests;
 
-use whisper::*;
-use whisper::retention::*;
 use whisper::point::Point;
+use whisper::retention::*;
+use whisper::*;
 use whisper_tests::*;
 
 #[test]
@@ -32,7 +32,7 @@ fn issue8_single() {
         .build(path)
         .unwrap();
 
-    file.update(123.0, 1528240818, 1528240900).unwrap();
+    file.update(&Point { interval: 1528240818, value: 123.0 }, 1528240900).unwrap();
 
     let points = file.dump(60).unwrap();
     assert_eq!(points[0].interval, 1528240800);
