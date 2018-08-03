@@ -1,6 +1,5 @@
 use std::path::Path;
 use std::io;
-use num::range_step;
 use super::*;
 use interval::Interval;
 use std::fmt;
@@ -183,7 +182,7 @@ pub fn diff(path1: &Path, path2: &Path, ignore_empty: bool, mut until_time: u32,
         let end = u32::max(data1.until_interval, data2.until_interval);
         let archive_step = u32::min(data1.step, data2.step);
 
-        let points: Vec<DiffPoint> = range_step(start, end, archive_step)
+        let points: Vec<DiffPoint> = (start..end).step_by(archive_step as usize)
             .enumerate()
             .map(|(index, interval)| DiffPoint {
                 interval,
