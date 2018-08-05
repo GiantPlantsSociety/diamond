@@ -10,4 +10,5 @@ repository = "https://github.com/GiantPlantsSociety/graphite-rs"
 failure = "0.1.1"
 lazy_static = "1"
 regex = "1"
+structopt = "0.2"
 whisper = { path = "../whisper" }
