@@ -10,6 +10,7 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::path::PathBuf;
+use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
@@ -47,8 +48,7 @@ struct Args {
     retentions: Vec<Retention>,
 }
 
-fn main() -> Result<(), Error> {
-    let args = Args::from_args();
+fn run(args: &Args) -> Result<(), Error> {
     let stdin = io::stdin();
 
     for line in stdin.lock().lines() {
@@ -77,4 +77,12 @@ fn main() -> Result<(), Error> {
         file.update(&metric.point, now)?;
     }
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(&args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }
