@@ -378,14 +378,7 @@ fn __propagate<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMetadata, tim
     fh.seek(io::SeekFrom::Start(higher.offset.into()))?;
     let higher_base = Point::read(fh)?;
 
-    let higher_first_index =
-        if higher_base.interval == 0 {
-            0
-        } else {
-            let time_distance = lower_interval_start - higher_base.interval;
-            let point_distance = time_distance / higher.seconds_per_point;
-            point_distance % higher.points
-        };
+    let higher_first_index = instant_offset(higher, higher_base.interval, lower_interval_start);
 
     let higher_last_index = {
         let higher_points = lower.seconds_per_point / higher.seconds_per_point;
