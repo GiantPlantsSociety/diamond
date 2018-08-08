@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::{WhisperFile, suggest_archive};
 use whisper::builder::{WhisperBuilder, BuilderError};
 use whisper::retention::Retention;
+use whisper::point::Point;
 use whisper::interval::Interval;
 use whisper_tests::*;
 
@@ -52,7 +53,7 @@ fn test_update(bench: &mut Bencher) {
 
     bench.iter(|| {
         for j in 0..SECONDS_AGO {
-            file.update(*i, now - SECONDS_AGO + j, now).expect("update");
+            file.update(&Point { interval: now - SECONDS_AGO + j, value: *i}, now).expect("update");
             *i += VALUE_STEP;
         }
     });
@@ -67,7 +68,7 @@ fn test_fetch(bench: &mut Bencher) {
     let now = current_time();
 
     for j in 0..SECONDS_AGO {
-        file.update(current_value, now - SECONDS_AGO + j, now).expect("update");
+        file.update(&Point { interval: now - SECONDS_AGO + j, value: current_value}, now).expect("update");
         current_value += VALUE_STEP;
     };
 
@@ -94,7 +95,7 @@ fn test_update_fetch(bench: &mut Bencher) {
     let interval = Interval::new(from_time, until_time).expect("interval");
     bench.iter(|| {
         for j in 0..SECONDS_AGO {
-            file.update(*i, now - SECONDS_AGO + j, now).expect("update");
+            file.update(&Point { interval: now - SECONDS_AGO + j, value: *i}, now).expect("update");
             *i += VALUE_STEP;
         }
         let seconds_per_point = suggest_archive(&file, interval, now).expect("Archive");
