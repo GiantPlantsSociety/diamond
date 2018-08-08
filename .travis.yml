@@ -15,4 +15,5 @@ matrix:
 
 script:
   - cargo build --verbose
+  - cargo build --benches --verbose
   - RUST_BACKTRACE=1 cargo test -- --nocapture
