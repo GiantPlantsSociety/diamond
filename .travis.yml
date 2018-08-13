@@ -15,8 +15,15 @@ matrix:
 
 script:
   - cargo build --verbose
-  - cargo build --benches --verbose
   - RUST_BACKTRACE=1 cargo test -- --nocapture
+  - |
+    # Disable optimisation for bench build
+    cat <<'CARGO' >> Cargo.toml
+    [profile.bench]
+    opt-level = 0
+    debug = true
+    CARGO
+    cargo build --benches --verbose
 
 after_success:
   - |
