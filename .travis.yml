@@ -33,6 +33,7 @@ after_success:
   - |
     set -x
     if [[ "$TRAVIS_RUST_VERSION" == "stable" && "$TRAVIS_OS_NAME" == "linux" ]]; then
+      cargo clean
       cargo tarpaulin --out Xml --no-count
       bash <(curl -s https://codecov.io/bash)
     fi
