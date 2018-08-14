@@ -1,6 +1,6 @@
 language: rust
 cache: cargo
-sudo: false
+sudo: true
 rust:
   - nightly
   - beta
@@ -12,6 +12,10 @@ matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
+
+env:
+  global:
+    - RUST_BACKTRACE=1
 
 script:
   - cargo build --verbose
@@ -33,7 +37,6 @@ after_success:
   - |
     set -x
     if [[ "$TRAVIS_RUST_VERSION" == "stable" && "$TRAVIS_OS_NAME" == "linux" ]]; then
-      cargo clean
       cargo tarpaulin --out Xml --no-count
       bash <(curl -s https://codecov.io/bash)
     fi
