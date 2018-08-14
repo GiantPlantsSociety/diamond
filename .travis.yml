@@ -24,13 +24,15 @@ script:
     debug = true
     CARGO
     cargo build --benches --verbose
+  - |
+    if [[ "$TRAVIS_RUST_VERSION" == "stable" && "$TRAVIS_OS_NAME" == "linux" ]]; then
+      RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install --force cargo-tarpaulin
+    fi
 
 after_success:
   - |
+    set -x
     if [[ "$TRAVIS_RUST_VERSION" == "stable" && "$TRAVIS_OS_NAME" == "linux" ]]; then
-      if [ ! -f ~/.cargo/bin/cargo-tarpaulin ]; then
-        RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install --debug cargo-tarpaulin
-      fi
       cargo tarpaulin --out Xml --no-count
       bash <(curl -s https://codecov.io/bash)
     fi
