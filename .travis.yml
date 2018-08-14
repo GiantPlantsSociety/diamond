@@ -1,13 +1,21 @@
 language: rust
 cache: cargo
 sudo: true
+
 rust:
   - nightly
   - beta
   - stable
+
 os:
   - linux
   - osx
+
+addons:
+  apt:
+    packages:
+      - libssl-dev
+
 matrix:
   allow_failures:
     - rust: nightly
@@ -19,7 +27,7 @@ env:
 
 script:
   - cargo build --verbose
-  - RUST_BACKTRACE=1 cargo test -- --nocapture
+  - cargo test -- --nocapture
   - |
     # Disable optimisation for bench build
     cat <<'CARGO' >> Cargo.toml
