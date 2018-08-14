@@ -38,12 +38,12 @@ script:
     cargo build --benches --verbose
   - |
     if [[ "$TRAVIS_RUST_VERSION" == "stable" && "$TRAVIS_OS_NAME" == "linux" ]]; then
-      CARGO_TARGET_DIR=$(pwd)/target RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install --force cargo-tarpaulin
+      export CARGO_TARGET_DIR="$(pwd)/target"
+      RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install --force cargo-tarpaulin
     fi
 
 after_success:
   - |
-    set -x
     if [[ "$TRAVIS_RUST_VERSION" == "stable" && "$TRAVIS_OS_NAME" == "linux" ]]; then
       cargo tarpaulin --out Xml --no-count
       bash <(curl -s https://codecov.io/bash)
