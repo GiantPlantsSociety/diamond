@@ -227,7 +227,7 @@ mod tests {
     fn from_archive_to_short() {
         let diff = DiffArchive {
             index: 2,
-            diffs: vec![
+            diffs: [
                 DiffPoint { interval: 1, value1: Some(1.0), value2: Some(2.1) },
             ],
             points: 1,
@@ -244,7 +244,7 @@ mod tests {
             archives: vec![
                 DiffArchive {
                     index: 0,
-                    diffs: vec![
+                    diffs: [
                         DiffPoint {
                             interval: 1,
                             value1: Some(1.0),
