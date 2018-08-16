@@ -227,7 +227,7 @@ mod tests {
     fn from_archive_to_short() {
         let diff = DiffArchive {
             index: 2,
-            diffs: [
+            diffs: vec![
                 DiffPoint { interval: 1, value1: Some(1.0), value2: Some(2.1) },
             ],
             points: 1,
@@ -244,7 +244,7 @@ mod tests {
             archives: vec![
                 DiffArchive {
                     index: 0,
-                    diffs: [
+                    diffs: vec![
                         DiffPoint {
                             interval: 1,
                             value1: Some(1.0),
@@ -259,7 +259,14 @@ mod tests {
             path_b: "path_b".to_owned(),
         };
 
-        let diff_info_str = format!("{}", diff_info);
-        assert_eq!(diff_info_str, "0 1 1.0 2.1\n");
+        let diff_info_str1 = format!("{}", diff_info);
+        assert_eq!(diff_info_str1, "0 1 1.0 2.1\n");
+
+        let diff_info_str2 = format!("{:#}", diff_info);
+        let output = r#"Archive 0 (1 of 7 datapoints differ)
+          timestamp       value_a       value_b
+                  1           1.0           2.1
+"#;
+        assert_eq!(diff_info_str2, output);
     }
 }
