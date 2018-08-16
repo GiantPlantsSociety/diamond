@@ -97,7 +97,7 @@ impl fmt::Display for DiffHeader {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct DiffArchiveShort {
     #[serde(rename = "archive")]
     pub index: usize,
@@ -209,4 +209,57 @@ pub fn diff(path1: &Path, path2: &Path, ignore_empty: bool, mut until_time: u32,
     }
 
     Ok(archive_diffs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_none_unit() {
+        assert_eq!(format_none(Some(1.5555)), "1.6");
+        assert_eq!(format_none(Some(0.3333)), "0.3");
+        assert_eq!(format_none(Some(0.0)), "0.0");
+        assert_eq!(format_none(None), "None");
+    }
+
+    #[test]
+    fn from_archive_to_short() {
+        let diff = DiffArchive {
+            index: 2,
+            diffs: vec![
+                DiffPoint { interval: 1, value1: Some(1.0), value2: Some(2.1) },
+            ],
+            points: 1,
+            total: 7,
+        };
+
+        let diff_short: DiffArchiveShort = diff.into();
+        assert_eq!(diff_short, DiffArchiveShort {index: 2, total: 7, points: 1 });
+    }
+
+    #[test]
+    fn archive_info_fmt() {
+        let diff_info = DiffArchiveInfo {
+            archives: vec![
+                DiffArchive {
+                    index: 0,
+                    diffs: vec![
+                        DiffPoint {
+                            interval: 1,
+                            value1: Some(1.0),
+                            value2: Some(2.1)
+                        },
+                    ],
+                    points: 1,
+                    total: 7,
+                }
+            ],
+            path_a: "path_a".to_owned(),
+            path_b: "path_b".to_owned(),
+        };
+
+        let diff_info_str = format!("{}", diff_info);
+        assert_eq!(diff_info_str, "0 1 1.0 2.1\n");
+    }
 }
