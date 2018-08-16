@@ -1,7 +1,7 @@
 extern crate rand;
 extern crate tempfile;
 extern crate assert_cli;
-
+extern crate whisper;
 
 use std::fs;
 use std::path::PathBuf;
@@ -11,6 +11,9 @@ use rand::distributions::Alphanumeric;
 use tempfile::{TempDir, Builder};
 use assert_cli::Assert;
 
+use whisper::*;
+use whisper::point::*;
+use whisper::retention::*;
 
 pub fn get_temp_dir() -> TempDir {
     Builder::new()
@@ -59,4 +62,18 @@ pub fn get_binary_command(binary_name: &str) -> Assert {
         OsStr::new(binary_name),
         OsStr::new("--"),
     ])
+}
+
+pub fn create_and_update_points(path: &PathBuf, points: &[Point], now: u32) -> WhisperFile {
+    let mut file = WhisperBuilder::default()
+        .add_retention(Retention {
+            seconds_per_point: 60,
+            points: 10,
+        })
+        .build(path)
+        .unwrap();
+
+    file.update_many(&points, now).unwrap();
+
+    file
 }
