@@ -4,7 +4,7 @@ use super::*;
 use interval::Interval;
 use std::fmt;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DiffPoint {
     #[serde(rename = "timestamp")]
     pub interval: u32,

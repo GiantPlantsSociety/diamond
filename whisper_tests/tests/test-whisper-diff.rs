@@ -1,0 +1,69 @@
+extern crate rand;
+extern crate whisper;
+extern crate whisper_tests;
+
+use std::path::PathBuf;
+use whisper::diff::*;
+use whisper::point::*;
+use whisper::retention::*;
+use whisper::*;
+use whisper_tests::*;
+
+fn create_and_update_points(path: &PathBuf, points: &[Point], now: u32) -> WhisperFile {
+    let mut file = WhisperBuilder::default()
+        .add_retention(Retention {
+            seconds_per_point: 60,
+            points: 10,
+        })
+        .build(path)
+        .unwrap();
+
+    file.update_many(&points, now).unwrap();
+
+    file
+}
+
+#[test]
+fn test_diff_simple_filtered() {
+    let temp_dir = get_temp_dir();
+
+    let path1 = get_file_path(&temp_dir, "diff1_1");
+    let path2 = get_file_path(&temp_dir, "diff2_2");
+
+    let now = 1528240800;
+
+    let _file1 = create_and_update_points(
+        &path1,
+        &[
+            Point { interval: now - 60, value: 60.0 },
+            Point { interval: now - 180, value: 180.0 },
+            Point { interval: now - 300, value: 300.0 },
+        ],
+        now,
+    );
+
+    let _file2 = create_and_update_points(
+        &path2,
+        &[
+            Point { interval: now - 120, value: 120.0 },
+            Point { interval: now - 300, value: 3000.0 },
+            Point { interval: now - 360, value: 360.0 },
+            Point { interval: now - 480, value: 480.0 },
+        ],
+        now,
+    );
+
+    let diff_points = whisper::diff::diff(&path1, &path2, true, now, now).unwrap();
+
+    assert_eq!(diff_points[0].points, 1, "there should be 1 point");
+
+    assert_eq!(
+        diff_points[0].diffs[0],
+        DiffPoint {
+            interval: now - 300,
+            value1: Some(300.0),
+            value2: Some(3000.0),
+        },
+    );
+
+}
