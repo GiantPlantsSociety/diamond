@@ -269,4 +269,58 @@ mod tests {
 "#;
         assert_eq!(diff_info_str2, output);
     }
+
+    #[test]
+    fn archive_info_short_fmt() {
+
+        let diff_info = DiffArchiveSummary {
+            archives: vec![
+                DiffArchiveShort {
+                    index: 0,
+                    total: 7,
+                    points: 1,
+                },
+            ],
+            path_a: "path_a".to_owned(),
+            path_b: "path_b".to_owned(),
+        };
+
+        let diff_info_str1 = format!("{}", diff_info);
+        assert_eq!(diff_info_str1, "0 7 1\n");
+
+        let diff_info_str2 = format!("{:#}", diff_info);
+        assert_eq!(diff_info_str2, "      0         7         1\n");
+    }
+
+    #[test]
+    fn header_fmt() {
+        let header = DiffHeader();
+
+        let header_str1 = format!("{}", header);
+        for word in &[ "archive", "timestamp", "value_a", "value_b" ] {
+            assert!( header_str1.contains(word), "should contains {}", word);
+        }
+
+        let header_str2 = format!("{:#}", header);
+        for word in &[ "archive", "timestamp", "value_a", "value_b" ] {
+            assert!( header_str2.contains(word), "should contains {}", word);
+        }
+    }
+
+    #[test]
+    fn summary_header_fmt() {
+        let header = DiffSummaryHeader();
+
+        let header_str1 = format!("{}", header);
+        for word in &[ "archive", "total", "differing" ] {
+            assert!( header_str1.contains(word), "should contains {}", word);
+        }
+
+        let header_str2 = format!("{:#}", header);
+        for word in &[ "archive", "total", "differing" ] {
+            assert!( header_str2.contains(word), "should contains {}", word);
+        }
+
+    }
+
 }
