@@ -51,20 +51,6 @@ fn create_and_update_many(path: &PathBuf, timestamps: &[u32], now: u32) -> Whisp
     file
 }
 
-fn create_and_update_points(path: &PathBuf, points: &[Point], now: u32) -> WhisperFile {
-    let mut file = WhisperBuilder::default()
-        .add_retention(Retention {
-            seconds_per_point: 60,
-            points: 10,
-        })
-        .build(path)
-        .unwrap();
-
-    file.update_many(&points, now).unwrap();
-
-    file
-}
-
 #[test]
 fn test_merge_update() {
     let temp_dir = get_temp_dir();
