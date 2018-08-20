@@ -47,3 +47,23 @@ impl FromStr for Point {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn point_parse() {
+        assert_eq!("1:2".parse(), Ok(Point{ interval: 1, value: 2.0}));
+        assert_eq!("1:2.01".parse(), Ok(Point{ interval: 1, value: 2.01}));
+        assert_eq!("1:0".parse(), Ok(Point{ interval: 1, value: 0.0}));
+        assert_eq!("1:-2.01".parse(), Ok(Point{ interval: 1, value: -2.01}));
+        assert_eq!("0:2".parse(), Ok(Point{ interval: 0, value: 2.0}));
+
+        assert!("-1:2.0".parse::<Point>().is_err());
+        assert!("s:2.0".parse::<Point>().is_err());
+        assert!("1:s".parse::<Point>().is_err());
+        assert!("1111".parse::<Point>().is_err());
+        assert!("ssss".parse::<Point>().is_err());
+    }
+}

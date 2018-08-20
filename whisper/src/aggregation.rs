@@ -186,4 +186,14 @@ mod tests {
         assert_eq!(AggregationMethod::AbsMin.aggregate(&[Some(-3.0), Some(-2.0), Some(1.0), Some(2.0)]), Ok(1.0));
         assert_eq!(AggregationMethod::AbsMin.aggregate(&[Some(-2.0), Some(-1.0), Some(2.0), Some(3.0)]), Ok(-1.0));
     }
+
+    #[test]
+    fn test_from_to_type() {
+        for i in 1..9 {
+            let method = AggregationMethod::from_type(i).unwrap();
+            assert_eq!(AggregationMethod::to_type(method), i);
+        }
+
+        assert_eq!(AggregationMethod::from_type(9), None);
+    }
 }
