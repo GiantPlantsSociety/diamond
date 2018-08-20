@@ -43,3 +43,20 @@ impl ArchiveInfo {
         Ok(base)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_retention() {
+        let info = ArchiveInfo { offset: 10, seconds_per_point: 2, points: 20 };
+        assert_eq!(info.retention(), 20*2);
+    }
+
+    #[test]
+    fn test_size() {
+        let info = ArchiveInfo { offset: 10, seconds_per_point: 2, points: 20 };
+        assert_eq!(info.size(), 20*12);
+    }
+}

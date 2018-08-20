@@ -158,6 +158,8 @@ mod tests {
         assert_eq!(AggregationMethod::AvgZero.to_string(), "avg_zero");
         assert_eq!(AggregationMethod::AbsMax.to_string(), "absmax");
         assert_eq!(AggregationMethod::AbsMin.to_string(), "absmin");
+
+        assert_eq!(AggregationMethod::default().to_string(), "average");
     }
 
     #[test]
@@ -170,6 +172,8 @@ mod tests {
         assert_eq!(AggregationMethod::from_str(&AggregationMethod::AvgZero.to_string()), Ok(AggregationMethod::AvgZero));
         assert_eq!(AggregationMethod::from_str(&AggregationMethod::AbsMax.to_string()), Ok(AggregationMethod::AbsMax));
         assert_eq!(AggregationMethod::from_str(&AggregationMethod::AbsMin.to_string()), Ok(AggregationMethod::AbsMin));
+
+        assert!(AggregationMethod::from_str("test").is_err());
     }
 
     #[test]
@@ -185,5 +189,17 @@ mod tests {
         assert_eq!(AggregationMethod::AbsMax.aggregate(&[Some(-2.0), Some(-1.0), Some(2.0), Some(3.0)]), Ok(3.0));
         assert_eq!(AggregationMethod::AbsMin.aggregate(&[Some(-3.0), Some(-2.0), Some(1.0), Some(2.0)]), Ok(1.0));
         assert_eq!(AggregationMethod::AbsMin.aggregate(&[Some(-2.0), Some(-1.0), Some(2.0), Some(3.0)]), Ok(-1.0));
+
+        assert!(AggregationMethod::Last.aggregate(&[]).is_err());
+    }
+
+    #[test]
+    fn test_from_to_type() {
+        for i in 1..9 {
+            let method = AggregationMethod::from_type(i).unwrap();
+            assert_eq!(AggregationMethod::to_type(method), i);
+        }
+
+        assert_eq!(AggregationMethod::from_type(9), None);
     }
 }

@@ -116,6 +116,35 @@ fn test_merge_update_many() {
 }
 
 #[test]
+fn test_merge_errors() {
+    let temp_dir = get_temp_dir();
+
+    let path1 = get_file_path(&temp_dir, "issue34_7");
+    let path2 = get_file_path(&temp_dir, "issue34_8");
+    let path3 = get_file_path(&temp_dir, "issue34_9");
+
+    let now = 1528240800;
+
+    let _file1 = WhisperBuilder::default()
+        .add_retention(Retention { seconds_per_point: 60, points: 11 })
+        .build(&path1)
+        .unwrap();
+
+    let _file2 = WhisperBuilder::default()
+        .add_retention(Retention { seconds_per_point: 60, points: 12 })
+        .build(&path2)
+        .unwrap();
+
+    let _file3 = WhisperBuilder::default()
+        .add_retention(Retention { seconds_per_point: 60, points: 11 })
+        .build(&path3)
+        .unwrap();
+
+    assert!(whisper::merge::merge(&path1, &path2, 0, now, now).is_err());
+    assert!(whisper::merge::merge(&path1, &path3, now-10, now-20, now).is_err());
+}
+
+#[test]
 fn test_merge_overwrite() {
     let temp_dir = get_temp_dir();
 

@@ -67,7 +67,11 @@ pub fn parse_duration(s: &str) -> Result<u32, String> {
         precision *= get_unit_multiplier(captures.get(2).unwrap().as_str())?;
     }
 
-    Ok(precision)
+    if precision == 0 {
+        Err("Precision can not be zero".to_owned())
+    } else {
+        Ok(precision)
+    }
 }
 
 
@@ -102,5 +106,20 @@ mod tests {
         assert_eq!("10x:10".parse::<Retention>(), Err("Invalid unit 'x'".to_string()));
         assert_eq!("60:10x".parse::<Retention>(), Err("Invalid unit 'x'".to_string()));
         assert_eq!("10X:10".parse::<Retention>(), Err("Invalid unit 'X'".to_string()));
+    }
+
+
+    #[test]
+    fn test_valid_precision() {
+        assert_eq!(parse_duration("10"), Ok(10));
+        assert_eq!(parse_duration("60"), Ok(60));
+        assert_eq!(parse_duration("10h"), Ok(36000));
+    }
+
+    #[test]
+    fn test_invalid_precision() {
+        assert!(parse_duration("10$").is_err());
+        assert!(parse_duration("-10").is_err());
+        assert!(parse_duration("0").is_err());
     }
 }
