@@ -7,6 +7,7 @@ use whisper::point::*;
 use whisper::retention::*;
 use whisper::*;
 use whisper_tests::*;
+use std::io;
 
 fn create_and_update(path: &PathBuf, timestamps: &[u32], now: u32) -> WhisperFile {
     let mut file = WhisperBuilder::default()
@@ -52,7 +53,7 @@ fn create_and_update_many(path: &PathBuf, timestamps: &[u32], now: u32) -> Whisp
 }
 
 #[test]
-fn test_merge_update() {
+fn test_merge_update() -> Result<(), io::Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_1");
@@ -63,8 +64,8 @@ fn test_merge_update() {
     let mut _file1 = create_and_update(&path1, &[now - 60, now - 180, now - 300], now);
     let mut file2 = create_and_update(&path2, &[now - 120, now - 360, now - 480], now);
 
-    whisper::merge::merge(&path1, &path2, 0, now, now).unwrap();
-    let points = file2.dump(60).unwrap();
+    whisper::merge::merge(&path1, &path2, 0, now, now)?;
+    let points = file2.dump(60)?;
 
     for delta in &[60, 180, 300] {
         assert!(
@@ -81,10 +82,12 @@ fn test_merge_update() {
             delta
         );
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_merge_update_many() {
+fn test_merge_update_many() -> Result<(), io::Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_3");
@@ -95,8 +98,8 @@ fn test_merge_update_many() {
     let mut _file1 = create_and_update_many(&path1, &[now - 60, now - 180, now - 300], now);
     let mut file2 = create_and_update_many(&path2, &[now - 120, now - 360, now - 480], now);
 
-    whisper::merge::merge(&path1, &path2, 0, now, now).unwrap();
-    let points = file2.dump(60).unwrap();
+    whisper::merge::merge(&path1, &path2, 0, now, now)?;
+    let points = file2.dump(60)?;
 
     for delta in &[60, 180, 300] {
         assert!(
@@ -113,10 +116,12 @@ fn test_merge_update_many() {
             delta
         );
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_merge_errors() {
+fn test_merge_errors() -> Result<(), builder::BuilderError> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_7");
@@ -127,25 +132,24 @@ fn test_merge_errors() {
 
     let _file1 = WhisperBuilder::default()
         .add_retention(Retention { seconds_per_point: 60, points: 11 })
-        .build(&path1)
-        .unwrap();
+        .build(&path1)?;
 
     let _file2 = WhisperBuilder::default()
         .add_retention(Retention { seconds_per_point: 60, points: 12 })
-        .build(&path2)
-        .unwrap();
+        .build(&path2)?;
 
     let _file3 = WhisperBuilder::default()
         .add_retention(Retention { seconds_per_point: 60, points: 11 })
-        .build(&path3)
-        .unwrap();
+        .build(&path3)?;
 
     assert!(whisper::merge::merge(&path1, &path2, 0, now, now).is_err());
     assert!(whisper::merge::merge(&path1, &path3, now-10, now-20, now).is_err());
+
+    Ok(())
 }
 
 #[test]
-fn test_merge_overwrite() {
+fn test_merge_overwrite() -> Result<(), io::Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -195,8 +199,8 @@ fn test_merge_overwrite() {
         now,
     );
 
-    whisper::merge::merge(&path1, &path2, 0, now, now).unwrap();
-    let points = file2.dump(60).unwrap();
+    whisper::merge::merge(&path1, &path2, 0, now, now)?;
+    let points = file2.dump(60)?;
 
     for delta in &[60, 180, 300] {
         assert!(
@@ -223,10 +227,12 @@ fn test_merge_overwrite() {
             points
         );
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_fill_overlap() {
+fn test_fill_overlap() -> Result<(), io::Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -276,8 +282,8 @@ fn test_fill_overlap() {
         now,
     );
 
-    whisper::fill::fill(&path1, &path2, now, now).unwrap();
-    let points = file2.dump(60).unwrap();
+    whisper::fill::fill(&path1, &path2, now, now)?;
+    let points = file2.dump(60)?;
 
     for delta in &[180] {
         assert!(
@@ -304,4 +310,6 @@ fn test_fill_overlap() {
             points
         );
     }
+
+    Ok(())
 }
