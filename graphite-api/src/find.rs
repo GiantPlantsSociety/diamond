@@ -1,7 +1,7 @@
 use actix_web::{Form, HttpRequest, HttpResponse, Json, Query};
 use failure::Error;
 use glob::Pattern;
-use std::ffi::OsString;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -14,8 +14,8 @@ struct MetricResponse {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 struct MetricResponseLeaf {
-    name: OsString,
-    path: OsString,
+    name: String,
+    path: String,
     is_leaf: bool,
 }
 
@@ -85,50 +85,60 @@ pub enum FindError {
     UnknownParse,
 }
 
-fn create_leaf(name: OsString, dir: OsString, is_leaf: bool) -> MetricResponseLeaf {
-    let path = if dir.len() != 0 {
-        let mut path = dir;
-        for item in &[OsString::from("."), name.clone()] {
-            path.push(item);
-        }
-        path
+fn create_leaf(name: &str, dir: &str, is_leaf: bool) -> MetricResponseLeaf {
+    let path = if !dir.is_empty() {
+        format!("{}.{}", dir, name)
     } else {
-        name.clone()
+        name.clone().to_owned()
     };
 
     MetricResponseLeaf {
-        name,
+        name: name.to_owned(),
         path,
         is_leaf,
     }
 }
 
 fn walk_tree(dir: &Path, subdir: &Path, pattern: &Pattern) -> Result<MetricResponse, Error> {
-    let full_path = dir.join(&subdir);
+    let full_path = dir.canonicalize()?.join(&subdir);
+    let dir_metric = subdir
+        .components()
+        .map(|x| x.as_os_str().to_str().unwrap())
+        .collect::<Vec<&str>>()
+        .concat();
 
-    let dir_metric = subdir.components().fold(OsString::new(), |mut acc, x| {
-        acc.push(x.as_os_str());
-        acc
-    });
-
-    let mut metrics: Vec<MetricResponseLeaf> = fs::read_dir(full_path)?
+    let mut metrics: Vec<MetricResponseLeaf> = fs::read_dir(&full_path)?
         .into_iter()
         .map(|entry| match entry {
             Ok(ref entry)
-                if pattern.matches_path(&entry.path()) && entry.file_type().unwrap().is_dir() =>
+                if pattern.matches_path(&entry.path().strip_prefix(&full_path).unwrap())
+                    && entry.file_type().unwrap().is_dir() =>
             {
-                let name = entry.path().file_name().unwrap().to_owned();
-                Some(create_leaf(name, dir_metric.clone(), false))
+                let name = entry
+                    .path()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_owned();
+                Some(create_leaf(&name, &dir_metric, false))
             }
             Ok(ref entry)
-                if pattern.matches_path(&entry.path()) && entry.file_type().unwrap().is_file() =>
+                if pattern.matches_path(&entry.path().strip_prefix(&full_path).unwrap())
+                    && entry.file_type().unwrap().is_file()
+                    && entry.path().extension().unwrap() == OsStr::new("wsp") =>
             {
-                let name = entry.path().file_stem().unwrap().to_owned();
-                Some(create_leaf(name, dir_metric.clone(), true))
+                let name = entry
+                    .path()
+                    .file_stem()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_owned();
+                Some(create_leaf(&name, &dir_metric, true))
             }
             _ => None,
-        })
-        .filter_map(|x| x)
+        }).filter_map(|x| x)
         .collect();
 
     metrics.sort_by_key(|k| k.name.clone());
