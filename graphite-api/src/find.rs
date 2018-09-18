@@ -1,6 +1,7 @@
 use actix_web::{Form, HttpRequest, HttpResponse, Json, Query};
 use failure::Error;
 use glob::Pattern;
+use std::convert::From;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,6 +18,38 @@ struct MetricResponseLeaf {
     name: String,
     path: String,
     is_leaf: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+struct JsonTreeLeaf {
+    text: String,
+    id: String,
+    #[serde(rename = "allowChildren")]
+    allow_children: u8,
+    expandable: u8,
+    leaf: u8,
+}
+
+impl From<MetricResponseLeaf> for JsonTreeLeaf {
+    fn from(m: MetricResponseLeaf) -> JsonTreeLeaf {
+        if m.is_leaf {
+            JsonTreeLeaf {
+                text: m.path,
+                id: m.name,
+                allow_children: 0,
+                expandable: 0,
+                leaf: 1,
+            }
+        } else {
+            JsonTreeLeaf {
+                text: m.path,
+                id: m.name,
+                allow_children: 1,
+                expandable: 1,
+                leaf: 0,
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -99,7 +132,11 @@ fn create_leaf(name: &str, dir: &str, is_leaf: bool) -> MetricResponseLeaf {
     }
 }
 
-fn walk_tree(dir: &Path, subdir: &Path, pattern: &Pattern) -> Result<MetricResponse, Error> {
+fn walk_tree(
+    dir: &Path,
+    subdir: &Path,
+    pattern: &Pattern,
+) -> Result<Vec<MetricResponseLeaf>, Error> {
     let full_path = dir.canonicalize()?.join(&subdir);
     let dir_metric = subdir
         .components()
@@ -142,15 +179,25 @@ fn walk_tree(dir: &Path, subdir: &Path, pattern: &Pattern) -> Result<MetricRespo
         .collect();
 
     metrics.sort_by_key(|k| k.name.clone());
-    Ok(MetricResponse { metrics })
+    Ok(metrics)
 }
 
 fn metrics_find(args: &Args, params: FindQuery) -> Result<HttpResponse, Error> {
     let dir = &args.path;
-    let path: FindPath = FindPath::from(params)?;
+    let path: FindPath = FindPath::from(params.clone())?;
 
     let metrics = walk_tree(&dir, &path.path, &path.pattern)?;
-    Ok(HttpResponse::Ok().json(metrics))
+
+    if params.format == FindFormat::TreeJson {
+        let metrics_json: Vec<JsonTreeLeaf> = metrics
+            .iter()
+            .map(|x| JsonTreeLeaf::from(x.to_owned()))
+            .collect();
+        Ok(HttpResponse::Ok().json(metrics_json))
+    } else {
+        let metrics_completer = MetricResponse { metrics };
+        Ok(HttpResponse::Ok().json(metrics_completer))
+    }
 }
 
 pub fn metrics_find_get(
