@@ -72,7 +72,9 @@ pub struct FindQuery {
     format: FindFormat,
     #[serde(default)]
     wildcards: u8,
+    #[serde(default)]
     from: u32,
+    #[serde(default = "u32::max_value")]
     until: u32,
 }
 
@@ -83,7 +85,7 @@ pub struct FindPath {
 }
 
 impl FindPath {
-    fn from(query: FindQuery) -> Result<FindPath, Error> {
+    fn from(query: &FindQuery) -> Result<FindPath, Error> {
         let s = &query.query;
         let mut segments: Vec<&str> = s.split('.').collect();
 
@@ -122,7 +124,7 @@ fn create_leaf(name: &str, dir: &str, is_leaf: bool) -> MetricResponseLeaf {
     let path = if !dir.is_empty() {
         format!("{}.{}", dir, name)
     } else {
-        name.clone().to_owned()
+        name.to_owned()
     };
 
     MetricResponseLeaf {
@@ -182,9 +184,9 @@ fn walk_tree(
     Ok(metrics)
 }
 
-fn metrics_find(args: &Args, params: FindQuery) -> Result<HttpResponse, Error> {
+fn metrics_find(args: &Args, params: &FindQuery) -> Result<HttpResponse, Error> {
     let dir = &args.path;
-    let path: FindPath = FindPath::from(params.clone())?;
+    let path: FindPath = FindPath::from(params)?;
 
     let metrics = walk_tree(&dir, &path.path, &path.pattern)?;
 
@@ -204,21 +206,21 @@ pub fn metrics_find_get(
     req: HttpRequest<Args>,
     params: Query<FindQuery>,
 ) -> Result<HttpResponse, Error> {
-    metrics_find(req.state(), params.into_inner())
+    metrics_find(req.state(), &params.into_inner())
 }
 
 pub fn metrics_find_form(
     req: HttpRequest<Args>,
     params: Form<FindQuery>,
 ) -> Result<HttpResponse, Error> {
-    metrics_find(req.state(), params.into_inner())
+    metrics_find(req.state(), &params.into_inner())
 }
 
 pub fn metrics_find_json(
     req: HttpRequest<Args>,
     params: Json<FindQuery>,
 ) -> Result<HttpResponse, Error> {
-    metrics_find(req.state(), params.into_inner())
+    metrics_find(req.state(), &params.into_inner())
 }
 
 #[cfg(test)]
@@ -252,7 +254,7 @@ mod tests {
         let _file1 = File::create(&path3).unwrap();
         let _file2 = File::create(&path4).unwrap();
 
-        let metric = walk_tree(&path, &Path::new(""), &Pattern::new("*")?);
+        let metric = walk_tree(&path, &Path::new(""), &Pattern::new("*")?)?;
 
         let mut metric_cmp = vec![
             MetricResponseLeaf {
@@ -274,14 +276,9 @@ mod tests {
 
         metric_cmp.sort_by_key(|k| k.name.clone());
 
-        assert_eq!(
-            metric.unwrap(),
-            MetricResponse {
-                metrics: metric_cmp
-            }
-        );
+        assert_eq!(metric, metric_cmp);
 
-        let metric2 = walk_tree(&path, &Path::new("foo"), &Pattern::new("*")?);
+        let metric2 = walk_tree(&path, &Path::new("foo"), &Pattern::new("*")?)?;
 
         let mut metric_cmp2 = vec![MetricResponseLeaf {
             name: "bar".into(),
@@ -291,7 +288,7 @@ mod tests {
 
         metric_cmp2.sort_by_key(|k| k.name.clone());
 
-        assert_eq!(metric2.unwrap().metrics, metric_cmp2);
+        assert_eq!(metric2, metric_cmp2);
 
         Ok(())
     }
@@ -391,7 +388,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(FindPath::from(params)?, path);
+        assert_eq!(FindPath::from(&params)?, path);
 
         Ok(())
     }
@@ -411,7 +408,7 @@ mod tests {
             pattern: Pattern::new("123*")?,
         };
 
-        assert_eq!(FindPath::from(params)?, path);
+        assert_eq!(FindPath::from(&params)?, path);
 
         Ok(())
     }
