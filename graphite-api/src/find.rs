@@ -165,7 +165,7 @@ fn walk_tree(
             Ok(ref entry)
                 if pattern.matches_path(&entry.path().strip_prefix(&full_path).unwrap())
                     && entry.file_type().unwrap().is_file()
-                    && entry.path().extension().unwrap() == OsStr::new("wsp") =>
+                    && entry.path().extension() == Some(OsStr::new("wsp")) =>
             {
                 let name = entry
                     .path()
@@ -241,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    fn test_walk_tree() -> Result<(), Error> {
+    fn walk_tree_verify() -> Result<(), Error> {
         let dir = get_temp_dir();
         let path = dir.path();
         let path1 = path.join(Path::new("foo"));
@@ -294,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize() -> Result<(), Error> {
+    fn url_serialize() -> Result<(), Error> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -325,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize() -> Result<(), Error> {
+    fn url_deserialize() -> Result<(), Error> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -356,19 +356,16 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_default() -> Result<(), Error> {
+    fn url_deserialize_default() -> Result<(), Error> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::default(),
             wildcards: u8::default(),
-            from: 0,
-            until: 10,
+            from: u32::default(),
+            until: u32::max_value(),
         };
 
-        assert_eq!(
-            serde_urlencoded::from_str("query=123&from=0&until=10"),
-            Ok(params)
-        );
+        assert_eq!(serde_urlencoded::from_str("query=123"), Ok(params));
 
         Ok(())
     }
@@ -394,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn test_query() -> Result<(), Error> {
+    fn query_convertion() -> Result<(), Error> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -411,5 +408,40 @@ mod tests {
         assert_eq!(FindPath::from(&params)?, path);
 
         Ok(())
+    }
+
+    #[test]
+    fn metric_response_convertion() {
+        let mleaf: JsonTreeLeaf = MetricResponseLeaf {
+            name: "456".to_owned(),
+            path: "123.456".to_owned(),
+            is_leaf: true,
+        }.into();
+
+        let leaf = JsonTreeLeaf {
+            text: "123.456".to_owned(),
+            id: "456".to_owned(),
+            allow_children: 0,
+            expandable: 0,
+            leaf: 1,
+        };
+
+        assert_eq!(mleaf, leaf);
+
+        let mleaf2: JsonTreeLeaf = MetricResponseLeaf {
+            name: "789".to_owned(),
+            path: "123.456.789".to_owned(),
+            is_leaf: false,
+        }.into();
+
+        let leaf2 = JsonTreeLeaf {
+            text: "123.456.789".to_owned(),
+            id: "789".to_owned(),
+            allow_children: 1,
+            expandable: 1,
+            leaf: 0,
+        };
+
+        assert_eq!(mleaf2, leaf2);
     }
 }
