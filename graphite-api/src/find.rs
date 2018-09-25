@@ -142,43 +142,56 @@ fn walk_tree(
     let full_path = dir.canonicalize()?.join(&subdir);
     let dir_metric = subdir
         .components()
-        .map(|x| x.as_os_str().to_str().unwrap())
+        .filter_map(|x| x.as_os_str().to_str())
         .collect::<Vec<&str>>()
         .concat();
 
     let mut metrics: Vec<MetricResponseLeaf> = fs::read_dir(&full_path)?
         .into_iter()
-        .map(|entry| match entry {
-            Ok(ref entry)
-                if pattern.matches_path(&entry.path().strip_prefix(&full_path).unwrap())
-                    && entry.file_type().unwrap().is_dir() =>
-            {
-                let name = entry
-                    .path()
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_owned();
-                Some(create_leaf(&name, &dir_metric, false))
+        .filter_map(|entry| {
+            let (local_path, local_file_type) = match entry {
+                Ok(rentry) => (
+                    rentry.path().strip_prefix(&full_path).map(|x| x.to_owned()),
+                    rentry.file_type(),
+                ),
+                _ => return None,
+            };
+
+            match (&local_path, &local_file_type) {
+                (Ok(path), Ok(file_type)) if pattern.matches_path(&path) && file_type.is_dir() => {
+                    let name = match path.file_name() {
+                        Some(file_name) => {
+                            if let Some(file_name_str) = file_name.to_str() {
+                                file_name_str.to_owned()
+                            } else {
+                                return None;
+                            }
+                        }
+                        _ => return None,
+                    };
+                    Some(create_leaf(&name, &dir_metric, false))
+                }
+                (Ok(path), Ok(file_type))
+                    if pattern.matches_path(&path)
+                        && file_type.is_file()
+                        && path.extension() == Some(OsStr::new("wsp")) =>
+                {
+                    let name = match path.file_stem() {
+                        Some(file_name) => {
+                            if let Some(file_name_str) = file_name.to_str() {
+                                file_name_str.to_owned()
+                            } else {
+                                return None;
+                            }
+                        }
+                        _ => return None,
+                    };
+
+                    Some(create_leaf(&name, &dir_metric, true))
+                }
+                _ => None,
             }
-            Ok(ref entry)
-                if pattern.matches_path(&entry.path().strip_prefix(&full_path).unwrap())
-                    && entry.file_type().unwrap().is_file()
-                    && entry.path().extension() == Some(OsStr::new("wsp")) =>
-            {
-                let name = entry
-                    .path()
-                    .file_stem()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_owned();
-                Some(create_leaf(&name, &dir_metric, true))
-            }
-            _ => None,
-        }).filter_map(|x| x)
-        .collect();
+        }).collect();
 
     metrics.sort_by_key(|k| k.name.clone());
     Ok(metrics)

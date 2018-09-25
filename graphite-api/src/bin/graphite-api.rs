@@ -9,10 +9,11 @@ use actix_web::server;
 use graphite_api::application::create_app;
 use graphite_api::opts::Args;
 use std::fs::create_dir;
+use std::io;
 use std::process::exit;
 use structopt::StructOpt;
 
-fn main() {
+fn main() -> io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
@@ -40,9 +41,10 @@ fn main() {
     let sys = actix::System::new("graphite-api");
 
     server::new(move || create_app(args.clone()))
-        .bind(listen)
-        .unwrap()
+        .bind(listen)?
         .start();
 
     let _ = sys.run();
+
+    Ok(())
 }
