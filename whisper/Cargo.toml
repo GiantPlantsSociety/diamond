@@ -2,6 +2,8 @@
 name = "whisper"
 version = "0.1.0"
 authors = ["Andrey Kutejko <andrey.kutejko@sizmek.com>"]
+license = "MIT"
+repository = "https://github.com/GiantPlantsSociety/graphite-rs"
 
 [dependencies]
 regex = "1"
