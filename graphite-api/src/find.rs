@@ -1,4 +1,4 @@
-use actix_web::{Form, HttpRequest, HttpResponse, Json, Query};
+use actix_web::{Form, HttpResponse, Json, Query, State};
 use failure::Error;
 use glob::Pattern;
 use std::convert::From;
@@ -203,24 +203,24 @@ fn metrics_find(args: &Args, params: &FindQuery) -> Result<HttpResponse, Error> 
 }
 
 pub fn metrics_find_get(
-    req: HttpRequest<Args>,
+    state: State<Args>,
     params: Query<FindQuery>,
 ) -> Result<HttpResponse, Error> {
-    metrics_find(req.state(), &params.into_inner())
+    metrics_find(&state, &params.into_inner())
 }
 
 pub fn metrics_find_form(
-    req: HttpRequest<Args>,
+    state: State<Args>,
     params: Form<FindQuery>,
 ) -> Result<HttpResponse, Error> {
-    metrics_find(req.state(), &params.into_inner())
+    metrics_find(&state, &params.into_inner())
 }
 
 pub fn metrics_find_json(
-    req: HttpRequest<Args>,
+    state: State<Args>,
     params: Json<FindQuery>,
 ) -> Result<HttpResponse, Error> {
-    metrics_find(req.state(), &params.into_inner())
+    metrics_find(&state, &params.into_inner())
 }
 
 #[cfg(test)]
