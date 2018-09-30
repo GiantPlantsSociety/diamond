@@ -3,4 +3,5 @@ members = [
     "whisper",
     "whisper_tests",
     "carbon",
+    "graphite-api",
 ]

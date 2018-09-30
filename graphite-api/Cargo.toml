@@ -1,0 +1,21 @@
+[package]
+name = "graphite-api"
+description = "Graphite API"
+version = "0.1.0"
+authors = ["Andrii Radyk <ander.ender@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/GiantPlantsSociety/graphite-rs"
+
+[dependencies]
+failure = "0.1.2"
+actix = "0.7"
+actix-web = "0.7"
+serde = "1"
+serde_json = "1"
+serde_derive = "1"
+serde_urlencoded = "0.5"
+structopt = "0.2"
+tempfile = "3.0.4"
+glob = "0.2"
+env_logger = "0.5"
+whisper = { path = "../whisper" }
