@@ -232,64 +232,32 @@ fn calling_as_plain() {
             ).from_utf8(),
         ).stderr("");
 }
-/*
-#![cfg(test)]
-
-extern crate assert_cli;
-extern crate unindent;
-extern crate whisper_tests;
-
-use unindent::unindent;
-use whisper_tests::*;
-
 
 #[test]
-fn calling_as_plain() -> Result<(), assert_cli::AssertionError> {
-    let temp_dir = get_temp_dir();
-    let path = copy_test_file(&temp_dir, "info.wsp");
+fn calling_as_json() {
+    let filename = "info.wsp";
 
-    get_binary_command(NAME)
-        .with_args(&[ path.to_str().unwrap() ])
-        .stdout().contains(
-            unindent("
-                maxRetention: 172800
-                xFilesFactor: 0.5
-                aggregationMethod: average
-                fileSize: 34600
-                ").as_str()
-            )
-        .stdout().contains(
-            unindent("
-                Archive 0
-                retention: 86400
-                secondsPerPoint: 60
-                points: 1440
-                size: 17280
-                offset: 40
-                ").as_str()
-            )
-        .stdout().contains(
-            unindent("
-                Archive 1
-                retention: 172800
-                secondsPerPoint: 120
-                points: 1440
-                size: 17280
-                offset: 17320
-                ").as_str()
-            )
-        .execute()
-}
+    let path = Builder::new()
+        .prefix("whisper")
+        .suffix(filename)
+        .tempdir()
+        .unwrap()
+        .path()
+        .to_path_buf();
 
-#[test]
-fn calling_as_json() -> Result<(), assert_cli::AssertionError> {
-    let temp_dir = get_temp_dir();
-    let path = copy_test_file(&temp_dir, "info.wsp");
+    let file_path = PathBuf::new().join("data").join(filename);
 
-    get_binary_command(NAME)
-        .with_args(&[ path.to_str().unwrap(), "--json" ])
-        .stdout().contains(
-            unindent(r#"
+    fs::copy(&file_path, &path).unwrap();
+
+    Command::cargo_bin(NAME)
+        .unwrap()
+        .args(&[path.to_str().unwrap(), "--json"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains(
+                unindent(
+                    r#"
                 {
                   "aggregationMethod": "average",
                   "archives": [
@@ -312,8 +280,8 @@ fn calling_as_json() -> Result<(), assert_cli::AssertionError> {
                   "maxRetention": 172800,
                   "xFilesFactor": 0.5
                 }
-                "#).as_str()
-            )
-        .execute()
+                "#,
+                ).as_str(),
+            ).from_utf8(),
+        ).stderr("");
 }
-*/
