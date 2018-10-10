@@ -35,7 +35,7 @@ struct Args {
     #[structopt(long = "pretty")]
     pretty: bool,
 
-    /// Time format to use with --pretty; see https://docs.rs/chrono/0.4.0/chrono/format/strftime/index.html
+    /// Time format to use with --pretty; see https://docs.rs/chrono/0.4.6/chrono/format/strftime/index.html
     #[structopt(long = "time-format", short = "t")]
     time_format: Option<String>,
 
@@ -83,7 +83,8 @@ fn run(args: &Args) -> Result<(), Error> {
         Some(ref s) => return Err(format_err!("No such drop option {}.", s)),
     };
 
-    let archive = file.fetch(seconds_per_point, interval, now)?
+    let archive = file
+        .fetch(seconds_per_point, interval, now)?
         .ok_or_else(|| err_msg("No data in selected timerange"))?
         .filter_out(&filter);
 

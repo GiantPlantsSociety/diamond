@@ -17,7 +17,7 @@ struct Args {
     #[structopt(long = "pretty", requires = "time_format")]
     pretty: bool,
 
-    /// Time format to use with --pretty; see https://docs.rs/chrono/0.4.0/chrono/format/strftime/index.html
+    /// Time format to use with --pretty; see https://docs.rs/chrono/0.4.6/chrono/format/strftime/index.html
     #[structopt(long = "time-format", short = "t", requires = "pretty")]
     time_format: Option<String>,
 

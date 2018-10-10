@@ -1,19 +1,15 @@
 extern crate rand;
 extern crate tempfile;
-extern crate assert_cli;
 extern crate whisper;
 
-use std::fs;
-use std::path::PathBuf;
-use std::ffi::OsStr;
-use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
-use tempfile::{TempDir, Builder};
-use assert_cli::Assert;
+use rand::{thread_rng, Rng};
+use std::path::PathBuf;
+use tempfile::{Builder, TempDir};
 
-use whisper::*;
 use whisper::point::*;
 use whisper::retention::*;
+use whisper::*;
 
 pub fn get_temp_dir() -> TempDir {
     Builder::new()
@@ -29,19 +25,6 @@ pub fn get_file_path(temp_dir: &TempDir, prefix: &str) -> PathBuf {
     path
 }
 
-pub fn copy_test_file(temp_dir: &TempDir, filename: &str) -> PathBuf {
-    let file_path = PathBuf::new()
-        .join("data")
-        .join(filename);
-
-    let tmp_file_path = temp_dir.path()
-        .join(filename);
-
-    fs::copy(&file_path, &tmp_file_path).unwrap();
-
-    tmp_file_path
-}
-
 pub fn random_string(len: usize) -> String {
     thread_rng()
         .sample_iter(&Alphanumeric)
@@ -49,28 +32,12 @@ pub fn random_string(len: usize) -> String {
         .collect::<String>()
 }
 
-pub fn get_binary_command(binary_name: &str) -> Assert {
-    Assert::command(&[
-        OsStr::new("cargo"),
-        OsStr::new("run"),
-        #[cfg(not(debug_assertions))]
-        OsStr::new("--release"),
-        OsStr::new("--quiet"),
-        OsStr::new("-p"),
-        OsStr::new("whisper"),
-        OsStr::new("--bin"),
-        OsStr::new(binary_name),
-        OsStr::new("--"),
-    ])
-}
-
 pub fn create_and_update_points(path: &PathBuf, points: &[Point], now: u32) -> WhisperFile {
     let mut file = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
             points: 10,
-        })
-        .build(path)
+        }).build(path)
         .unwrap();
 
     file.update_many(&points, now).unwrap();
