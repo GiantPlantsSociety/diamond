@@ -20,7 +20,7 @@ walkdir = "2.1.4"
 humansize = "1.1.0"
 
 [dev-dependencies]
-assert_cmd = "0.9"
+assert_cmd = "0.10"
 predicates = "0.9"
 tempfile = "3"
 unindent = "0.1"
