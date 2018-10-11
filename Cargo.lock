@@ -939,8 +939,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "predicates"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "float-cmp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "normalize-line-endings 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "predicates-core 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "predicates-core"
 version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "predicates-core"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1698,7 +1715,7 @@ dependencies = [
  "humansize 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
- "predicates 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "predicates 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1897,7 +1914,9 @@ dependencies = [
 "checksum phf_generator 0.7.23 (registry+https://github.com/rust-lang/crates.io-index)" = "03dc191feb9b08b0dc1330d6549b795b9d81aec19efe6b4a45aec8d4caee0c4b"
 "checksum phf_shared 0.7.23 (registry+https://github.com/rust-lang/crates.io-index)" = "b539898d22d4273ded07f64a05737649dc69095d92cb87c7097ec68e3f150b93"
 "checksum predicates 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f31e7977fc111984fdac76b6ae3a4cb598008fc6fd02dfdca189bf180bd7be20"
+"checksum predicates 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fa984b7cd021a0bf5315bcce4c4ae61d2a535db2a8d288fc7578638690a7b7c3"
 "checksum predicates-core 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "85f80bc390d1c02a4cdaa63f27f05c3c426679eb65433d8dd65d392147e4e5c5"
+"checksum predicates-core 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "06075c3a3e92559ff8929e7a280684489ea27fe44805174c3ebd9328dcb37178"
 "checksum predicates-tree 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2e86df9b81bdcb0a5141aca9d2b9c5e0c558ef6626d3ae2c12912f5c9df740bd"
 "checksum proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)" = "3d7b7eaaa90b4a90a932a9ea6666c95a389e424eff347f0f793979289429feee"
 "checksum quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9274b940887ce9addde99c4eee6b5c44cc494b182b97e73dc8ffdcb3397fd3f0"
