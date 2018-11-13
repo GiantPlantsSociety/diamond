@@ -17,5 +17,5 @@ serde_urlencoded = "0.5"
 structopt = "0.2"
 tempfile = "3.0.4"
 glob = "0.2"
-env_logger = "0.5"
+env_logger = "0.6"
 whisper = { path = "../whisper" }
