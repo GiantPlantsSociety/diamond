@@ -1,11 +1,9 @@
-#[macro_use]
 extern crate structopt;
-#[macro_use]
 extern crate failure;
 extern crate serde_json;
 extern crate whisper;
 
-use failure::Error;
+use failure::{Error, format_err};
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};

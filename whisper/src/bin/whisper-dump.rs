@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate structopt;
 extern crate chrono;
 extern crate failure;

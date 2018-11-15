@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use regex::Regex;
+use lazy_static::lazy_static;
 
 fn get_unit_multiplier(s: &str) -> Result<u32, String> {
     if s.is_empty() || "seconds".starts_with(s) {

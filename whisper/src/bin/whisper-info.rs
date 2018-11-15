@@ -1,15 +1,13 @@
-#[macro_use]
 extern crate structopt;
-#[macro_use]
 extern crate failure;
-#[macro_use]
 extern crate serde_json;
 extern crate whisper;
 
-use failure::Error;
+use failure::{Error, format_err};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use std::process::exit;
+use serde_json::json;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-info")]
