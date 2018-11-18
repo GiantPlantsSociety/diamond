@@ -1,3 +1,5 @@
+use failure::*;
+
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "{}", _0)]

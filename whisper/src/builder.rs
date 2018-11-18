@@ -4,6 +4,7 @@ use std::path::Path;
 use super::*;
 use retention::Retention;
 use aggregation::AggregationMethod;
+use failure::*;
 
 pub struct WhisperBuilder {
     aggregation_method: AggregationMethod,

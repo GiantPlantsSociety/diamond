@@ -1,11 +1,8 @@
-#[macro_use]
 extern crate failure;
 extern crate regex;
-#[macro_use]
 extern crate lazy_static;
 extern crate byteorder;
 extern crate libc;
-#[macro_use]
 extern crate serde_derive;
 
 use std::io::{self, Read, Write, Seek};
@@ -13,6 +10,8 @@ use std::fs;
 use std::path::Path;
 use std::collections::HashSet;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+
+use serde_derive::*;
 
 /*
 # This module is an implementation of the Whisper database API

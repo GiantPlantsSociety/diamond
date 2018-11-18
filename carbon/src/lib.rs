@@ -1,11 +1,12 @@
-#[macro_use]
 extern crate failure;
-#[macro_use]
 extern crate lazy_static;
 extern crate regex;
 extern crate whisper;
 
 use failure::Error;
+use failure::*;
+use lazy_static::lazy_static;
+
 use regex::Regex;
 use std::convert::From;
 use std::path::PathBuf;

@@ -1,5 +1,6 @@
 use actix_web::{Form, HttpResponse, Json, Query, State};
-use failure::Error;
+use failure::*;
+use serde_derive::*;
 use glob::Pattern;
 use std::convert::From;
 use std::ffi::OsStr;
