@@ -2,8 +2,8 @@ use std::default;
 use std::convert::AsRef;
 use std::path::Path;
 use super::*;
-use retention::Retention;
-use aggregation::AggregationMethod;
+use crate::retention::Retention;
+use crate::aggregation::AggregationMethod;
 use failure::*;
 
 pub struct WhisperBuilder {

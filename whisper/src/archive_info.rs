@@ -1,7 +1,7 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use point::Point;
+use crate::point::Point;
 use std::io;
-use POINT_SIZE;
+use crate::POINT_SIZE;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ArchiveInfo {

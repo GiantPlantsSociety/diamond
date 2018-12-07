@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::io;
 use super::*;
-use interval::Interval;
+use crate::interval::Interval;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

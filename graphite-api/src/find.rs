@@ -7,7 +7,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use opts::*;
+use crate::opts::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MetricResponse {

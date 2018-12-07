@@ -1,5 +1,5 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use error::ParseError;
+use crate::error::ParseError;
 use std::io;
 use std::str::FromStr;
 

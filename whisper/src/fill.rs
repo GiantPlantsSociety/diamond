@@ -1,5 +1,5 @@
 use super::*;
-use interval::Interval;
+use crate::interval::Interval;
 use std::io;
 use std::path::Path;
 
@@ -76,7 +76,7 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
     archives.sort_by_key(|a| a.retention());
 
     for archive in &archives {
-        let mut from_time = now - archive.retention();
+        let from_time = now - archive.retention();
 
         if from_time >= start_from {
             continue;
