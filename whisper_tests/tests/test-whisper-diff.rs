@@ -1,7 +1,3 @@
-extern crate rand;
-extern crate whisper;
-extern crate whisper_tests;
-
 use whisper::diff::*;
 use whisper::point::*;
 use whisper::retention::*;

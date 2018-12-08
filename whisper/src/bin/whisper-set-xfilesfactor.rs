@@ -1,11 +1,7 @@
-extern crate structopt;
-extern crate failure;
-extern crate whisper;
-
 use failure::Error;
 use std::path::PathBuf;
-use structopt::StructOpt;
 use std::process::exit;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(

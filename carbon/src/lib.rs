@@ -1,8 +1,3 @@
-extern crate failure;
-extern crate lazy_static;
-extern crate regex;
-extern crate whisper;
-
 use failure::Error;
 use failure::*;
 use lazy_static::lazy_static;

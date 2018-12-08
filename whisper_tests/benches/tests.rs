@@ -1,7 +1,3 @@
-extern crate bencher;
-extern crate whisper;
-extern crate whisper_tests;
-
 use bencher::Bencher;
 use bencher::{benchmark_main, benchmark_group};
 use std::path::Path;

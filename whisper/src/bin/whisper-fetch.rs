@@ -1,11 +1,5 @@
-extern crate structopt;
-extern crate chrono;
-extern crate serde_json;
-extern crate failure;
-extern crate whisper;
-
 use chrono::prelude::NaiveDateTime;
-use failure::{err_msg, Error, format_err};
+use failure::{err_msg, format_err, Error};
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};

@@ -1,8 +1,3 @@
-extern crate structopt;
-extern crate carbon;
-extern crate failure;
-extern crate whisper;
-
 use carbon::{MetricPath, MetricPoint};
 use failure::Error;
 use std::fs;

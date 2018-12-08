@@ -1,7 +1,3 @@
-extern crate whisper;
-extern crate whisper_tests;
-extern crate byteorder;
-
 use std::fs;
 use byteorder::{BigEndian, WriteBytesExt};
 use whisper::*;

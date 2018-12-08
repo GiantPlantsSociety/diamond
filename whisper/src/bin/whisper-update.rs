@@ -1,7 +1,3 @@
-extern crate structopt;
-extern crate failure;
-extern crate whisper;
-
 use failure::Error;
 use std::path::PathBuf;
 use std::process::exit;
