@@ -239,8 +239,8 @@ pub fn metrics_find_json(
 
 #[cfg(test)]
 mod tests {
-    extern crate serde_urlencoded;
-    extern crate tempfile;
+    use serde_urlencoded;
+    use tempfile;
 
     use super::*;
     use std::fs::create_dir;

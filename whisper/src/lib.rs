@@ -1,10 +1,4 @@
-extern crate failure;
-extern crate regex;
-extern crate lazy_static;
-extern crate byteorder;
-extern crate libc;
-extern crate serde_derive;
-
+use failure;
 use std::io::{self, Read, Write, Seek};
 use std::fs;
 use std::path::Path;
@@ -570,7 +564,7 @@ impl ArchiveData {
             .collect()
     }
 
-    pub fn filter_out(&self, f: &Fn(&Option<f64>) -> bool) -> ArchiveData {
+    pub fn filter_out(&self, f: &dyn Fn(&Option<f64>) -> bool) -> ArchiveData {
         ArchiveData {
             values: self.values.clone().into_iter().filter(f).collect(),
             ..*self

@@ -39,7 +39,7 @@ fn format_none(float: Option<f64>) -> String {
 }
 
 impl fmt::Display for DiffArchiveInfo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for archive in &self.archives {
             if f.alternate() {
                 writeln!(
@@ -83,7 +83,7 @@ impl fmt::Display for DiffArchiveInfo {
 pub struct DiffHeader();
 
 impl fmt::Display for DiffHeader {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             write!(
                 f,
@@ -123,7 +123,7 @@ pub struct DiffArchiveSummary {
 }
 
 impl fmt::Display for DiffArchiveSummary {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for archive in &self.archives {
             if f.alternate() {
                 writeln!(
@@ -147,7 +147,7 @@ impl fmt::Display for DiffArchiveSummary {
 pub struct DiffSummaryHeader();
 
 impl fmt::Display for DiffSummaryHeader {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             write!(f, "{:>7} {:>9} {:>9}", "archive", "total", "differing")?;
         } else {
