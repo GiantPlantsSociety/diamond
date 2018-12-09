@@ -22,7 +22,7 @@ fn test_diff_simple_filtered() -> Result<(), Error> {
             Point { interval: now - 300, value: 300.0 },
         ],
         now,
-    );
+    )?;
 
     let _file2 = create_and_update_points(
         &path2,
@@ -33,7 +33,7 @@ fn test_diff_simple_filtered() -> Result<(), Error> {
             Point { interval: now - 480, value: 480.0 },
         ],
         now,
-    );
+    )?;
 
     let diff_points = whisper::diff::diff(&path1, &path2, true, now, now)?;
 
@@ -70,7 +70,7 @@ fn test_diff_simple_unfiltered() -> Result<(), Error> {
             Point { interval: now - 540, value: 540.0 },
         ],
         now,
-    );
+    )?;
 
     let _file2 = create_and_update_points(
         &path2,
@@ -82,7 +82,7 @@ fn test_diff_simple_unfiltered() -> Result<(), Error> {
             Point { interval: now - 540, value: 540.0 },
         ],
         now,
-    );
+    )?;
 
     let diff_points = whisper::diff::diff(&path1, &path2, false, now, now)?;
 

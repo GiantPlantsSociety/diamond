@@ -1,5 +1,4 @@
 use failure::Error;
-use std::io;
 use std::path::PathBuf;
 use whisper::point::*;
 use whisper::retention::*;
@@ -144,7 +143,7 @@ fn test_merge_errors() -> Result<(), builder::BuilderError> {
 }
 
 #[test]
-fn test_merge_overwrite() -> Result<(), io::Error> {
+fn test_merge_overwrite() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -169,7 +168,7 @@ fn test_merge_overwrite() -> Result<(), io::Error> {
             },
         ],
         now,
-    );
+    )?;
 
     let mut file2 = create_and_update_points(
         &path2,
@@ -192,7 +191,7 @@ fn test_merge_overwrite() -> Result<(), io::Error> {
             },
         ],
         now,
-    );
+    )?;
 
     whisper::merge::merge(&path1, &path2, 0, now, now)?;
     let points = file2.dump(60)?;
@@ -227,7 +226,7 @@ fn test_merge_overwrite() -> Result<(), io::Error> {
 }
 
 #[test]
-fn test_fill_overlap() -> Result<(), io::Error> {
+fn test_fill_overlap() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -252,7 +251,7 @@ fn test_fill_overlap() -> Result<(), io::Error> {
             },
         ],
         now,
-    );
+    )?;
 
     let mut file2 = create_and_update_points(
         &path2,
@@ -275,7 +274,7 @@ fn test_fill_overlap() -> Result<(), io::Error> {
             },
         ],
         now,
-    );
+    )?;
 
     whisper::fill::fill(&path1, &path2, now, now)?;
     let points = file2.dump(60)?;
