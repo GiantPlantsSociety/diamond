@@ -1,8 +1,8 @@
+use failure::Error;
 use whisper::point::Point;
 use whisper::retention::*;
 use whisper::*;
 use whisper_tests::*;
-use failure::Error;
 
 #[test]
 fn issue8_many() -> Result<(), Error> {
