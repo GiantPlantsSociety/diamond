@@ -3,8 +3,6 @@ cache: cargo
 sudo: required
 
 rust:
-  - nightly
-  - beta
   - stable
 
 os:
@@ -15,11 +13,6 @@ addons:
   apt:
     packages:
       - libssl-dev
-
-matrix:
-  allow_failures:
-    - rust: nightly
-  fast_finish: true
 
 env:
   global:
@@ -37,14 +30,14 @@ script:
     CARGO
     cargo build --benches --verbose
   - |
-    if [[ "$TRAVIS_RUST_VERSION" == "stable" && "$TRAVIS_OS_NAME" == "linux" ]]; then
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       export CARGO_TARGET_DIR="$(pwd)/target"
       RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install --force --git https://github.com/AnderEnder/tarpaulin --branch stable-master cargo-tarpaulin
     fi
 
 after_success:
   - |
-    if [[ "$TRAVIS_RUST_VERSION" == "stable" && "$TRAVIS_OS_NAME" == "linux" ]]; then
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       cargo tarpaulin --skip-clean -f -t 5 --out Xml
       bash <(curl -s https://codecov.io/bash)
     fi
