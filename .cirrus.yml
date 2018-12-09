@@ -1,0 +1,20 @@
+windows_container:
+  image: cirrusci/windowsservercore:2016
+
+task:
+  env:
+    CIRRUS_SHELL: powershell
+    RUST_BACKTRACE: 1
+  matrix:
+    - name: stable-x86_64-pc-windows-msvc
+      env:
+        target: x86_64-pc-windows-msvc
+  setup_script:
+    - Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://win.rustup.rs/'))
+    - rustup-init -yv --default-toolchain stable --default-host $env:target
+    - $env:Path += "$env:userprofile\.cargo\bin"
+    - rustc -vV
+    - cargo -vV
+  test_script:
+    - cargo build --verbose
+    - cargo test -- --nocapture
