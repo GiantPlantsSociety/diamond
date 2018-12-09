@@ -1,7 +1,3 @@
-extern crate whisper;
-extern crate whisper_tests;
-extern crate failure;
-
 use whisper::point::Point;
 use whisper::retention::*;
 use whisper::*;

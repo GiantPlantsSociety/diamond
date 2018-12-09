@@ -1,10 +1,5 @@
-extern crate actix;
-extern crate actix_web;
-extern crate env_logger;
-extern crate failure;
-extern crate graphite_api;
-extern crate structopt;
-
+use actix;
+use env_logger;
 use actix_web::server;
 use graphite_api::application::create_app;
 use graphite_api::opts::Args;

@@ -1,7 +1,3 @@
-extern crate rand;
-extern crate tempfile;
-extern crate whisper;
-
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::path::PathBuf;

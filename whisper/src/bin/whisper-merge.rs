@@ -1,14 +1,10 @@
-extern crate structopt;
-extern crate failure;
-extern crate whisper;
-
+use failure::format_err;
 use failure::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::merge::merge;
-use failure::format_err;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-merge")]

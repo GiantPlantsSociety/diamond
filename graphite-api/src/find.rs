@@ -7,7 +7,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use opts::*;
+use crate::opts::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MetricResponse {
@@ -239,8 +239,8 @@ pub fn metrics_find_json(
 
 #[cfg(test)]
 mod tests {
-    extern crate serde_urlencoded;
-    extern crate tempfile;
+    use serde_urlencoded;
+    use tempfile;
 
     use super::*;
     use std::fs::create_dir;

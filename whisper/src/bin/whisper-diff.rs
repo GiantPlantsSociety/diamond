@@ -1,9 +1,4 @@
-extern crate structopt;
-extern crate failure;
-extern crate serde_json;
-extern crate whisper;
-
-use failure::{Error, format_err};
+use failure::{format_err, Error};
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};

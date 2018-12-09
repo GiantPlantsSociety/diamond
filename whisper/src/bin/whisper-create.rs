@@ -1,8 +1,3 @@
-extern crate structopt;
-extern crate failure;
-extern crate humansize;
-extern crate whisper;
-
 use failure::Error;
 use humansize::{file_size_opts as options, FileSize};
 use std::fs;

@@ -1,13 +1,8 @@
-extern crate structopt;
-extern crate failure;
-extern crate serde_json;
-extern crate whisper;
-
-use failure::{Error, format_err};
-use std::path::PathBuf;
-use structopt::StructOpt;
-use std::process::exit;
+use failure::{format_err, Error};
 use serde_json::json;
+use std::path::PathBuf;
+use std::process::exit;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-info")]

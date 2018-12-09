@@ -1,8 +1,3 @@
-extern crate structopt;
-extern crate chrono;
-extern crate failure;
-extern crate whisper;
-
 use chrono::prelude::NaiveDateTime;
 use failure::Error;
 use std::path::PathBuf;

@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use structopt::*;
+use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "graphite-api")]

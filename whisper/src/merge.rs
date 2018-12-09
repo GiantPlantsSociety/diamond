@@ -1,7 +1,7 @@
 use std::io;
 use std::path::Path;
 use super::*;
-use interval::Interval;
+use crate::interval::Interval;
 
 /**
  * Merges the data from one whisper file into another. Each file must have

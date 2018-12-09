@@ -1,10 +1,4 @@
-extern crate failure;
-extern crate regex;
-extern crate lazy_static;
-extern crate byteorder;
-extern crate libc;
-extern crate serde_derive;
-
+use failure;
 use std::io::{self, Read, Write, Seek};
 use std::fs;
 use std::path::Path;
@@ -57,12 +51,12 @@ pub mod diff;
 pub mod merge;
 pub mod fill;
 
-use interval::*;
-use aggregation::*;
-use point::*;
-use archive_info::*;
+use crate::interval::*;
+use crate::aggregation::*;
+use crate::point::*;
+use crate::archive_info::*;
 
-pub use builder::WhisperBuilder;
+pub use crate::builder::WhisperBuilder;
 
 pub const METADATA_SIZE: usize = 16;
 pub const ARCHIVE_INFO_SIZE: usize = 12;
@@ -570,7 +564,7 @@ impl ArchiveData {
             .collect()
     }
 
-    pub fn filter_out(&self, f: &Fn(&Option<f64>) -> bool) -> ArchiveData {
+    pub fn filter_out(&self, f: &dyn Fn(&Option<f64>) -> bool) -> ArchiveData {
         ArchiveData {
             values: self.values.clone().into_iter().filter(f).collect(),
             ..*self

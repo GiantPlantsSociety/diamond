@@ -1,8 +1,3 @@
-extern crate structopt;
-extern crate failure;
-extern crate walkdir;
-extern crate whisper;
-
 use failure::Error;
 use std::fs::remove_file;
 use std::path::{Path, PathBuf};

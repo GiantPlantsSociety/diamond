@@ -1,10 +1,3 @@
-#![cfg(test)]
-
-extern crate assert_cmd;
-extern crate predicates;
-extern crate tempfile;
-extern crate unindent;
-
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use std::fs;
