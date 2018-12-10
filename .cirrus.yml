@@ -10,7 +10,7 @@ task:
       env:
         target: x86_64-pc-windows-msvc
   setup_script:
-    - 'Set-PSDebug -Trace 1; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile("https://win.rustup.rs/", "$pwd/rustup-init.exe"); "$pwd/rustup-init.exe" -yv --default-toolchain stable --default-host $env:target'
+    - 'Set-PSDebug -Trace 1; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile("https://win.rustup.rs/", "$pwd\rustup-init.exe"); .\rustup-init.exe -yv --default-toolchain stable --default-host $env:target'
     - $env:Path += "$env:userprofile\.cargo\bin"
     - rustc -vV
     - cargo -vV
