@@ -11,6 +11,6 @@ task:
         target: x86_64-pc-windows-msvc
   setup_script:
     - '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile("https://win.rustup.rs/", "$pwd\rustup-init.exe"); .\rustup-init.exe -yv --default-toolchain stable --default-host $env:target'
-    - $env:Path += "$env:userprofile\.cargo\bin"; rustc -vV; cargo -vV
+    - $env:Path += ";$env:userprofile\.cargo\bin"; rustc -vV; cargo -vV
   test_script:
-    - $env:Path += "$env:userprofile\.cargo\bin"; cargo build --verbose; cargo test -- --nocapture
+    - $env:Path += ";$env:userprofile\.cargo\bin"; cargo build --verbose; cargo test -- --nocapture
