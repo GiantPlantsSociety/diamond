@@ -1,5 +1,6 @@
 use std::fs;
 use byteorder::{BigEndian, WriteBytesExt};
+use failure::Error;
 use whisper::*;
 use whisper::point::Point;
 use whisper::retention::*;
@@ -29,15 +30,14 @@ impl Dump for Vec<u8> {
 }
 
 #[test]
-fn test_update_snapshot() {
+fn test_update_snapshot() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "update_snapshot");
 
     {
         WhisperBuilder::default()
             .add_retention(Retention { seconds_per_point: 1, points: 10 })
-            .build(path.clone())
-            .unwrap();
+            .build(path.clone())?;
     }
 
     let header = Vec::new()
@@ -50,7 +50,7 @@ fn test_update_snapshot() {
         .u32(1) // seconds per point
         .u32(10); // points
 
-    assert_eq!(fs::read(&path).unwrap(),
+    assert_eq!(fs::read(&path)?,
         header.clone()
             .u32(0).f64(0.0)
             .u32(0).f64(0.0)
@@ -65,11 +65,11 @@ fn test_update_snapshot() {
     );
 
     {
-        let mut file = WhisperFile::open(&path).unwrap();
-        file.update_many(&[Point { interval: 0x5b171b00, value: 123.0 }], 0x5b171b04).unwrap();
+        let mut file = WhisperFile::open(&path)?;
+        file.update_many(&[Point { interval: 0x5b171b00, value: 123.0 }], 0x5b171b04)?;
     }
 
-    assert_eq!(fs::read(&path).unwrap(),
+    assert_eq!(fs::read(&path)?,
         header.clone()
             .u32(0x5b171b00).f64(123.0)
             .u32(0).f64(0.0)
@@ -84,11 +84,11 @@ fn test_update_snapshot() {
     );
 
     {
-        let mut file = WhisperFile::open(&path).unwrap();
-        file.update_many(&[Point { interval: 0x5b171b01, value: 123.0 }], 0x5b171b04).unwrap();
+        let mut file = WhisperFile::open(&path)?;
+        file.update_many(&[Point { interval: 0x5b171b01, value: 123.0 }], 0x5b171b04)?;
     }
 
-    assert_eq!(fs::read(&path).unwrap(),
+    assert_eq!(fs::read(&path)?,
         header.clone()
             .u32(0x5b171b00).f64(123.0)
             .u32(0x5b171b01).f64(123.0)
@@ -103,11 +103,11 @@ fn test_update_snapshot() {
     );
 
     {
-        let mut file = WhisperFile::open(&path).unwrap();
-        file.update_many(&[Point { interval: 0x5b171b04, value: 123.0 }, Point { interval: 0x5b171b06, value: 123.0 }], 0x5b171b04).unwrap();
+        let mut file = WhisperFile::open(&path)?;
+        file.update_many(&[Point { interval: 0x5b171b04, value: 123.0 }, Point { interval: 0x5b171b06, value: 123.0 }], 0x5b171b04)?;
     }
 
-    assert_eq!(fs::read(&path).unwrap(),
+    assert_eq!(fs::read(&path)?,
         header.clone()
             .u32(0x5b171b00).f64(123.0)
             .u32(0x5b171b01).f64(123.0)
@@ -120,10 +120,12 @@ fn test_update_snapshot() {
             .u32(0).f64(0.0)
             .u32(0).f64(0.0)
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_update_and_aggregate_snapshot() {
+fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "update_and_aggregate_snapshot");
 
@@ -131,8 +133,7 @@ fn test_update_and_aggregate_snapshot() {
         WhisperBuilder::default()
             .add_retention(Retention { seconds_per_point: 1, points: 5 })
             .add_retention(Retention { seconds_per_point: 2, points: 10 })
-            .build(path.clone())
-            .unwrap();
+            .build(path.clone())?;
     }
 
     let header = Vec::new()
@@ -149,7 +150,7 @@ fn test_update_and_aggregate_snapshot() {
         .u32(2) // seconds per point
         .u32(10); // points
 
-    assert_eq!(fs::read(&path).unwrap(),
+    assert_eq!(fs::read(&path)?,
         header.clone()
             // archive 1
             .u32(0).f64(0.0)
@@ -171,11 +172,11 @@ fn test_update_and_aggregate_snapshot() {
     );
 
     {
-        let mut file = WhisperFile::open(&path).unwrap();
-        file.update_many(&[Point { interval: 0x5b171b00, value: 123.0 }], 0x5b171b04).unwrap();
+        let mut file = WhisperFile::open(&path)?;
+        file.update_many(&[Point { interval: 0x5b171b00, value: 123.0 }], 0x5b171b04)?;
     }
 
-    assert_eq!(fs::read(&path).unwrap(),
+    assert_eq!(fs::read(&path)?,
         header.clone()
             // archive 1
             .u32(0x5b171b00).f64(123.0)
@@ -197,11 +198,11 @@ fn test_update_and_aggregate_snapshot() {
     );
 
     {
-        let mut file = WhisperFile::open(&path).unwrap();
-        file.update_many(&[Point { interval: 0x5b171b01, value: 23.0 }], 0x5b171b04).unwrap();
+        let mut file = WhisperFile::open(&path)?;
+        file.update_many(&[Point { interval: 0x5b171b01, value: 23.0 }], 0x5b171b04)?;
     }
 
-    assert_eq!(fs::read(&path).unwrap(),
+    assert_eq!(fs::read(&path)?,
         header.clone()
             // archive 1
             .u32(0x5b171b00).f64(123.0)
@@ -223,11 +224,11 @@ fn test_update_and_aggregate_snapshot() {
     );
 
     {
-        let mut file = WhisperFile::open(&path).unwrap();
-        file.update_many(&[Point { interval: 0x5b171b04, value: 123.0 }, Point { interval: 0x5b171b06, value: 1000.0 }], 0x5b171b04).unwrap();
+        let mut file = WhisperFile::open(&path)?;
+        file.update_many(&[Point { interval: 0x5b171b04, value: 123.0 }, Point { interval: 0x5b171b06, value: 1000.0 }], 0x5b171b04)?;
     }
 
-    assert_eq!(fs::read(&path).unwrap(),
+    assert_eq!(fs::read(&path)?,
         header.clone()
             // archive 1
             .u32(0x5b171b00).f64(123.0)
@@ -247,4 +248,6 @@ fn test_update_and_aggregate_snapshot() {
             .u32(0).f64(0.0)
             .u32(0).f64(0.0)
     );
+
+    Ok(())
 }

@@ -1,5 +1,6 @@
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -9,180 +10,173 @@ use unindent::unindent;
 const NAME: &str = "whisper-info";
 
 #[test]
-fn calling_without_args() {
-    Command::cargo_bin(NAME)
-        .unwrap()
+fn calling_without_args() -> Result<(), Box<Error>> {
+    Command::cargo_bin(NAME)?
         .assert()
         .code(1)
         .stdout("")
         .stderr(predicate::str::contains("USAGE").from_utf8());
+    Ok(())
 }
 
 #[test]
-fn calling_help() {
-    Command::cargo_bin(NAME)
-        .unwrap()
+fn calling_help() -> Result<(), Box<Error>> {
+    Command::cargo_bin(NAME)?
         .args(&["--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("USAGE").from_utf8())
         .stderr("");
+    Ok(())
 }
 
 #[test]
-fn calling_with_invalid_path() {
-    Command::cargo_bin(NAME)
-        .unwrap()
+fn calling_with_invalid_path() -> Result<(), Box<Error>> {
+    Command::cargo_bin(NAME)?
         .args(&["invalid"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains("No such file or directory (os error 2)").from_utf8());
+    Ok(())
 }
 
 #[test]
-fn calling_as_plain_for_unknown() {
+fn calling_as_plain_for_unknown() -> Result<(), Box<Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
     let error = "Unknown field \"unknown\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize";
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "unknown"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains(error).from_utf8());
+    Ok(())
 }
 
 #[test]
-fn calling_as_plain_for_max_retention() {
+fn calling_as_plain_for_max_retention() -> Result<(), Box<Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "maxRetention"])
         .assert()
         .success()
         .stdout(predicate::str::contains("172800").from_utf8())
         .stderr("");
+    Ok(())
 }
 
 #[test]
-fn calling_as_plain_for_x_files_factor() {
+fn calling_as_plain_for_x_files_factor() -> Result<(), Box<Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "xFilesFactor"])
         .assert()
         .success()
         .stdout(predicate::str::contains("0.5").from_utf8())
         .stderr("");
+    Ok(())
 }
 
 #[test]
-fn calling_as_plain_for_aggregation_method() {
+fn calling_as_plain_for_aggregation_method() -> Result<(), Box<Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "aggregationMethod"])
         .assert()
         .success()
         .stdout(predicate::str::contains("average").from_utf8())
         .stderr("");
+    Ok(())
 }
 
 #[test]
-fn calling_as_plain_for_file_size() {
+fn calling_as_plain_for_file_size() -> Result<(), Box<Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "fileSize"])
         .assert()
         .success()
         .stdout(predicate::str::contains("34600").from_utf8())
         .stderr("");
+    Ok(())
 }
 
 #[test]
-fn calling_as_plain() {
+fn calling_as_plain() -> Result<(), Box<Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap()])
         .assert()
         .success()
@@ -224,26 +218,25 @@ fn calling_as_plain() {
                 ).as_str(),
             ).from_utf8(),
         ).stderr("");
+    Ok(())
 }
 
 #[test]
-fn calling_as_json() {
+fn calling_as_json() -> Result<(), Box<Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "--json"])
         .assert()
         .success()
@@ -277,4 +270,5 @@ fn calling_as_json() {
                 ).as_str(),
             ).from_utf8(),
         ).stderr("");
+    Ok(())
 }

@@ -1,18 +1,17 @@
+use failure::Error;
 use std::path::PathBuf;
 use whisper::point::*;
 use whisper::retention::*;
 use whisper::*;
 use whisper_tests::*;
-use std::io;
 
-fn create_and_update(path: &PathBuf, timestamps: &[u32], now: u32) -> WhisperFile {
+fn create_and_update(path: &PathBuf, timestamps: &[u32], now: u32) -> Result<WhisperFile, Error>  {
     let mut file = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
             points: 10,
         })
-        .build(path)
-        .unwrap();
+        .build(path)?;
 
     for timestamp in timestamps {
         file.update(
@@ -21,19 +20,18 @@ fn create_and_update(path: &PathBuf, timestamps: &[u32], now: u32) -> WhisperFil
                 value: rand::random(),
             },
             now,
-        ).unwrap();
+        )?;
     }
-    file
+    Ok(file)
 }
 
-fn create_and_update_many(path: &PathBuf, timestamps: &[u32], now: u32) -> WhisperFile {
+fn create_and_update_many(path: &PathBuf, timestamps: &[u32], now: u32) -> Result<WhisperFile, Error> {
     let mut file = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
             points: 10,
         })
-        .build(path)
-        .unwrap();
+        .build(path)?;
 
     let points: Vec<Point> = timestamps
         .iter()
@@ -43,13 +41,13 @@ fn create_and_update_many(path: &PathBuf, timestamps: &[u32], now: u32) -> Whisp
         })
         .collect();
 
-    file.update_many(&points, now).unwrap();
+    file.update_many(&points, now)?;
 
-    file
+    Ok(file)
 }
 
 #[test]
-fn test_merge_update() -> Result<(), io::Error> {
+fn test_merge_update() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_1");
@@ -57,8 +55,8 @@ fn test_merge_update() -> Result<(), io::Error> {
 
     let now = 1528240800;
 
-    let mut _file1 = create_and_update(&path1, &[now - 60, now - 180, now - 300], now);
-    let mut file2 = create_and_update(&path2, &[now - 120, now - 360, now - 480], now);
+    let mut _file1 = create_and_update(&path1, &[now - 60, now - 180, now - 300], now)?;
+    let mut file2 = create_and_update(&path2, &[now - 120, now - 360, now - 480], now)?;
 
     whisper::merge::merge(&path1, &path2, 0, now, now)?;
     let points = file2.dump(60)?;
@@ -83,7 +81,7 @@ fn test_merge_update() -> Result<(), io::Error> {
 }
 
 #[test]
-fn test_merge_update_many() -> Result<(), io::Error> {
+fn test_merge_update_many() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_3");
@@ -91,8 +89,8 @@ fn test_merge_update_many() -> Result<(), io::Error> {
 
     let now = 1528240800;
 
-    let mut _file1 = create_and_update_many(&path1, &[now - 60, now - 180, now - 300], now);
-    let mut file2 = create_and_update_many(&path2, &[now - 120, now - 360, now - 480], now);
+    let mut _file1 = create_and_update_many(&path1, &[now - 60, now - 180, now - 300], now)?;
+    let mut file2 = create_and_update_many(&path2, &[now - 120, now - 360, now - 480], now)?;
 
     whisper::merge::merge(&path1, &path2, 0, now, now)?;
     let points = file2.dump(60)?;
@@ -145,7 +143,7 @@ fn test_merge_errors() -> Result<(), builder::BuilderError> {
 }
 
 #[test]
-fn test_merge_overwrite() -> Result<(), io::Error> {
+fn test_merge_overwrite() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -170,7 +168,7 @@ fn test_merge_overwrite() -> Result<(), io::Error> {
             },
         ],
         now,
-    );
+    )?;
 
     let mut file2 = create_and_update_points(
         &path2,
@@ -193,7 +191,7 @@ fn test_merge_overwrite() -> Result<(), io::Error> {
             },
         ],
         now,
-    );
+    )?;
 
     whisper::merge::merge(&path1, &path2, 0, now, now)?;
     let points = file2.dump(60)?;
@@ -228,7 +226,7 @@ fn test_merge_overwrite() -> Result<(), io::Error> {
 }
 
 #[test]
-fn test_fill_overlap() -> Result<(), io::Error> {
+fn test_fill_overlap() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -253,7 +251,7 @@ fn test_fill_overlap() -> Result<(), io::Error> {
             },
         ],
         now,
-    );
+    )?;
 
     let mut file2 = create_and_update_points(
         &path2,
@@ -276,7 +274,7 @@ fn test_fill_overlap() -> Result<(), io::Error> {
             },
         ],
         now,
-    );
+    )?;
 
     whisper::fill::fill(&path1, &path2, now, now)?;
     let points = file2.dump(60)?;

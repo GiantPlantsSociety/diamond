@@ -1,3 +1,4 @@
+use failure::Error;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::path::PathBuf;
@@ -28,15 +29,15 @@ pub fn random_string(len: usize) -> String {
         .collect::<String>()
 }
 
-pub fn create_and_update_points(path: &PathBuf, points: &[Point], now: u32) -> WhisperFile {
+pub fn create_and_update_points(path: &PathBuf, points: &[Point], now: u32) ->  Result<WhisperFile, Error> {
     let mut file = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
             points: 10,
-        }).build(path)
-        .unwrap();
+        })
+        .build(path)?;
 
-    file.update_many(&points, now).unwrap();
+    file.update_many(&points, now)?;
 
-    file
+    Ok(file)
 }

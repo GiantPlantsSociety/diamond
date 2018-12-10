@@ -1,5 +1,6 @@
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -9,53 +10,51 @@ use unindent::unindent;
 const NAME: &str = "whisper-dump";
 
 #[test]
-fn calling_without_args() {
-    Command::cargo_bin(NAME)
-        .unwrap()
+fn calling_without_args() -> Result<(), Box<Error>> {
+    Command::cargo_bin(NAME)?
         .assert()
         .code(1)
         .stdout("")
         .stderr(predicate::str::contains("USAGE").from_utf8());
+    Ok(())
 }
 
 #[test]
-fn calling_help() {
-    Command::cargo_bin(NAME)
-        .unwrap()
+fn calling_help() -> Result<(), Box<Error>> {
+    Command::cargo_bin(NAME)?
         .args(&["--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("USAGE").from_utf8())
         .stderr("");
+    Ok(())
 }
 
 #[test]
-fn calling_with_invalid_path() {
-    Command::cargo_bin(NAME)
-        .unwrap()
+fn calling_with_invalid_path() -> Result<(), Box<Error>> {
+    Command::cargo_bin(NAME)?
         .args(&["invalid"])
         .assert()
         .code(1);
+    Ok(())
 }
 
 #[test]
-fn calling_as_plain() {
+fn calling_as_plain() -> Result<(), Box<Error>> {
     let filename = "dump.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap()])
         .assert()
         .success()
@@ -114,26 +113,25 @@ Archive 1 data:
 4: 0,          0",
             ).from_utf8(),
         ).stderr("");
+    Ok(())
 }
 
 #[test]
-fn calling_as_pretty() {
+fn calling_as_pretty() -> Result<(), Box<Error>> {
     let filename = "dump.wsp";
 
     let path = Builder::new()
         .prefix("whisper")
         .suffix(filename)
-        .tempdir()
-        .unwrap()
+        .tempdir()?
         .path()
         .to_path_buf();
 
     let file_path = PathBuf::new().join("data").join(filename);
 
-    fs::copy(&file_path, &path).unwrap();
+    fs::copy(&file_path, &path)?;
 
-    Command::cargo_bin(NAME)
-        .unwrap()
+    Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "--pretty", "--time-format", "%c"])
         .assert()
         .success()
@@ -192,4 +190,5 @@ Archive 1 data:
 4: Thu Jan  1 00:00:00 1970,          0",
             ).from_utf8(),
         ).stderr("");
+    Ok(())
 }
