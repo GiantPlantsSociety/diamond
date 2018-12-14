@@ -68,16 +68,11 @@ impl FromStr for MetricPoint {
 }
 
 impl From<MetricPoints> for Vec<MetricPoint> {
-    fn from(m: MetricPoints) -> Vec<MetricPoint> {
-        let mut vector: Vec<MetricPoint> = Vec::new();
-        let name = m.name;
-        for point in m.points.iter() {
-            vector.push(MetricPoint {
-                name: name.to_owned(),
-                point: point.to_owned(),
-            });
-        }
-        vector
+    fn from(mp: MetricPoints) -> Vec<MetricPoint> {
+        let name = mp.name;
+        mp.points.into_iter()
+            .map(|point| MetricPoint { name: name.clone(), point })
+            .collect()
     }
 }
 
@@ -197,5 +192,23 @@ mod tests {
             s,
             metric_result.unwrap()
         );
+    }
+
+    #[test]
+    fn test_metrics_points_to_vec_metric_point() {
+        let p1 = Point { interval: 100, value: 100.1 };
+        let p2 = Point { interval: 200, value: 100.2 };
+        let p3 = Point { interval: 300, value: 100.3 };
+        let name = String::from("test-metric-name");
+        let mp = MetricPoints {
+            name: name.clone(),
+            points: vec![p1, p2, p3]
+        };
+        let points_vec: Vec<MetricPoint> = mp.into();
+        assert_eq!(points_vec, vec![
+            MetricPoint { name: name.clone(), point: p1 },
+            MetricPoint { name: name.clone(), point: p2 },
+            MetricPoint { name: name.clone(), point: p3 },
+        ]);
     }
 }
