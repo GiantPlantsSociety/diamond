@@ -10,7 +10,7 @@ use unindent::unindent;
 const NAME: &str = "whisper-info";
 
 #[test]
-fn calling_without_args() -> Result<(), Box<Error>> {
+fn calling_without_args() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .assert()
         .code(1)
@@ -20,7 +20,7 @@ fn calling_without_args() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_help() -> Result<(), Box<Error>> {
+fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["--help"])
         .assert()
@@ -31,7 +31,7 @@ fn calling_help() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_path() -> Result<(), Box<Error>> {
+fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid"])
         .assert()
@@ -41,7 +41,7 @@ fn calling_with_invalid_path() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_as_plain_for_unknown() -> Result<(), Box<Error>> {
+fn calling_as_plain_for_unknown() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -66,7 +66,7 @@ fn calling_as_plain_for_unknown() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_as_plain_for_max_retention() -> Result<(), Box<Error>> {
+fn calling_as_plain_for_max_retention() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -90,7 +90,7 @@ fn calling_as_plain_for_max_retention() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_as_plain_for_x_files_factor() -> Result<(), Box<Error>> {
+fn calling_as_plain_for_x_files_factor() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -114,7 +114,7 @@ fn calling_as_plain_for_x_files_factor() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_as_plain_for_aggregation_method() -> Result<(), Box<Error>> {
+fn calling_as_plain_for_aggregation_method() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -138,7 +138,7 @@ fn calling_as_plain_for_aggregation_method() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_as_plain_for_file_size() -> Result<(), Box<Error>> {
+fn calling_as_plain_for_file_size() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -162,7 +162,7 @@ fn calling_as_plain_for_file_size() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_as_plain() -> Result<(), Box<Error>> {
+fn calling_as_plain() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -222,7 +222,7 @@ fn calling_as_plain() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_as_json() -> Result<(), Box<Error>> {
+fn calling_as_json() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()

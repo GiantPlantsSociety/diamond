@@ -6,7 +6,7 @@ use std::process::Command;
 const NAME: &str = "whisper-update";
 
 #[test]
-fn calling_without_args() -> Result<(), Box<Error>> {
+fn calling_without_args() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .assert()
         .code(1)
@@ -16,7 +16,7 @@ fn calling_without_args() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_help() -> Result<(), Box<Error>> {
+fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["--help"])
         .assert()
@@ -27,7 +27,7 @@ fn calling_help() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_path() -> Result<(), Box<Error>> {
+fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid", "1:1"])
         .assert()
@@ -36,7 +36,7 @@ fn calling_with_invalid_path() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_timestamp() -> Result<(), Box<Error>> {
+fn calling_with_invalid_timestamp() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid", "nottimestamp:1"])
         .assert()
@@ -45,7 +45,7 @@ fn calling_with_invalid_timestamp() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_value() -> Result<(), Box<Error>> {
+fn calling_with_invalid_value() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid", "1:value"])
         .assert()

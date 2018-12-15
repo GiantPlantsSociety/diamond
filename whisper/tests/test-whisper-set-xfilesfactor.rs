@@ -9,7 +9,7 @@ use tempfile::Builder;
 const NAME: &str = "whisper-set-xfilesfactor";
 
 #[test]
-fn calling_without_args() -> Result<(), Box<Error>> {
+fn calling_without_args() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .assert()
         .code(1)
@@ -19,7 +19,7 @@ fn calling_without_args() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_help() -> Result<(), Box<Error>> {
+fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["--help"])
         .assert()
@@ -30,7 +30,7 @@ fn calling_help() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_path() -> Result<(), Box<Error>> {
+fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid", "0.5"])
         .assert()
@@ -40,7 +40,7 @@ fn calling_with_invalid_path() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_param() -> Result<(), Box<Error>> {
+fn calling_with_invalid_param() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -63,7 +63,7 @@ fn calling_with_invalid_param() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_fractional_number() -> Result<(), Box<Error>> {
+fn calling_with_fractional_number() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -88,7 +88,7 @@ fn calling_with_fractional_number() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_whole_param() -> Result<(), Box<Error>> {
+fn calling_with_whole_param() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
