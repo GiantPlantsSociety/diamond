@@ -10,7 +10,7 @@ use unindent::unindent;
 const NAME: &str = "whisper-dump";
 
 #[test]
-fn calling_without_args() -> Result<(), Box<Error>> {
+fn calling_without_args() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .assert()
         .code(1)
@@ -20,7 +20,7 @@ fn calling_without_args() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_help() -> Result<(), Box<Error>> {
+fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["--help"])
         .assert()
@@ -31,7 +31,7 @@ fn calling_help() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_path() -> Result<(), Box<Error>> {
+fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid"])
         .assert()
@@ -40,7 +40,7 @@ fn calling_with_invalid_path() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_as_plain() -> Result<(), Box<Error>> {
+fn calling_as_plain() -> Result<(), Box<dyn Error>> {
     let filename = "dump.wsp";
 
     let path = Builder::new()
@@ -117,7 +117,7 @@ Archive 1 data:
 }
 
 #[test]
-fn calling_as_pretty() -> Result<(), Box<Error>> {
+fn calling_as_pretty() -> Result<(), Box<dyn Error>> {
     let filename = "dump.wsp";
 
     let path = Builder::new()

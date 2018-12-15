@@ -9,7 +9,7 @@ use tempfile::Builder;
 const NAME: &str = "whisper-create";
 
 #[test]
-fn calling_without_args() -> Result<(), Box<Error>> {
+fn calling_without_args() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .assert()
         .code(1)
@@ -19,7 +19,7 @@ fn calling_without_args() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_help() -> Result<(), Box<Error>> {
+fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["--help"])
         .assert()
@@ -30,7 +30,7 @@ fn calling_help() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_path() -> Result<(), Box<Error>> {
+fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid/path", "60:1440"])
         .assert()
@@ -40,7 +40,7 @@ fn calling_with_invalid_path() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_method() -> Result<(), Box<Error>> {
+fn calling_with_invalid_method() -> Result<(), Box<dyn Error>> {
     let path = Builder::new()
         .prefix("whisper")
         .suffix("info.wsp")
@@ -64,7 +64,7 @@ fn calling_with_invalid_method() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_with_invalid_xfactor() -> Result<(), Box<Error>> {
+fn calling_with_invalid_xfactor() -> Result<(), Box<dyn Error>> {
     let path = Builder::new()
         .prefix("whisper")
         .suffix("info.wsp")
@@ -83,7 +83,7 @@ fn calling_with_invalid_xfactor() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_creating_simple() -> Result<(), Box<Error>> {
+fn calling_creating_simple() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -105,7 +105,7 @@ fn calling_creating_simple() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_creating_multiple_retention() -> Result<(), Box<Error>> {
+fn calling_creating_multiple_retention() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
@@ -127,7 +127,7 @@ fn calling_creating_multiple_retention() -> Result<(), Box<Error>> {
 }
 
 #[test]
-fn calling_creating_with_present_file() -> Result<(), Box<Error>> {
+fn calling_creating_with_present_file() -> Result<(), Box<dyn Error>> {
     let filename = "info.wsp";
 
     let path = Builder::new()
