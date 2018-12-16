@@ -21,7 +21,7 @@ env:
 
 script:
   - cargo build --verbose
-  - cargo test -- --nocapture
+  - cargo test --no-fail-fast -- --nocapture
   - |
     # Disable optimisation for bench build
     cat <<'CARGO' >> Cargo.toml
