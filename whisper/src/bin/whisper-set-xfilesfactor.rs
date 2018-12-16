@@ -9,12 +9,12 @@ use structopt::StructOpt;
     about = "Set xFilesFactor for existing whisper files"
 )]
 struct Args {
-    /// Path to data file
-    #[structopt(name = "path", parse(from_os_str), help = "path to whisper file")]
+    /// path to whisper file
+    #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,
 
-    /// XFILESFACTOR
-    #[structopt(name = "xFilesFactor", help = "new xFilesFactor, a float between 0 and 1")]
+    /// new xFilesFactor, a float between 0 and 1
+    #[structopt(name = "xFilesFactor")]
     x_files_factor: f32,
 }
 
