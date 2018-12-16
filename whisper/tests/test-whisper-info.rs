@@ -32,11 +32,17 @@ fn calling_help() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
+    #[cfg(unix)]
+    let error_msg = "No such file or directory (os error 2)";
+    #[cfg(windows)]
+    let error_msg = "The system cannot find the file specified. (os error 2)";
+
     Command::cargo_bin(NAME)?
         .args(&["invalid"])
         .assert()
         .code(1)
-        .stderr(predicate::str::contains("No such file or directory (os error 2)").from_utf8());
+        .stderr(predicate::str::contains(error_msg).from_utf8());
+
     Ok(())
 }
 

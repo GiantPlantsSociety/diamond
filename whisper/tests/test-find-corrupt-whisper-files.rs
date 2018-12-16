@@ -31,6 +31,8 @@ fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid"])
         .assert()
-        .code(1);
+        .code(1)
+        .stderr(predicate::str::contains("invalid is not a directory or not exist!").from_utf8());
+
     Ok(())
 }

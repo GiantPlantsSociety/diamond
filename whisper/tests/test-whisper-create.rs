@@ -31,11 +31,17 @@ fn calling_help() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
+    #[cfg(unix)]
+    let error_msg = "No such file or directory (os error 2)";
+    #[cfg(windows)]
+    let error_msg = "The system cannot find the path specified. (os error 3)";
+
     Command::cargo_bin(NAME)?
         .args(&["invalid/path", "60:1440"])
         .assert()
         .code(1)
-        .stderr(predicate::str::contains("No such file or directory (os error 2)").from_utf8());
+        .stderr(predicate::str::contains(error_msg).from_utf8());
+
     Ok(())
 }
 
@@ -141,10 +147,16 @@ fn calling_creating_with_present_file() -> Result<(), Box<dyn Error>> {
 
     fs::copy(&file_path, &path)?;
 
+    #[cfg(unix)]
+    let error_msg = "File exists (os error 17)";
+    #[cfg(windows)]
+    let error_msg = "The file exists. (os error 80)";
+
     Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "60:1440"])
         .assert()
         .code(1)
-        .stderr(predicate::str::contains("File exists (os error 17)").from_utf8());
+        .stderr(predicate::str::contains(error_msg).from_utf8());
+
     Ok(())
 }
