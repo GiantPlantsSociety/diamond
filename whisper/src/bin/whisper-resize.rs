@@ -64,7 +64,7 @@ fn run(args: &Args) -> Result<(), Error> {
         return Err(error::Error::FileNotExist(path.to_path_buf()).into());
     }
 
-    let whisper_file = whisper::WhisperFile::open(&path)?;
+    let whisper_file = whisper::WhisperFile::open(path)?;
     let meta = whisper_file.info();
 
     let x_files_factor = args.x_files_factor.unwrap_or(meta.x_files_factor);
@@ -73,8 +73,8 @@ fn run(args: &Args) -> Result<(), Error> {
     println!("Retrieving all data from the archives");
 
     resize(
-        &path,
-        &args.newfile,
+        path,
+        args.newfile.as_ref().map(PathBuf::as_path),
         &args.retentions,
         x_files_factor,
         aggregation_method,

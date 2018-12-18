@@ -31,7 +31,7 @@ fn test_resize_simple_long() -> Result<(), Box<dyn Error>> {
 
     whisper::resize::resize(
         &path1,
-        &Some(path2.clone()),
+        Some(&path2),
         retentions,
         0.5,
         AggregationMethod::Average,
@@ -90,7 +90,7 @@ fn test_resize_simple_short() -> Result<(), Box<dyn Error>> {
 
     whisper::resize::resize(
         &path1,
-        &Some(path2.clone()),
+        Some(&path2),
         retentions,
         0.5,
         AggregationMethod::Average,
@@ -152,7 +152,7 @@ fn test_resize_extend_short() -> Result<(), Box<dyn Error>> {
 
     whisper::resize::resize(
         &path1,
-        &Some(path2.clone()),
+        Some(&path2),
         retentions,
         0.5,
         AggregationMethod::Average,
@@ -208,7 +208,7 @@ fn test_resize_aggr_simple_long() -> Result<(), Box<dyn Error>> {
 
     whisper::resize::resize(
         &path1,
-        &Some(path2.clone()),
+        Some(&path2),
         retentions,
         0.5,
         AggregationMethod::Average,
@@ -267,7 +267,7 @@ fn test_resize_aggr_simple_short() -> Result<(), Box<dyn Error>> {
 
     whisper::resize::resize(
         &path1,
-        &Some(path2.clone()),
+        Some(&path2),
         retentions,
         0.5,
         AggregationMethod::Average,

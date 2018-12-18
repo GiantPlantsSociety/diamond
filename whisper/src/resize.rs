@@ -10,12 +10,12 @@ use crate::WhisperFile;
 use failure::Error;
 use std::fs::{remove_file, rename};
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 
-fn migrate_aggregate(path_src: &PathBuf, path_dst: &PathBuf, now: u32) -> Result<(), Error> {
-    let mut file_src = WhisperFile::open(&path_src)?;
-    let mut file_dst = WhisperFile::open(&path_dst)?;
+fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), Error> {
+    let mut file_src = WhisperFile::open(path_src)?;
+    let mut file_dst = WhisperFile::open(path_dst)?;
 
     let meta = file_src.info().clone();
     let mut until = now;
@@ -38,9 +38,9 @@ fn migrate_aggregate(path_src: &PathBuf, path_dst: &PathBuf, now: u32) -> Result
 
             println!(
                 "({},{},{})",
-                &adjusted_interval.from(),
-                &adjusted_interval.until(),
-                &archive.seconds_per_point
+                adjusted_interval.from(),
+                adjusted_interval.until(),
+                archive.seconds_per_point
             );
 
             let values = points_to_write
@@ -59,9 +59,9 @@ fn migrate_aggregate(path_src: &PathBuf, path_dst: &PathBuf, now: u32) -> Result
     Ok(())
 }
 
-fn migrate_nonaggregate(path_src: &PathBuf, path_dst: &PathBuf, now: u32) -> Result<(), Error> {
-    let mut file_src = WhisperFile::open(&path_src)?;
-    let mut file_dst = WhisperFile::open(&path_dst)?;
+fn migrate_nonaggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), Error> {
+    let mut file_src = WhisperFile::open(path_src)?;
+    let mut file_dst = WhisperFile::open(path_dst)?;
 
     let interval = Interval::new(0, now).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
@@ -89,13 +89,13 @@ fn migrate_nonaggregate(path_src: &PathBuf, path_dst: &PathBuf, now: u32) -> Res
 }
 
 fn migrate_points(
-    path_src: &PathBuf,
-    path_dst: &PathBuf,
+    path_src: &Path,
+    path_dst: &Path,
     aggregate: bool,
     now: u32,
 ) -> Result<(), Error> {
     if !path_src.is_file() {
-        return Err(error::Error::FileNotExist(path_src.clone()).into());
+        return Err(error::Error::FileNotExist(path_src.to_owned()).into());
     }
 
     if aggregate {
@@ -110,8 +110,8 @@ fn migrate_points(
 }
 
 pub fn resize(
-    path_src: &PathBuf,
-    path_new: &Option<PathBuf>,
+    path_src: &Path,
+    path_new: Option<&Path>,
     retentions: &[Retention],
     x_files_factor: f32,
     aggregation_method: AggregationMethod,
@@ -119,7 +119,7 @@ pub fn resize(
     nobackup: bool,
     now: u32,
 ) -> Result<(), Error> {
-    let path_dst = match path_new.clone() {
+    let path_dst = match path_new {
         None => {
             let tmpfile = PathBuf::from(format!("{}.tmp", path_src.display()));
             if tmpfile.is_file() {
@@ -131,7 +131,7 @@ pub fn resize(
             }
             tmpfile
         }
-        Some(new) => new,
+        Some(new) => new.to_path_buf(),
     };
 
     println!("Retrieving all data from the archives");
@@ -154,14 +154,14 @@ pub fn resize(
 
     let backup = format!("{}.bak", path_src.display());
     println!("Renaming old database to: {}", backup);
-    rename(&path_src, &backup)?;
+    rename(path_src, &backup)?;
 
     println!("Renaming new database to: {}", path_src.display());
-    rename(&path_dst, &path_src)
+    rename(&path_dst, path_src)
         .map_err(|e| {
             eprintln!("{}", e);
             println!("Operation failed, restoring backup");
-            rename(&backup, &path_src).unwrap();
+            rename(&backup, path_src).unwrap();
             exit(1);
         })
         .unwrap();
