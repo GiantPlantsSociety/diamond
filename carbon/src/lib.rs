@@ -23,11 +23,11 @@ pub struct MetricPoints {
 #[derive(Fail, Debug)]
 enum MetricError {
     #[fail(display = "Metric line({}) can not be validated", _0)]
-    ValidateError(String),
+    Validate(String),
     #[fail(display = "Metric name({}) can not be validated", _0)]
-    NameValidateError(String),
+    NameValidate(String),
     #[fail(display = "Can not parse metric from line: {}", _0)]
-    MetricLineParseError(String),
+    LineParse(String),
 }
 
 impl MetricPoint {
@@ -39,7 +39,7 @@ impl MetricPoint {
         if RE.is_match(s) {
             Ok(())
         } else {
-            Err(MetricError::ValidateError(s.to_owned()))
+            Err(MetricError::Validate(s.to_owned()))
         }
     }
 }
@@ -54,7 +54,7 @@ impl FromStr for MetricPoint {
 
         let (name, timestamp, value) = match segments.len() {
             3 => (segments[0], segments[1], segments[2]),
-            _ => return Err(MetricError::MetricLineParseError(s.to_owned()).into()),
+            _ => return Err(MetricError::LineParse(s.to_owned()).into()),
         };
 
         Ok(MetricPoint {
@@ -88,7 +88,7 @@ impl MetricPath {
         if RE.is_match(s) {
             Ok(())
         } else {
-            Err(MetricError::NameValidateError(s.to_owned()))
+            Err(MetricError::NameValidate(s.to_owned()))
         }
     }
 }

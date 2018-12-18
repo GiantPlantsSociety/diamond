@@ -148,7 +148,6 @@ fn walk_tree(
         .concat();
 
     let mut metrics: Vec<MetricResponseLeaf> = fs::read_dir(&full_path)?
-        .into_iter()
         .filter_map(|entry| {
             let (local_path, local_file_type) = match entry {
                 Ok(rentry) => (
@@ -216,6 +215,7 @@ fn metrics_find(args: &Args, params: &FindQuery) -> Result<HttpResponse, Error> 
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn metrics_find_get(
     state: State<Args>,
     params: Query<FindQuery>,
@@ -223,6 +223,7 @@ pub fn metrics_find_get(
     metrics_find(&state, &params.into_inner())
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn metrics_find_form(
     state: State<Args>,
     params: Form<FindQuery>,
@@ -230,6 +231,7 @@ pub fn metrics_find_form(
     metrics_find(&state, &params.into_inner())
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn metrics_find_json(
     state: State<Args>,
     params: Json<FindQuery>,

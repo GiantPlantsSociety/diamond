@@ -3,10 +3,12 @@ use std::str::FromStr;
 use std::fmt;
 use std::convert::Into;
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn cmp_f64(a: &f64, b: &f64) -> cmp::Ordering {
     a.partial_cmp(b).unwrap_or(::std::cmp::Ordering::Equal)
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn cmp_f64_abs(a: &f64, b: &f64) -> cmp::Ordering {
     cmp_f64(&a.abs(), &b.abs())
 }

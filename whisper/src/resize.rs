@@ -109,6 +109,7 @@ fn migrate_points(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn resize(
     path_src: &Path,
     path_new: Option<&Path>,

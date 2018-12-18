@@ -52,19 +52,18 @@ fn run(args: &Args) -> Result<(), Error> {
         let mut file_path: PathBuf = args.path.clone();
         file_path.push(metric_path.0);
 
-        let mut file = match file_path.exists() {
-            false => {
-                let dir_path = file_path.parent().unwrap();
-                fs::create_dir_all(&dir_path)?;
+        let mut file = if file_path.exists() {
+            WhisperFile::open(&file_path)?
+        } else {
+            let dir_path = file_path.parent().unwrap();
+            fs::create_dir_all(&dir_path)?;
 
-                WhisperBuilder::default()
-                    .add_retentions(&args.retentions)
-                    .x_files_factor(args.x_files_factor)
-                    .aggregation_method(args.aggregation_method)
-                    .build(&file_path)
-                    .unwrap()
-            }
-            true => WhisperFile::open(&file_path)?,
+            WhisperBuilder::default()
+                .add_retentions(&args.retentions)
+                .x_files_factor(args.x_files_factor)
+                .aggregation_method(args.aggregation_method)
+                .build(&file_path)
+                .unwrap()
         };
 
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;

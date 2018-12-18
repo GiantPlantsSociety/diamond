@@ -5,6 +5,7 @@ pub struct Interval {
 }
 
 impl Interval {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(from: u32, until: u32) -> Result<Self, String> {
         if from <= until {
             Ok(Self { from, until })
