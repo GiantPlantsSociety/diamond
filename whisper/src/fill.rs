@@ -48,7 +48,7 @@ fn fill_interval(
             let mut points_to_write: Vec<Point> = points
                 .clone()
                 .into_iter()
-                .filter(|point| point.interval != 0)
+                .filter(|point| point != &Point::default())
                 .collect();
 
             // order points by timestamp, newest first
