@@ -1,19 +1,38 @@
-freebsd_instance:
-  image: freebsd-11-1-release-amd64
+matrix:
+  - name: 'stable x86_64-unknown-linux-gnu'
+    container:
+      image: rust:latest
 
-task:
-  # This name gets reported as a build status in GitHub
-  name: stable x86_64-unknown-freebsd
+  - name: 'stable x86_64-unknown-freebsd'
+    freebsd_instance:
+      image: freebsd-11-1-release-amd64
+    setup_script:
+      - pkg install -y curl
+      - curl https://sh.rustup.rs -sSf --output rustup.sh
+      - sh rustup.sh -y
+
+  - name: 'stable x86_64-apple-darwin'
+    osx_instance:
+      image: mojave-xcode-10.1
+    setup_script:
+      - curl https://sh.rustup.rs -sSf --output rustup.sh
+      - sh rustup.sh -y
+
+  - name: 'stable x86_64-pc-windows-gnu'
+    windows_container:
+      image: cirrusci/windowsservercore:2016
+    setup_script:
+      - curl https://sh.rustup.rs -sSf --output rustup.sh
+      - sh rustup.sh -y
+    env:
+      CIRRUS_SHELL: powershell
+
+test_task:
   env:
     RUST_BACKTRACE: 1
-  setup_script:
-    - pkg install -y curl
-    - curl https://sh.rustup.rs -sSf --output rustup.sh
-    - sh rustup.sh -y
+
   test_script:
-    - . $HOME/.cargo/env
-    - cargo build --verbose
-    - cargo test -- --nocapture
+    - test -f $HOME/.cargo/env && source $HOME/.cargo/env
     - |
       # Disable optimisation for bench build
       cat <<'CARGO' >> Cargo.toml
@@ -21,4 +40,6 @@ task:
       opt-level = 0
       debug = true
       CARGO
-      cargo build --benches --verbose
+    - cargo build --verbose
+    - cargo test -- --nocapture
+    - cargo build --benches --verbose
