@@ -37,5 +37,5 @@ script:
 after_success:
   - |
     if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin sh -c "apt-get install libssl-dev && cargo tarpaulin --skip-clean -f -t 5 --out Xml"
+      docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin:develop-nightly sh -c "apt-get install libssl-dev && cargo tarpaulin --skip-clean -f -t 5 --out Xml"
     fi
