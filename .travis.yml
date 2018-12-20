@@ -10,6 +10,9 @@ os:
   - linux
   - windows
 
+services:
+  - docker
+
 addons:
   apt:
     packages:
@@ -30,15 +33,10 @@ script:
     debug = true
     CARGO
     cargo build --benches --verbose
-  - |
-    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      export CARGO_TARGET_DIR="$(pwd)/target"
-      RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install --force --git https://github.com/AnderEnder/tarpaulin --branch stable-master cargo-tarpaulin
-    fi
 
 after_success:
   - |
     if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      cargo tarpaulin --skip-clean -f -t 5 --out Xml
+      docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin:develop sh -c "cargo tarpaulin --skip-clean -f -t 5 --out Xml"
       bash <(curl -s https://codecov.io/bash)
     fi
