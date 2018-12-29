@@ -1,11 +1,10 @@
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use failure;
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::io::{self, Read, Write, Seek};
 use std::fs;
 use std::path::Path;
-use std::collections::HashSet;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-
-use serde_derive::*;
 
 /*
 # This module is an implementation of the Whisper database API
