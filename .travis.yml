@@ -37,6 +37,6 @@ script:
 after_success:
   - |
     if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin:develop sh -c "cargo tarpaulin --skip-clean -f -t 5 --out Xml"
+      docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin:develop sh -c "cargo tarpaulin -f -t 5 --out Xml"
       bash <(curl -s https://codecov.io/bash)
     fi
