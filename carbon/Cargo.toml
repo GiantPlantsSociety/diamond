@@ -8,7 +8,7 @@ repository = "https://github.com/GiantPlantsSociety/graphite-rs"
 edition = "2018"
 
 [dependencies]
-failure = "0.1.3"
+failure = "0.1.4"
 lazy_static = "1"
 regex = "1"
 structopt = "0.2"
