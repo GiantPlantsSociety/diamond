@@ -10,7 +10,7 @@ edition = "2018"
 [dependencies]
 whisper = { path = "../whisper" }
 rand = "0.6.4"
-tempfile = "3.0.6"
+tempfile = "3.0.7"
 byteorder = "1"
 failure = "0.1"
 
