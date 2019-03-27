@@ -5,3 +5,6 @@ members = [
     "carbon",
     "graphite-api",
 ]
+
+[patch.crates-io]
+serde_urlencoded = { git = 'https://github.com/andy128k/serde_urlencoded', branch = 'seq2' }
