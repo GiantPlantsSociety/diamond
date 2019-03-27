@@ -1,7 +1,7 @@
-use actix_web::middleware::Logger;
-use actix_web::{http, pred, App, HttpResponse};
 use crate::find::*;
 use crate::opts::*;
+use actix_web::middleware::Logger;
+use actix_web::{http, pred, App, HttpResponse};
 
 pub fn create_app(opt: Args) -> App<Args> {
     App::with_state(opt)
@@ -15,8 +15,10 @@ pub fn create_app(opt: Args) -> App<Args> {
                 .filter(pred::Header(
                     "Content-Type",
                     "application/www-form-urlencoded",
-                )).with(metrics_find_form)
-        }).resource("/metrics", |r| {
+                ))
+                .with(metrics_find_form)
+        })
+        .resource("/metrics", |r| {
             r.method(http::Method::GET).with(metrics_find_get);
             r.method(http::Method::POST)
                 .filter(pred::Header("Content-Type", "application/json"))
@@ -25,6 +27,8 @@ pub fn create_app(opt: Args) -> App<Args> {
                 .filter(pred::Header(
                     "Content-Type",
                     "application/www-form-urlencoded",
-                )).with(metrics_find_form)
-        }).default_resource(|_| HttpResponse::NotFound())
+                ))
+                .with(metrics_find_form)
+        })
+        .default_resource(|_| HttpResponse::NotFound())
 }

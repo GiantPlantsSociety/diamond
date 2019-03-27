@@ -191,7 +191,8 @@ fn walk_tree(
                 }
                 _ => None,
             }
-        }).collect();
+        })
+        .collect();
 
     metrics.sort_by_key(|k| k.name.clone());
     Ok(metrics)
@@ -432,7 +433,8 @@ mod tests {
             name: "456".to_owned(),
             path: "123.456".to_owned(),
             is_leaf: true,
-        }.into();
+        }
+        .into();
 
         let leaf = JsonTreeLeaf {
             text: "123.456".to_owned(),
@@ -448,7 +450,8 @@ mod tests {
             name: "789".to_owned(),
             path: "123.456.789".to_owned(),
             is_leaf: false,
-        }.into();
+        }
+        .into();
 
         let leaf2 = JsonTreeLeaf {
             text: "123.456.789".to_owned(),
@@ -463,7 +466,6 @@ mod tests {
 
     #[test]
     fn render_url_deserialize_default() -> Result<(), Error> {
-
         #[derive(Debug, PartialEq, Serialize, Deserialize)]
         struct RenderQuery {
             target: Vec<String>,
@@ -473,10 +475,15 @@ mod tests {
             target: vec![
                 "company.server1.loadAvg".to_string(),
                 "company.server1.memUsage".to_string(),
-            ]
+            ],
         };
 
-        assert_eq!(serde_urlencoded::from_str("target=company.server1.loadAvg&target=company.server1.memUsage"), Ok(params));
+        assert_eq!(
+            serde_urlencoded::from_str(
+                "target=company.server1.loadAvg&target=company.server1.memUsage"
+            ),
+            Ok(params)
+        );
 
         Ok(())
     }
