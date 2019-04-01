@@ -1,4 +1,8 @@
+use actix_web::{Form, HttpResponse, Json, Query, State};
+use failure::*;
 use serde::*;
+
+use crate::opts::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderQuery {
@@ -20,6 +24,26 @@ pub struct RenderResponceEntry {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderResponce {
     entries: Vec<RenderResponceEntry>,
+}
+
+fn render_any(args: &Args, params: &RenderQuery) -> Result<HttpResponse, Error> {
+    let dir = &args.path;
+    Ok(HttpResponse::Ok().finish())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn render_get(state: State<Args>, params: Query<RenderQuery>) -> Result<HttpResponse, Error> {
+    render_any(&state, &params.into_inner())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn render_form(state: State<Args>, params: Form<RenderQuery>) -> Result<HttpResponse, Error> {
+    render_any(&state, &params.into_inner())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn render_json(state: State<Args>, params: Json<RenderQuery>) -> Result<HttpResponse, Error> {
+    render_any(&state, &params.into_inner())
 }
 
 #[cfg(test)]
