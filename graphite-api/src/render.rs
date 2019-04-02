@@ -1,19 +1,61 @@
 use actix_web::{Form, HttpResponse, Json, Query, State};
 use failure::*;
 use serde::*;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use whisper::interval::Interval;
+use whisper::WhisperFile;
 
 use crate::opts::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderQuery {
     target: Vec<String>,
-    format: String,
+    format: RenderFormat,
     from: u32,
     until: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RenderPoint(f64, u32);
+#[serde(rename_all = "lowercase")]
+pub enum RenderFormat {
+    Png,
+    Raw,
+    Csv,
+    Json,
+    Svg,
+    Pdf,
+    Dygraph,
+    Rickshaw,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RenderMetric(String);
+
+#[derive(Debug, PartialEq)]
+pub struct RenderPath(PathBuf);
+
+fn walk(dir: &Path, metric: &str, q: &RenderQuery) -> Result<Vec<RenderPoint>, Error> {
+    let path: PathBuf = metric.split('.').fold(PathBuf::new(), |acc, x| acc.join(x));
+    let full_path = dir.canonicalize()?.join(&path);
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
+    let interval = Interval::new(q.from, q.until).map_err(err_msg)?;
+
+    let archive = WhisperFile::open(&full_path)?.fetch_auto_points(interval, now)?;
+
+    let mut points = Vec::new();
+
+    for (index, value) in archive.values.iter().enumerate() {
+        let time = archive.from_interval + archive.step * index as u32;
+        points.push(RenderPoint(*value, time));
+    }
+
+    Ok(points)
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RenderPoint(Option<f64>, u32);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderResponceEntry {
@@ -23,12 +65,20 @@ pub struct RenderResponceEntry {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderResponce {
-    entries: Vec<RenderResponceEntry>,
+    entries: Vec<Option<RenderResponceEntry>>,
 }
 
 fn render_any(args: &Args, params: &RenderQuery) -> Result<HttpResponse, Error> {
     let dir = &args.path;
-    Ok(HttpResponse::Ok().finish())
+    let response: Vec<RenderResponceEntry> = params
+        .target
+        .iter()
+        .map(|x| RenderResponceEntry {
+            target: x.to_string(),
+            datapoints: walk(&dir, x, params).unwrap(),
+        })
+        .collect();
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -57,7 +107,7 @@ mod tests {
     #[test]
     fn url_serialize_one() -> Result<(), Error> {
         let params = RenderQuery {
-            format: "json".to_owned(),
+            format: RenderFormat::Json,
             target: ["app.numUsers".to_owned()].to_vec(),
             from: 0,
             until: 10,
@@ -74,7 +124,7 @@ mod tests {
     #[test]
     fn url_serialize_multiple() -> Result<(), Error> {
         let params = RenderQuery {
-            format: "json".to_owned(),
+            format: RenderFormat::Json,
             target: ["app.numUsers".to_owned(), "app.numServers".to_owned()].to_vec(),
             from: 0,
             until: 10,
@@ -94,11 +144,12 @@ mod tests {
             &[RenderResponceEntry {
                 target: "entries".into(),
                 datapoints: [
-                    RenderPoint(1.0, 1311836008),
-                    RenderPoint(2.0, 1311836009),
-                    RenderPoint(3.0, 1311836010),
-                    RenderPoint(5.0, 1311836011),
-                    RenderPoint(6.0, 1311836012),
+                    RenderPoint(Some(1.0), 1311836008),
+                    RenderPoint(Some(2.0), 1311836009),
+                    RenderPoint(Some(3.0), 1311836010),
+                    RenderPoint(Some(5.0), 1311836011),
+                    RenderPoint(Some(6.0), 1311836012),
+                    RenderPoint(None, 1311836013),
                 ]
                 .to_vec(),
             }]
@@ -107,7 +158,7 @@ mod tests {
         .unwrap();
 
         let rs =
-            r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012]]}]"#;
+            r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#;
 
         assert_eq!(rd, rs);
     }
