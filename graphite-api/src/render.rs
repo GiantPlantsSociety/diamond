@@ -114,8 +114,8 @@ mod tests {
         };
 
         assert_eq!(
-            "target=app.numUsers&format=json&from=0&until=10",
-            serde_urlencoded::to_string(params.clone())?
+            serde_urlencoded::from_str::<RenderQuery>("target=app.numUsers&format=json&from=0&until=10")?,
+            params
         );
 
         Ok(())
@@ -131,8 +131,25 @@ mod tests {
         };
 
         assert_eq!(
-            "target=app.numUsers&target=app.numServers&format=json&from=0&until=10",
-            serde_urlencoded::to_string(params.clone())?
+            serde_urlencoded::from_str::<RenderQuery>("target=app.numUsers&target=app.numServers&format=json&from=0&until=10")?,
+            params
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn url_serialize_none() -> Result<(), Error> {
+        let params = RenderQuery {
+            format: RenderFormat::Json,
+            target: Vec::new(),
+            from: 0,
+            until: 10,
+        };
+
+        assert_eq!(
+            serde_urlencoded::from_str::<RenderQuery>("format=json&from=0&until=10")?,
+            params
         );
 
         Ok(())
