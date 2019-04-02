@@ -84,8 +84,7 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
 
         let interval = Interval::new(from_time, start_from).unwrap();
         let data_dst = file_dst
-            .fetch(archive.seconds_per_point, interval, now)?
-            .unwrap();
+            .fetch(archive.seconds_per_point, interval, now)?;
 
         let mut start = data_dst.from_interval;
         let end = data_dst.until_interval;

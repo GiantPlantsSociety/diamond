@@ -77,7 +77,6 @@ fn run(args: &Args) -> Result<(), Error> {
 
     let archive = file
         .fetch(seconds_per_point, interval, now)?
-        .ok_or_else(|| err_msg("No data in selected timerange"))?
         .filter_out(&filter);
 
     if args.json {
