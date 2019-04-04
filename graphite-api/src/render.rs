@@ -36,9 +36,17 @@ pub struct RenderMetric(String);
 #[derive(Debug, PartialEq)]
 pub struct RenderPath(PathBuf);
 
-fn walk(dir: &Path, metric: &str, q: &RenderQuery) -> Result<Vec<RenderPoint>, Error> {
-    let path: PathBuf = metric.split('.').fold(PathBuf::new(), |acc, x| acc.join(x));
+fn path(dir: &Path, metric: &str) -> Result<PathBuf, Error> {
+    let path = metric
+        .split('.')
+        .fold(PathBuf::new(), |acc, x| acc.join(x))
+        .with_extension("wsp");
     let full_path = dir.canonicalize()?.join(&path);
+    Ok(full_path)
+}
+
+fn walk(dir: &Path, metric: &str, q: &RenderQuery) -> Result<Vec<RenderPoint>, Error> {
+    let full_path = path(dir, metric)?;
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let interval = Interval::new(q.from, q.until).map_err(err_msg)?;
 
@@ -114,7 +122,9 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>("target=app.numUsers&format=json&from=0&until=10")?,
+            serde_urlencoded::from_str::<RenderQuery>(
+                "target=app.numUsers&format=json&from=0&until=10"
+            )?,
             params
         );
 
@@ -131,7 +141,9 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>("target=app.numUsers&target=app.numServers&format=json&from=0&until=10")?,
+            serde_urlencoded::from_str::<RenderQuery>(
+                "target=app.numUsers&target=app.numServers&format=json&from=0&until=10"
+            )?,
             params
         );
 
