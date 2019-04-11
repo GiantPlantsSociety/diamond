@@ -8,7 +8,7 @@ pub fn create_app(opt: Args) -> App<Args> {
     App::with_state(opt)
         .middleware(Logger::default())
         .resource("/render", |r| {
-            r.method(http::Method::GET).with(render_get);
+            r.method(http::Method::GET).with(render_get_query);
             r.method(http::Method::POST)
                 .filter(pred::Header("Content-Type", "application/json"))
                 .with(render_json);

@@ -7,23 +7,71 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::interval::Interval;
 use whisper::WhisperFile;
 
+use actix_web::{FromRequest, HttpRequest};
+use serde::{Deserialize, Deserializer};
+use std::str::FromStr;
+
 use crate::opts::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderQuery {
     target: Vec<String>,
     format: RenderFormat,
-    #[serde(deserialize_with = "time_parse")]
+    #[serde(deserialize_with = "de_time_parse")]
     from: u32,
-    #[serde(deserialize_with = "time_parse")]
+    #[serde(deserialize_with = "de_time_parse")]
     until: u32,
 }
 
-pub fn time_parse<'de, D>(deserializer: D) -> Result<u32, D::Error>
+impl Default for RenderQuery {
+    fn default() -> Self {
+        RenderQuery {
+            target: Vec::new(),
+            format: RenderFormat::Json,
+            from: 0,
+            until: 0,
+        }
+    }
+}
+
+impl FromStr for RenderQuery {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let raw: Vec<(String, String)> = serde_urlencoded::from_str(s)?;
+
+        let mut q = RenderQuery::default();
+        for (key, value) in raw {
+            match key.as_str() {
+                "target" => q.target.push(value),
+                "format" => q.format = value.parse()?,
+                "from" => q.from = time_parse(value).map_err(err_msg)?,
+                "until" => q.until = time_parse(value).map_err(err_msg)?,
+                _ => {}
+            };
+        }
+
+        Ok(q)
+    }
+}
+
+impl<S> FromRequest<S> for RenderQuery {
+    type Config = ();
+    type Result = Result<Self, actix_web::error::Error>;
+
+    fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
+        Ok(req.query_string().parse()?)
+    }
+}
+
+pub fn de_time_parse<'de, D>(deserializer: D) -> Result<u32, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s = String::deserialize(deserializer)?;
+    time_parse(String::deserialize(deserializer)?).map_err(serde::de::Error::custom)
+}
+
+pub fn time_parse(s: String) -> Result<u32, String> {
     if s.starts_with("-") {
         // Relative time
         let (multi, count) = match &s.chars().last().unwrap() {
@@ -34,34 +82,34 @@ where
             'y' => (3600 * 24 * 365, 1),
             'n' if s.ends_with("min") => (60, 3),
             'n' if s.ends_with("mon") => (3600 * 24 * 30, 3),
-            _ => return Err(serde::de::Error::custom("Can not parse time")),
+            _ => return Err("Can not parse time".to_owned()),
         };
 
         let s2 = &s[1..s.len() - count];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(serde::de::Error::custom)?
+            .map_err(|e| e.to_string())?
             .as_secs() as u32;
 
-        let v = now - s2.parse::<u32>().map_err(serde::de::Error::custom)? * multi;
+        let v = now - s2.parse::<u32>().map_err(|e| e.to_string())? * multi;
         Ok(v)
     } else {
         // Absolute time
         match s.as_str() {
             "now" => Ok(SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .map_err(serde::de::Error::custom)?
+                .map_err(|e| e.to_string())?
                 .as_secs() as u32),
             "yesterday" => Ok(SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .map_err(serde::de::Error::custom)?
+                .map_err(|e| e.to_string())?
                 .as_secs() as u32
                 - 3600 * 24),
-            "" => Err(serde::de::Error::custom("Can not parse empty string")),
+            "" => Err("Can not parse empty string".to_owned()),
             // Unix timestamp parse as default
             _ => {
                 // Unix timestamp
-                s.parse().map_err(serde::de::Error::custom)
+                Ok(s.parse::<u32>().map_err(|e| e.to_string())?)
             }
         }
     }
@@ -78,6 +126,24 @@ pub enum RenderFormat {
     Pdf,
     Dygraph,
     Rickshaw,
+}
+
+impl FromStr for RenderFormat {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "png" => Ok(RenderFormat::Png),
+            "raw" => Ok(RenderFormat::Raw),
+            "csv" => Ok(RenderFormat::Csv),
+            "json" => Ok(RenderFormat::Json),
+            "svg" => Ok(RenderFormat::Svg),
+            "pdf" => Ok(RenderFormat::Pdf),
+            "dygraph" => Ok(RenderFormat::Dygraph),
+            "rickshaw" => Ok(RenderFormat::Rickshaw),
+            _ => Ok(RenderFormat::Json),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -145,6 +211,11 @@ pub fn render_get(state: State<Args>, params: Query<RenderQuery>) -> Result<Http
 }
 
 #[allow(clippy::needless_pass_by_value)]
+pub fn render_get_query(state: State<Args>, params: RenderQuery) -> Result<HttpResponse, Error> {
+    render_any(&state, &params)
+}
+
+#[allow(clippy::needless_pass_by_value)]
 pub fn render_form(state: State<Args>, params: Form<RenderQuery>) -> Result<HttpResponse, Error> {
     render_any(&state, &params.into_inner())
 }
@@ -158,7 +229,6 @@ pub fn render_json(state: State<Args>, params: Json<RenderQuery>) -> Result<Http
 mod tests {
     use failure::Error;
     use serde_json::to_string;
-    use serde_urlencoded;
 
     use super::*;
 
@@ -172,9 +242,7 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>(
-                "target=app.numUsers&format=json&from=0&until=10"
-            )?,
+            "target=app.numUsers&format=json&from=0&until=10".parse::<RenderQuery>()?,
             params
         );
 
@@ -191,9 +259,8 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>(
-                "target=app.numUsers&target=app.numServers&format=json&from=0&until=10"
-            )?,
+            "target=app.numUsers&target=app.numServers&format=json&from=0&until=10"
+                .parse::<RenderQuery>()?,
             params
         );
 
@@ -210,7 +277,7 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>("format=json&from=0&until=10")?,
+            "format=json&from=0&until=10".parse::<RenderQuery>()?,
             params
         );
 
@@ -229,9 +296,7 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>(
-                "target=m1&target=m2&format=json&from=yesterday&until=now"
-            )?,
+            "target=m1&target=m2&format=json&from=yesterday&until=now".parse::<RenderQuery>()?,
             params
         );
 
@@ -250,9 +315,7 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>(
-                "target=m1&target=m2&format=json&from=-5d&until=-5min"
-            )?,
+            "target=m1&target=m2&format=json&from=-5d&until=-5min".parse::<RenderQuery>()?,
             params
         );
 
@@ -264,9 +327,7 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>(
-                "target=m1&target=m2&format=json&from=-5w&until=-5s"
-            )?,
+            "target=m1&target=m2&format=json&from=-5w&until=-5s".parse::<RenderQuery>()?,
             params2
         );
 
@@ -278,13 +339,11 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>(
-                "target=m1&target=m2&format=json&from=-2y&until=-5h"
-            )?,
+            "target=m1&target=m2&format=json&from=-2y&until=-5h".parse::<RenderQuery>()?,
             params3
         );
 
-        let params3 = RenderQuery {
+        let params4 = RenderQuery {
             format: RenderFormat::Json,
             target: ["m1".to_owned(), "m2".to_owned()].to_vec(),
             from: now - 5 * 3600 * 24 * 30,
@@ -292,10 +351,8 @@ mod tests {
         };
 
         assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>(
-                "target=m1&target=m2&format=json&from=-5mon&until=-1min"
-            )?,
-            params3
+            "target=m1&target=m2&format=json&from=-5mon&until=-1min".parse::<RenderQuery>()?,
+            params4
         );
 
         Ok(())
@@ -303,27 +360,22 @@ mod tests {
 
     #[test]
     fn url_deserialize_time_fail() -> Result<(), Error> {
-        assert_eq!(
-            serde_urlencoded::from_str::<RenderQuery>(
-                "target=m1&target=m2&format=json&from=-&until=now"
-            ),
-            Err(serde::de::Error::custom("Can not parse time"))
-        );
+        assert!(
+            "target=m1&target=m2&format=json&from=-&until=now"
+            .parse::<RenderQuery>()
+            .is_err());
 
-        assert!(serde_urlencoded::from_str::<RenderQuery>(
-            "target=m1&target=m2&format=json&from=-d&until=now"
-        )
-        .is_err());
+        assert!("target=m1&target=m2&format=json&from=-d&until=now"
+            .parse::<RenderQuery>()
+            .is_err());
 
-        assert!(serde_urlencoded::from_str::<RenderQuery>(
-            "target=m1&target=m2&format=json&from=&until=now"
-        )
-        .is_err());
+        assert!("target=m1&target=m2&format=json&from=&until=now"
+            .parse::<RenderQuery>()
+            .is_err());
 
-        assert!(serde_urlencoded::from_str::<RenderQuery>(
-            "target=m1&target=m2&format=json&from=tomorrow&until=now"
-        )
-        .is_err());
+        assert!("target=m1&target=m2&format=json&from=tomorrow&until=now"
+            .parse::<RenderQuery>()
+            .is_err());
 
         Ok(())
     }
