@@ -72,7 +72,7 @@ where
 }
 
 pub fn time_parse(s: String) -> Result<u32, String> {
-    if s.starts_with("-") {
+    if s.starts_with('-') {
         // Relative time
         let (multi, count) = match &s.chars().last().unwrap() {
             's' => (1, 1),

@@ -151,7 +151,10 @@ fn walk_tree(
         .filter_map(|entry| {
             let (local_path, local_file_type) = match entry {
                 Ok(rentry) => (
-                    rentry.path().strip_prefix(&full_path).map(|x| x.to_owned()),
+                    rentry
+                        .path()
+                        .strip_prefix(&full_path)
+                        .map(std::borrow::ToOwned::to_owned),
                     rentry.file_type(),
                 ),
                 _ => return None,
