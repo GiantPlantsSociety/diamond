@@ -12,6 +12,7 @@ use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
 use crate::opts::*;
+use crate::error::ParseError;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderQuery {
@@ -45,8 +46,8 @@ impl FromStr for RenderQuery {
             match key.as_str() {
                 "target" => q.target.push(value),
                 "format" => q.format = value.parse()?,
-                "from" => q.from = time_parse(value).map_err(err_msg)?,
-                "until" => q.until = time_parse(value).map_err(err_msg)?,
+                "from" => q.from = time_parse(value)?,
+                "until" => q.until = time_parse(value)?,
                 _ => {}
             };
         }
@@ -60,6 +61,8 @@ impl<S> FromRequest<S> for RenderQuery {
     type Result = Result<Self, actix_web::error::Error>;
 
     fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
+        let headers = req.headers();
+
         Ok(req.query_string().parse()?)
     }
 }
@@ -71,7 +74,7 @@ where
     time_parse(String::deserialize(deserializer)?).map_err(serde::de::Error::custom)
 }
 
-pub fn time_parse(s: String) -> Result<u32, String> {
+pub fn time_parse(s: String) -> Result<u32, ParseError> {
     if s.starts_with('-') {
         // Relative time
         let (multi, count) = match &s.chars().last().unwrap() {
@@ -82,34 +85,31 @@ pub fn time_parse(s: String) -> Result<u32, String> {
             'y' => (3600 * 24 * 365, 1),
             'n' if s.ends_with("min") => (60, 3),
             'n' if s.ends_with("mon") => (3600 * 24 * 30, 3),
-            _ => return Err("Can not parse time".to_owned()),
+            _ => return Err(ParseError::Time),
         };
 
         let s2 = &s[1..s.len() - count];
         let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|e| e.to_string())?
+            .duration_since(UNIX_EPOCH)?
             .as_secs() as u32;
 
-        let v = now - s2.parse::<u32>().map_err(|e| e.to_string())? * multi;
+        let v = now - s2.parse::<u32>()? * multi;
         Ok(v)
     } else {
         // Absolute time
         match s.as_str() {
             "now" => Ok(SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|e| e.to_string())?
+                .duration_since(UNIX_EPOCH)?
                 .as_secs() as u32),
             "yesterday" => Ok(SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|e| e.to_string())?
+                .duration_since(UNIX_EPOCH)?
                 .as_secs() as u32
                 - 3600 * 24),
-            "" => Err("Can not parse empty string".to_owned()),
+            "" => Err(ParseError::EmptyString),
             // Unix timestamp parse as default
             _ => {
                 // Unix timestamp
-                Ok(s.parse::<u32>().map_err(|e| e.to_string())?)
+                Ok(s.parse::<u32>()?)
             }
         }
     }
@@ -129,7 +129,7 @@ pub enum RenderFormat {
 }
 
 impl FromStr for RenderFormat {
-    type Err = Error;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -141,7 +141,7 @@ impl FromStr for RenderFormat {
             "pdf" => Ok(RenderFormat::Pdf),
             "dygraph" => Ok(RenderFormat::Dygraph),
             "rickshaw" => Ok(RenderFormat::Rickshaw),
-            _ => Ok(RenderFormat::Json),
+            _ => Err(ParseError::RenderFormat),
         }
     }
 }
