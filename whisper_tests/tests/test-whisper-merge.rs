@@ -7,6 +7,7 @@ use whisper::retention::*;
 use whisper_tests::*;
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_merge_update() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
@@ -41,6 +42,7 @@ fn test_merge_update() -> Result<(), Error> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_merge_update_many() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
@@ -75,6 +77,7 @@ fn test_merge_update_many() -> Result<(), Error> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_merge_errors() -> Result<(), builder::BuilderError> {
     let temp_dir = get_temp_dir();
 
@@ -103,6 +106,7 @@ fn test_merge_errors() -> Result<(), builder::BuilderError> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_merge_overwrite() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
@@ -160,7 +164,7 @@ fn test_merge_overwrite() -> Result<(), Error> {
         assert!(
             points
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == f64::from(*delta)),
+                .any(|p| p.interval == (now - delta) && (p.value - f64::from(*delta)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from file1: {:?}",
             delta,
             now - delta,
@@ -173,7 +177,7 @@ fn test_merge_overwrite() -> Result<(), Error> {
         assert!(
             points
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == f64::from(*delta)),
+                .any(|p| p.interval == (now - delta) && (p.value - f64::from(*delta)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from file2, points: {:?}",
             delta,
             now - delta,
@@ -186,6 +190,7 @@ fn test_merge_overwrite() -> Result<(), Error> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_fill_overlap() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
@@ -243,7 +248,7 @@ fn test_fill_overlap() -> Result<(), Error> {
         assert!(
             points
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == f64::from(*delta)),
+                .any(|p| p.interval == (now - delta) && (p.value - f64::from(*delta)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from file1: {:?}",
             delta,
             now - delta,
@@ -256,7 +261,7 @@ fn test_fill_overlap() -> Result<(), Error> {
         assert!(
             points
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == f64::from(*delta)),
+                .any(|p| p.interval == (now - delta) && (p.value - f64::from(*delta)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from file2, points: {:?}",
             delta,
             now - delta,

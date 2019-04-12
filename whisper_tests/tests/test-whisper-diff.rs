@@ -6,6 +6,7 @@ use whisper::*;
 use whisper_tests::*;
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_diff_simple_filtered() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
@@ -53,6 +54,7 @@ fn test_diff_simple_filtered() -> Result<(), Error> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_diff_simple_unfiltered() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
@@ -105,6 +107,7 @@ fn test_diff_simple_unfiltered() -> Result<(), Error> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_diff_error() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 

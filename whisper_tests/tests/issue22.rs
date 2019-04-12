@@ -53,7 +53,7 @@ fn issue22_many_archives() -> Result<(), failure::Error> {
         assert!(
             points
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == f64::from(*delta) * 100.0),
+                .any(|p| p.interval == (now - delta) && (p.value - (f64::from(*delta)) * 100.0) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}), points: {:?}",
             delta,
             now - delta,
@@ -68,7 +68,7 @@ fn issue22_many_archives() -> Result<(), failure::Error> {
         assert!(
             points2
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == (f64::from(*delta - 1)) * 100.0),
+                .any(|p| p.interval == (now - delta) && (p.value - (f64::from(*delta - 1)) * 100.0) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}), points: {:?}",
             delta,
             now - delta,
@@ -112,7 +112,7 @@ fn issue22_many_archives_once() -> Result<(), failure::Error> {
         assert!(
             points
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == (f64::from(*delta)) * 100.0),
+                .any(|p| p.interval == (now - delta) && (p.value - (f64::from(*delta)) * 100.0) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}), points: {:?}",
             delta,
             now - delta,
@@ -127,7 +127,7 @@ fn issue22_many_archives_once() -> Result<(), failure::Error> {
         assert!(
             points2
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == (f64::from(*delta - 1)) * 100.0),
+                .any(|p| p.interval == (now - delta) && (p.value - (f64::from(*delta - 1)) * 100.0) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}), points: {:?}",
             delta,
             now - delta,
@@ -167,7 +167,7 @@ fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
         assert!(
             points
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == f64::from(*delta) * 100.0),
+                .any(|p| p.interval == (now - delta) && (p.value - (f64::from(*delta)) * 100.0) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}), points: {:?}",
             delta,
             now - delta,
@@ -182,7 +182,7 @@ fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
         assert!(
             points2
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == (f64::from(*delta - 1)) * 100.0),
+                .any(|p| p.interval == (now - delta) && (p.value - (f64::from(*delta - 1)) * 100.0) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}), points: {:?}",
             delta,
             now - delta,
@@ -225,7 +225,7 @@ fn issue22_many_archives_once_shuffle() -> Result<(), failure::Error> {
         assert!(
             points
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == f64::from(*delta) * 100.0),
+                .any(|p| p.interval == (now - delta) && (p.value - (f64::from(*delta)) * 100.0) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}), points: {:?}",
             delta,
             now - delta,
@@ -240,7 +240,7 @@ fn issue22_many_archives_once_shuffle() -> Result<(), failure::Error> {
         assert!(
             points2
                 .iter()
-                .any(|p| p.interval == (now - delta) && p.value == (f64::from(*delta - 1)) * 100.0),
+                .any(|p| p.interval == (now - delta) && (p.value - (f64::from(*delta - 1)) * 100.0) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}), points: {:?}",
             delta,
             now - delta,
