@@ -1,6 +1,6 @@
 use actix;
-use env_logger;
 use actix_web::server;
+use env_logger;
 use graphite_api::application::create_app;
 use graphite_api::opts::Args;
 use std::fs::create_dir;

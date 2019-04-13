@@ -1,8 +1,8 @@
+use std::convert::From;
 use std::error::Error;
 use std::fmt;
-use std::convert::From;
-use std::time::SystemTimeError;
 use std::num::ParseIntError;
+use std::time::SystemTimeError;
 
 #[derive(Debug)]
 pub enum ParseError {

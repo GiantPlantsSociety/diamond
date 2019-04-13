@@ -11,8 +11,10 @@ use actix_web::{FromRequest, HttpRequest};
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
-use crate::opts::*;
 use crate::error::ParseError;
+use crate::opts::*;
+use actix_web::HttpMessage;
+use futures::future::Future;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderQuery {
@@ -56,14 +58,16 @@ impl FromStr for RenderQuery {
     }
 }
 
-impl<S> FromRequest<S> for RenderQuery {
+impl<S: 'static> FromRequest<S> for RenderQuery {
     type Config = ();
     type Result = Result<Self, actix_web::error::Error>;
 
     fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
-        let headers = req.headers();
-
-        Ok(req.query_string().parse()?)
+        if req.content_type().to_lowercase() != "application/x-www-form-urlencoded" {
+            Ok(String::extract(req)?.wait()?.parse()?)
+        } else {
+            Ok(req.query_string().parse()?)
+        }
     }
 }
 
@@ -89,22 +93,17 @@ pub fn time_parse(s: String) -> Result<u32, ParseError> {
         };
 
         let s2 = &s[1..s.len() - count];
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)?
-            .as_secs() as u32;
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
         let v = now - s2.parse::<u32>()? * multi;
         Ok(v)
     } else {
         // Absolute time
         match s.as_str() {
-            "now" => Ok(SystemTime::now()
-                .duration_since(UNIX_EPOCH)?
-                .as_secs() as u32),
-            "yesterday" => Ok(SystemTime::now()
-                .duration_since(UNIX_EPOCH)?
-                .as_secs() as u32
-                - 3600 * 24),
+            "now" => Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32),
+            "yesterday" => {
+                Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32 - 3600 * 24)
+            }
             "" => Err(ParseError::EmptyString),
             // Unix timestamp parse as default
             _ => {
@@ -360,8 +359,7 @@ mod tests {
 
     #[test]
     fn url_deserialize_time_fail() -> Result<(), Error> {
-        assert!(
-            "target=m1&target=m2&format=json&from=-&until=now"
+        assert!("target=m1&target=m2&format=json&from=-&until=now"
             .parse::<RenderQuery>()
             .is_err());
 
@@ -381,6 +379,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unreadable_literal)]
     fn render_response_json() {
         let rd = to_string(
             &[RenderResponceEntry {
