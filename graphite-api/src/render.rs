@@ -383,4 +383,17 @@ mod tests {
 
         assert_eq!(rd, rs);
     }
+
+    #[test]
+    fn format_parse() {
+        assert_eq!("png".parse(), Ok(RenderFormat::Png));
+        assert_eq!("raw".parse(), Ok(RenderFormat::Raw));
+        assert_eq!("csv".parse(), Ok(RenderFormat::Csv));
+        assert_eq!("json".parse(), Ok(RenderFormat::Json));
+        assert_eq!("svg".parse(), Ok(RenderFormat::Svg));
+        assert_eq!("pdf".parse(), Ok(RenderFormat::Pdf));
+        assert_eq!("dygraph".parse(), Ok(RenderFormat::Dygraph));
+        assert_eq!("rickshaw".parse(), Ok(RenderFormat::Rickshaw));
+        assert_eq!("".parse::<RenderFormat>(), Err(ParseError::RenderFormat));
+    }
 }
