@@ -63,10 +63,10 @@ impl<S: 'static> FromRequest<S> for RenderQuery {
     type Result = Result<Self, actix_web::error::Error>;
 
     fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
-        if req.content_type().to_lowercase() != "application/x-www-form-urlencoded" {
-            Ok(String::extract(req)?.wait()?.parse()?)
-        } else {
-            Ok(req.query_string().parse()?)
+        match req.content_type().to_lowercase().as_str() {
+            "application/x-www-form-urlencoded" => Ok(String::extract(req)?.wait()?.parse()?),
+            "application/json" => Ok(Json::<RenderQuery>::extract(req).wait()?.into_inner()),
+            _ => Ok(req.query_string().parse()?),
         }
     }
 }
