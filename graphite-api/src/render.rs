@@ -206,10 +206,8 @@ pub fn render_handler(state: State<Args>, params: RenderQuery) -> Result<HttpRes
 
 #[cfg(test)]
 mod tests {
-    use failure::Error;
-    use serde_json::to_string;
-
     use super::*;
+    use failure::Error;
 
     #[test]
     fn url_deserialize_one() -> Result<(), Error> {
@@ -359,29 +357,51 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::unreadable_literal)]
-    fn render_response_json() {
-        let rd = to_string(
+    fn render_response_json() -> Result<(), Error> {
+        let rd = serde_json::to_string(
             &[RenderResponceEntry {
                 target: "entries".into(),
                 datapoints: [
-                    RenderPoint(Some(1.0), 1311836008),
-                    RenderPoint(Some(2.0), 1311836009),
-                    RenderPoint(Some(3.0), 1311836010),
-                    RenderPoint(Some(5.0), 1311836011),
-                    RenderPoint(Some(6.0), 1311836012),
-                    RenderPoint(None, 1311836013),
+                    RenderPoint(Some(1.0), 1_311_836_008),
+                    RenderPoint(Some(2.0), 1_311_836_009),
+                    RenderPoint(Some(3.0), 1_311_836_010),
+                    RenderPoint(Some(5.0), 1_311_836_011),
+                    RenderPoint(Some(6.0), 1_311_836_012),
+                    RenderPoint(None, 1_311_836_013),
                 ]
                 .to_vec(),
             }]
             .to_vec(),
-        )
-        .unwrap();
+        )?;
 
         let rs =
             r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#;
 
         assert_eq!(rd, rs);
+        Ok(())
+    }
+
+    #[test]
+    #[allow(clippy::unreadable_literal)]
+    fn render_response_json_parse() -> Result<(), Error> {
+        let rd = [RenderResponceEntry {
+            target: "entries".into(),
+            datapoints: [
+                RenderPoint(Some(1.0), 1_311_836_008),
+                RenderPoint(Some(2.0), 1_311_836_009),
+                RenderPoint(Some(3.0), 1_311_836_010),
+                RenderPoint(Some(5.0), 1_311_836_011),
+                RenderPoint(Some(6.0), 1_311_836_012),
+                RenderPoint(None, 1_311_836_013),
+            ]
+            .to_vec(),
+        }]
+        .to_vec();
+
+        let rs: Vec<RenderResponceEntry> = serde_json::from_str(r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#)?;
+
+        assert_eq!(rd, rs);
+        Ok(())
     }
 
     #[test]
