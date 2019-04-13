@@ -7,7 +7,7 @@ use actix_web::{http, pred, App, HttpResponse};
 pub fn create_app(opt: Args) -> App<Args> {
     App::with_state(opt)
         .middleware(Logger::default())
-        .resource("/render", |r| r.with(render_get_query))
+        .resource("/render", |r| r.with(render_handler))
         .resource("/metrics/find", |r| {
             r.method(http::Method::GET).with(metrics_find_get);
             r.method(http::Method::POST)

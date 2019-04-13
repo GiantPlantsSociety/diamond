@@ -1,4 +1,4 @@
-use actix_web::{Form, HttpResponse, Json, Query, State};
+use actix_web::{HttpResponse, Json, State};
 use failure::*;
 use serde::*;
 use std::path::{Path, PathBuf};
@@ -191,37 +191,17 @@ pub struct RenderResponce {
     entries: Vec<Option<RenderResponceEntry>>,
 }
 
-fn render_any(args: &Args, params: &RenderQuery) -> Result<HttpResponse, Error> {
-    let dir = &args.path;
+pub fn render_handler(state: State<Args>, params: RenderQuery) -> Result<HttpResponse, Error> {
+    let dir = &state.path;
     let response: Vec<RenderResponceEntry> = params
         .target
         .iter()
         .map(|x| RenderResponceEntry {
             target: x.to_string(),
-            datapoints: walk(&dir, x, params).unwrap(),
+            datapoints: walk(&dir, x, &params).unwrap(),
         })
         .collect();
     Ok(HttpResponse::Ok().json(response))
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn render_get(state: State<Args>, params: Query<RenderQuery>) -> Result<HttpResponse, Error> {
-    render_any(&state, &params.into_inner())
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn render_get_query(state: State<Args>, params: RenderQuery) -> Result<HttpResponse, Error> {
-    render_any(&state, &params)
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn render_form(state: State<Args>, params: Form<RenderQuery>) -> Result<HttpResponse, Error> {
-    render_any(&state, &params.into_inner())
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn render_json(state: State<Args>, params: Json<RenderQuery>) -> Result<HttpResponse, Error> {
-    render_any(&state, &params.into_inner())
 }
 
 #[cfg(test)]
