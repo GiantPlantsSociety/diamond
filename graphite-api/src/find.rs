@@ -466,28 +466,4 @@ mod tests {
 
         assert_eq!(mleaf2, leaf2);
     }
-
-    #[test]
-    fn render_url_deserialize_default() -> Result<(), Error> {
-        #[derive(Debug, PartialEq, Serialize, Deserialize)]
-        struct RenderQuery {
-            target: Vec<String>,
-        }
-
-        let params = RenderQuery {
-            target: vec![
-                "company.server1.loadAvg".to_string(),
-                "company.server1.memUsage".to_string(),
-            ],
-        };
-
-        assert_eq!(
-            serde_urlencoded::from_str(
-                "target=company.server1.loadAvg&target=company.server1.memUsage"
-            ),
-            Ok(params)
-        );
-
-        Ok(())
-    }
 }

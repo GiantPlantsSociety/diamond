@@ -207,6 +207,7 @@ pub fn render_handler(state: State<Args>, params: RenderQuery) -> Result<HttpRes
 #[cfg(test)]
 mod tests {
     use super::*;
+    use actix_web::test::TestRequest;
     use failure::Error;
 
     #[test]
@@ -416,4 +417,21 @@ mod tests {
         assert_eq!("rickshaw".parse(), Ok(RenderFormat::Rickshaw));
         assert_eq!("".parse::<RenderFormat>(), Err(ParseError::RenderFormat));
     }
+
+    #[test]
+    fn render_request_parse() -> Result<(), actix_web::error::Error> {
+        let r = TestRequest::with_uri("/render?target=app.numUsers&format=json&from=0&until=10")
+            .finish();
+
+        let params = RenderQuery {
+            format: RenderFormat::Json,
+            target: ["app.numUsers".to_owned()].to_vec(),
+            from: 0,
+            until: 10,
+        };
+
+        assert_eq!(RenderQuery::from_request(&r, &())?, params);
+        Ok(())
+    }
+
 }
