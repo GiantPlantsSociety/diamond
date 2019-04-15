@@ -30,6 +30,7 @@ impl Dump for Vec<u8> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_update_snapshot() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "update_snapshot");
@@ -125,6 +126,7 @@ fn test_update_snapshot() -> Result<(), Error> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "update_and_aggregate_snapshot");

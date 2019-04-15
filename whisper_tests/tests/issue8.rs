@@ -5,6 +5,7 @@ use whisper::*;
 use whisper_tests::*;
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn issue8_many() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue8");
@@ -22,6 +23,7 @@ fn issue8_many() -> Result<(), Error> {
 }
 
 #[test]
+#[allow(clippy::unreadable_literal)]
 fn issue8_single() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue8");
