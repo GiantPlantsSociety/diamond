@@ -434,4 +434,19 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_de_time_parse_ok()
+    {
+        let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("\"123\""));
+        let ts = de_time_parse(&mut de).unwrap();
+        assert_eq!(ts, 123_u32);
+    }
+
+    #[test]
+    fn test_de_time_parse_error()
+    {
+        let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("\"lol\""));
+        let err = de_time_parse(&mut de).unwrap_err();
+        assert_eq!(err.to_string().as_str(), "invalid digit found in string");
+    }
 }
