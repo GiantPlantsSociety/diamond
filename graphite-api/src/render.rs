@@ -263,6 +263,23 @@ mod tests {
     }
 
     #[test]
+    fn url_deserialize_other() -> Result<(), Error> {
+        let params = RenderQuery {
+            format: RenderFormat::Json,
+            target: vec!["m1".to_owned()],
+            from: 0,
+            until: 10,
+        };
+
+        assert_eq!(
+            "target=m1&format=json&from=0&until=10&other=x".parse::<RenderQuery>()?,
+            params
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn url_deserialize_time_yesterday_now() -> Result<(), Error> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
@@ -359,21 +376,17 @@ mod tests {
 
     #[test]
     fn render_response_json() -> Result<(), Error> {
-        let rd = serde_json::to_string(
-            &[RenderResponceEntry {
-                target: "entries".into(),
-                datapoints: [
-                    RenderPoint(Some(1.0), 1_311_836_008),
-                    RenderPoint(Some(2.0), 1_311_836_009),
-                    RenderPoint(Some(3.0), 1_311_836_010),
-                    RenderPoint(Some(5.0), 1_311_836_011),
-                    RenderPoint(Some(6.0), 1_311_836_012),
-                    RenderPoint(None, 1_311_836_013),
-                ]
-                .to_vec(),
-            }]
-            .to_vec(),
-        )?;
+        let rd = serde_json::to_string(&[RenderResponceEntry {
+            target: "entries".into(),
+            datapoints: vec![
+                RenderPoint(Some(1.0), 1_311_836_008),
+                RenderPoint(Some(2.0), 1_311_836_009),
+                RenderPoint(Some(3.0), 1_311_836_010),
+                RenderPoint(Some(5.0), 1_311_836_011),
+                RenderPoint(Some(6.0), 1_311_836_012),
+                RenderPoint(None, 1_311_836_013),
+            ],
+        }])?;
 
         let rs =
             r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#;
