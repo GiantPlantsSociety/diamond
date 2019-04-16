@@ -419,7 +419,7 @@ mod tests {
     }
 
     #[test]
-    fn render_request_parse() -> Result<(), actix_web::error::Error> {
+    fn render_request_parse_url() -> Result<(), actix_web::error::Error> {
         let r = TestRequest::with_uri("/render?target=app.numUsers&format=json&from=0&until=10")
             .finish();
 
@@ -435,16 +435,50 @@ mod tests {
     }
 
     #[test]
-    fn test_de_time_parse_ok()
-    {
+    fn render_request_parse_form() -> Result<(), actix_web::error::Error> {
+        let r = TestRequest::with_uri("/render")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .set_payload("target=app.numUsers&format=json&from=0&until=10")
+            .finish();
+
+        let params = RenderQuery {
+            format: RenderFormat::Json,
+            target: ["app.numUsers".to_owned()].to_vec(),
+            from: 0,
+            until: 10,
+        };
+
+        assert_eq!(RenderQuery::from_request(&r, &())?, params);
+        Ok(())
+    }
+
+    #[test]
+    fn render_request_parse_json() -> Result<(), actix_web::error::Error> {
+        let r = TestRequest::with_uri("/render")
+            .header("content-type", "application/json")
+            .set_payload(r#"{ "target":["app.numUsers"],"format":"json","from":"0","until":"10"}"#)
+            .finish();
+
+        let params = RenderQuery {
+            format: RenderFormat::Json,
+            target: ["app.numUsers".to_owned()].to_vec(),
+            from: 0,
+            until: 10,
+        };
+
+        assert_eq!(RenderQuery::from_request(&r, &())?, params);
+        Ok(())
+    }
+
+    #[test]
+    fn test_de_time_parse_ok() {
         let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("\"123\""));
         let ts = de_time_parse(&mut de).unwrap();
         assert_eq!(ts, 123_u32);
     }
 
     #[test]
-    fn test_de_time_parse_error()
-    {
+    fn test_de_time_parse_error() {
         let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("\"lol\""));
         let err = de_time_parse(&mut de).unwrap_err();
         assert_eq!(err.to_string().as_str(), "invalid digit found in string");
