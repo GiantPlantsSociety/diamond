@@ -29,7 +29,7 @@ dependencies = [
 
 [[package]]
 name = "actix"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "actix-rt 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -654,7 +654,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "graphite-api"
 version = "0.1.0"
 dependencies = [
- "actix 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "actix 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 0.7.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2086,7 +2086,7 @@ dependencies = [
 
 [metadata]
 "checksum actix 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)" = "6c616db5fa4b0c40702fb75201c2af7f8aa8f3a2e2c1dda3b0655772aa949666"
-"checksum actix 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5a9ab51d8827ef9a5d8403988d4022bf5f13ca6dc38cd41e3c750d2c1f5668ae"
+"checksum actix 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "409b193241782089260e5567aa8ac607a7607153613dbe8a15170ed3b29984fd"
 "checksum actix-net 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "8bebfbe6629e0131730746718c9e032b58f02c6ce06ed7c982b9fef6c8545acd"
 "checksum actix-rt 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ed0424cdf6542a43b32a8885c7c5099bf4110fad9b50d7fb220ab9c038ecf5ec"
 "checksum actix-threadpool 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "97fa58548067c1f0a16a82cdb7c8823deac793d27efd17b51d6ea7861c6d3966"
