@@ -646,4 +646,12 @@ mod tests {
         assert_eq!(instant_offset(&archive, 10, 120 + 69), 59);
         assert_eq!(instant_offset(&archive, 10, 120 + 70), 0);
     }
+
+    #[test]
+    fn test_adjust_interval() {
+        assert_eq!(adjust_interval(Interval::new(1, 1).unwrap(), 10).unwrap(), Interval::new(0, 10).unwrap());
+        assert_eq!(adjust_interval(Interval::new(1, 5).unwrap(), 10).unwrap(), Interval::new(0, 10).unwrap());
+        assert_eq!(adjust_interval(Interval::new(0, 10).unwrap(), 10).unwrap(), Interval::new(0, 10).unwrap());
+        assert_eq!(adjust_interval(Interval::new(0, 11).unwrap(), 10).unwrap(), Interval::new(0, 20).unwrap());
+    }
 }
