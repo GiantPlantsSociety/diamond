@@ -239,6 +239,7 @@ impl WhisperFile {
             .map(|archive| archive.seconds_per_point)
             .next()
     }
+
     pub fn fetch_points(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<(Interval, Option<Vec<Point>>), io::Error> {
         let archive = self.find_archive(seconds_per_point)?;
         let available = Interval::past(now, self.metadata.max_retention);
@@ -279,10 +280,6 @@ impl WhisperFile {
         let archive = self.find_archive(seconds_per_point)?;
         read_archive(&mut self.file, &archive, 0, archive.points)
     }
-}
-
-pub fn suggest_archive(file: &WhisperFile, interval: Interval, now: u32) -> Option<u32> {
-    file.suggest_archive(interval, now)
 }
 
 fn instant_offset(archive: &ArchiveInfo, base_interval: u32, instant: u32) -> u32 {
