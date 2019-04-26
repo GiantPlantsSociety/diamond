@@ -175,8 +175,8 @@ pub fn diff(path1: &Path, path2: &Path, ignore_empty: bool, mut until_time: u32,
         let start_time = now - archive.retention();
         let interval = Interval::new(start_time, until_time).unwrap();
 
-        let data1 = file1.fetch(archive.seconds_per_point, interval, now)?.unwrap();
-        let data2 = file2.fetch(archive.seconds_per_point, interval, now)?.unwrap();
+        let data1 = file1.fetch(archive.seconds_per_point, interval, now)?;
+        let data2 = file2.fetch(archive.seconds_per_point, interval, now)?;
 
         let start = u32::min(data1.from_interval, data2.from_interval);
         let end = u32::max(data1.until_interval, data2.until_interval);

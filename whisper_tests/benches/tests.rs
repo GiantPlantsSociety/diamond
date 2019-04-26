@@ -2,7 +2,7 @@ use bencher::Bencher;
 use bencher::{benchmark_main, benchmark_group};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-use whisper::{WhisperFile, suggest_archive};
+use whisper::WhisperFile;
 use whisper::builder::{WhisperBuilder, BuilderError};
 use whisper::retention::Retention;
 use whisper::point::Point;
@@ -72,7 +72,7 @@ fn test_fetch(bench: &mut Bencher) {
     let until_time = from_time + 1000;
     let interval = Interval::new(from_time, until_time).expect("interval");
     bench.iter(|| {
-        let seconds_per_point = suggest_archive(&file, interval, now).expect("Archive");
+        let seconds_per_point = file.suggest_archive(interval, now).expect("Archive");
         file.fetch(seconds_per_point, interval, now).expect("fetch");
     });
 }
@@ -94,7 +94,7 @@ fn test_update_fetch(bench: &mut Bencher) {
             file.update(&Point { interval: now - SECONDS_AGO + j, value: *i}, now).expect("update");
             *i += VALUE_STEP;
         }
-        let seconds_per_point = suggest_archive(&file, interval, now).expect("Archive");
+        let seconds_per_point = file.suggest_archive(interval, now).expect("Archive");
         file.fetch(seconds_per_point, interval, now).expect("fetch");
     });
 }

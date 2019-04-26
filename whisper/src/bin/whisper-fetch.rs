@@ -64,7 +64,8 @@ fn run(args: &Args) -> Result<(), Error> {
     let interval = Interval::new(from, until).map_err(err_msg)?;
     let mut file = WhisperFile::open(&args.path)?;
 
-    let seconds_per_point = whisper::suggest_archive(&file, interval, now)
+    let seconds_per_point = file
+        .suggest_archive(interval, now)
         .ok_or_else(|| err_msg("No data in selected timerange"))?;
 
     let filter = match args.drop {
@@ -77,7 +78,6 @@ fn run(args: &Args) -> Result<(), Error> {
 
     let archive = file
         .fetch(seconds_per_point, interval, now)?
-        .ok_or_else(|| err_msg("No data in selected timerange"))?
         .filter_out(&filter);
 
     if args.json {

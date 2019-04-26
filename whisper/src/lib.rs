@@ -1,9 +1,8 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use failure;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::io::{self, Read, Write, Seek};
 use std::fs;
+use std::io::{self, Read, Seek, Write};
 use std::path::Path;
 
 /*
@@ -227,6 +226,20 @@ impl WhisperFile {
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Archive not found"))
     }
 
+    pub fn suggest_archive(&self, interval: Interval, now: u32) -> Option<u32> {
+        let meta = self.info();
+
+        let adjusted = Interval::past(now, meta.max_retention)
+            .intersection(interval)
+            .ok()?;
+
+        meta.archives
+            .iter()
+            .filter(|archive| Interval::past(now, archive.retention()).contains(adjusted))
+            .map(|archive| archive.seconds_per_point)
+            .next()
+    }
+
     pub fn fetch_points(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<(Interval, Option<Vec<Point>>), io::Error> {
         let archive = self.find_archive(seconds_per_point)?;
         let available = Interval::past(now, self.metadata.max_retention);
@@ -247,28 +260,26 @@ impl WhisperFile {
         Ok((adjusted_interval, points))
     }
 
-    pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<Option<ArchiveData>, io::Error> {
+    pub fn fetch_auto_points(&mut self, interval: Interval, now: u32) -> Result<ArchiveData, io::Error> {
+        let seconds_per_point = self
+            .suggest_archive(interval, now)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "No data in selected timerange"))?;
+
         let (adjusted_interval, points) = self.fetch_points(seconds_per_point, interval, now)?;
         let data = points_to_data(&points, adjusted_interval, seconds_per_point);
-        Ok(Some(data))
+        Ok(data)
+    }
+
+    pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<ArchiveData, io::Error> {
+        let (adjusted_interval, points) = self.fetch_points(seconds_per_point, interval, now)?;
+        let data = points_to_data(&points, adjusted_interval, seconds_per_point);
+        Ok(data)
     }
 
     pub fn dump(&mut self, seconds_per_point: u32) -> Result<Vec<Point>, io::Error> {
         let archive = self.find_archive(seconds_per_point)?;
         read_archive(&mut self.file, &archive, 0, archive.points)
     }
-}
-
-pub fn suggest_archive(file: &WhisperFile, interval: Interval, now: u32) -> Option<u32> {
-    let meta = file.info();
-
-    let adjusted = Interval::past(now, meta.max_retention)
-        .intersection(interval).ok()?;
-
-    meta.archives.iter()
-        .filter(|archive| Interval::past(now, archive.retention()).contains(adjusted))
-        .map(|archive| archive.seconds_per_point)
-        .next()
 }
 
 fn instant_offset(archive: &ArchiveInfo, base_interval: u32, instant: u32) -> u32 {
