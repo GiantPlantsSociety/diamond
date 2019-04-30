@@ -20,7 +20,7 @@ impl fmt::Display for ParseError {
             ParseError::Time => write!(f, "Time cannot be parsed"),
             ParseError::SystemTimeError(s) => write!(f, "System time error: {}", s),
             ParseError::ParseIntError(s) => write!(f, "{}", s),
-            ParseError::EmptyString => write!(f, "Can not parse empty string"),
+            ParseError::EmptyString => write!(f, "Cannot parse empty string"),
         }
     }
 }
