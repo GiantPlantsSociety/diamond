@@ -161,10 +161,9 @@ fn path(dir: &Path, metric: &str) -> Result<PathBuf, Error> {
     Ok(full_path)
 }
 
-fn walk(dir: &Path, metric: &str, from: u32, until: u32) -> Result<Vec<RenderPoint>, Error> {
+fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>, Error> {
     let full_path = path(dir, metric)?;
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
-    let interval = Interval::new(from, until).map_err(err_msg)?;
 
     let archive = WhisperFile::open(&full_path)?.fetch_auto_points(interval, now)?;
 
@@ -194,14 +193,16 @@ pub struct RenderResponce {
 
 pub fn render_handler(state: State<Args>, params: RenderQuery) -> Result<HttpResponse, Error> {
     let dir = &state.path;
-    let mut response = Vec::new();
+    let interval = Interval::new(params.from, params.until).map_err(err_msg)?;
 
-    for param in params.target {
-        response.push(RenderResponceEntry {
-            datapoints: walk(&dir, &param, params.from, params.until)?,
-            target: param,
-        })
-    }
+    let response: Vec<RenderResponceEntry> = params
+        .target
+        .into_iter()
+        .map(|x| Ok(RenderResponceEntry {
+            datapoints: walk(&dir, &x, interval)?,
+            target: x,
+        }))
+        .collect::<Result<_, Error>>()?;
 
     Ok(HttpResponse::Ok().json(response))
 }
