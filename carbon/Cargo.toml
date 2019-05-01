@@ -13,10 +13,7 @@ lazy_static = "1"
 regex = "1"
 structopt = "0.2"
 tokio = "0.1"
+futures = "0.1"
 config = "0.9"
+serde = { version = "1", features = ["derive"] }
 whisper = { path = "../whisper" }
-
-
-[[bin]]
-name = "cargo-tcp"
-path = "src/bin/main.rs"

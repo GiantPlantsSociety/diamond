@@ -1,0 +1,4 @@
+db_path = "/var/db/carbon"
+
+[tcp]
+port = 6142

@@ -8,6 +8,15 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use whisper::point::Point;
 
+use std::fs;
+
+use whisper::aggregation::AggregationMethod;
+use whisper::builder::WhisperBuilder;
+use whisper::retention::Retention;
+use whisper::WhisperFile;
+
+pub mod settings;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct MetricPoint {
     pub name: String,
@@ -70,8 +79,12 @@ impl FromStr for MetricPoint {
 impl From<MetricPoints> for Vec<MetricPoint> {
     fn from(mp: MetricPoints) -> Vec<MetricPoint> {
         let name = mp.name;
-        mp.points.into_iter()
-            .map(|point| MetricPoint { name: name.clone(), point })
+        mp.points
+            .into_iter()
+            .map(|point| MetricPoint {
+                name: name.clone(),
+                point,
+            })
             .collect()
     }
 }
@@ -119,6 +132,34 @@ impl From<PathBuf> for MetricPath {
     fn from(metric_path: PathBuf) -> MetricPath {
         MetricPath(metric_path)
     }
+}
+
+pub fn line_update(message: &str, dir: &PathBuf, now: u32) -> Result<(), Error> {
+    let metric: MetricPoint = message.parse()?;
+    let metric_path: MetricPath = metric.name.parse()?;
+
+    let mut file_path: PathBuf = dir.clone();
+    file_path.push(metric_path.0);
+
+    let mut file = if file_path.exists() {
+        WhisperFile::open(&file_path)?
+    } else {
+        let dir_path = file_path.parent().unwrap();
+        fs::create_dir_all(&dir_path)?;
+
+        WhisperBuilder::default()
+            .add_retentions(&[Retention {
+                seconds_per_point: 1,
+                points: 1000,
+            }])
+            .x_files_factor(0.5)
+            .aggregation_method(AggregationMethod::Average)
+            .build(&file_path)?
+    };
+
+    file.update(&metric.point, now)?;
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -196,19 +237,50 @@ mod tests {
 
     #[test]
     fn test_metrics_points_to_vec_metric_point() {
-        let p1 = Point { interval: 100, value: 100.1 };
-        let p2 = Point { interval: 200, value: 100.2 };
-        let p3 = Point { interval: 300, value: 100.3 };
+        let p1 = Point {
+            interval: 100,
+            value: 100.1,
+        };
+        let p2 = Point {
+            interval: 200,
+            value: 100.2,
+        };
+        let p3 = Point {
+            interval: 300,
+            value: 100.3,
+        };
         let name = String::from("test-metric-name");
         let mp = MetricPoints {
             name: name.clone(),
-            points: vec![p1, p2, p3]
+            points: vec![p1, p2, p3],
         };
         let points_vec: Vec<MetricPoint> = mp.into();
-        assert_eq!(points_vec, vec![
-            MetricPoint { name: name.clone(), point: p1 },
-            MetricPoint { name: name.clone(), point: p2 },
-            MetricPoint { name: name.clone(), point: p3 },
-        ]);
+        assert_eq!(
+            points_vec,
+            vec![
+                MetricPoint {
+                    name: name.clone(),
+                    point: p1
+                },
+                MetricPoint {
+                    name: name.clone(),
+                    point: p2
+                },
+                MetricPoint {
+                    name: name.clone(),
+                    point: p3
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_update_line() -> Result<(), Error> {
+        let message = "this.is.correct 1545778338 123";
+        let dir = PathBuf::from(".");
+        //let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32;
+        let now = 1545778348;
+        line_update(message, &dir, now)?;
+        Ok(())
     }
 }

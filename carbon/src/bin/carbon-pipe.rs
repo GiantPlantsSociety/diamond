@@ -1,6 +1,4 @@
-use carbon::{MetricPath, MetricPoint};
 use failure::Error;
-use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::path::PathBuf;
@@ -8,9 +6,8 @@ use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
-use whisper::builder::WhisperBuilder;
 use whisper::retention::Retention;
-use whisper::WhisperFile;
+use carbon::line_update;
 
 /// Receive metrics from pipe
 #[derive(Debug, StructOpt)]
@@ -44,30 +41,10 @@ struct Args {
 
 fn run(args: &Args) -> Result<(), Error> {
     let stdin = io::stdin();
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
     for line in stdin.lock().lines() {
-        let metric: MetricPoint = line?.parse()?;
-        let metric_path: MetricPath = metric.name.parse()?;
-
-        let mut file_path: PathBuf = args.path.clone();
-        file_path.push(metric_path.0);
-
-        let mut file = if file_path.exists() {
-            WhisperFile::open(&file_path)?
-        } else {
-            let dir_path = file_path.parent().unwrap();
-            fs::create_dir_all(&dir_path)?;
-
-            WhisperBuilder::default()
-                .add_retentions(&args.retentions)
-                .x_files_factor(args.x_files_factor)
-                .aggregation_method(args.aggregation_method)
-                .build(&file_path)
-                .unwrap()
-        };
-
-        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
-        file.update(&metric.point, now)?;
+        line_update(&line?, &args.path, now)?;
     }
     Ok(())
 }
