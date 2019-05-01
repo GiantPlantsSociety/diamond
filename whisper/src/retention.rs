@@ -69,7 +69,7 @@ pub fn parse_duration(s: &str) -> Result<u32, String> {
     }
 
     if precision == 0 {
-        Err("Precision can not be zero".to_owned())
+        Err("Precision cannot be zero".to_owned())
     } else {
         Ok(precision)
     }

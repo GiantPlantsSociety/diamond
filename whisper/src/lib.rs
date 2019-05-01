@@ -557,7 +557,7 @@ fn __archive_update_many<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMet
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct ArchiveData {
     #[serde(rename = "start")]
     pub from_interval: u32,

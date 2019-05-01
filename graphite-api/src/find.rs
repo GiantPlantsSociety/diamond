@@ -151,7 +151,10 @@ fn walk_tree(
         .filter_map(|entry| {
             let (local_path, local_file_type) = match entry {
                 Ok(rentry) => (
-                    rentry.path().strip_prefix(&full_path).map(|x| x.to_owned()),
+                    rentry
+                        .path()
+                        .strip_prefix(&full_path)
+                        .map(std::borrow::ToOwned::to_owned),
                     rentry.file_type(),
                 ),
                 _ => return None,
@@ -191,7 +194,8 @@ fn walk_tree(
                 }
                 _ => None,
             }
-        }).collect();
+        })
+        .collect();
 
     metrics.sort_by_key(|k| k.name.clone());
     Ok(metrics)
@@ -432,7 +436,8 @@ mod tests {
             name: "456".to_owned(),
             path: "123.456".to_owned(),
             is_leaf: true,
-        }.into();
+        }
+        .into();
 
         let leaf = JsonTreeLeaf {
             text: "123.456".to_owned(),
@@ -448,7 +453,8 @@ mod tests {
             name: "789".to_owned(),
             path: "123.456.789".to_owned(),
             is_leaf: false,
-        }.into();
+        }
+        .into();
 
         let leaf2 = JsonTreeLeaf {
             text: "123.456.789".to_owned(),
@@ -459,25 +465,5 @@ mod tests {
         };
 
         assert_eq!(mleaf2, leaf2);
-    }
-
-    #[test]
-    fn render_url_deserialize_default() -> Result<(), Error> {
-
-        #[derive(Debug, PartialEq, Serialize, Deserialize)]
-        struct RenderQuery {
-            target: Vec<String>,
-        }
-
-        let params = RenderQuery {
-            target: vec![
-                "company.server1.loadAvg".to_string(),
-                "company.server1.memUsage".to_string(),
-            ]
-        };
-
-        assert_eq!(serde_urlencoded::from_str("target=company.server1.loadAvg&target=company.server1.memUsage"), Ok(params));
-
-        Ok(())
     }
 }

@@ -22,11 +22,11 @@ pub struct MetricPoints {
 
 #[derive(Fail, Debug)]
 enum MetricError {
-    #[fail(display = "Metric line({}) can not be validated", _0)]
+    #[fail(display = "Metric line({}) cannot be validated", _0)]
     Validate(String),
-    #[fail(display = "Metric name({}) can not be validated", _0)]
+    #[fail(display = "Metric name({}) cannot be validated", _0)]
     NameValidate(String),
-    #[fail(display = "Can not parse metric from line: {}", _0)]
+    #[fail(display = "Cannot parse metric from line: {}", _0)]
     LineParse(String),
 }
 
