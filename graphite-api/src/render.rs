@@ -3,9 +3,10 @@ use failure::*;
 use serde::*;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::iter::successors;
 
 use whisper::interval::Interval;
-use whisper::WhisperFile;
+use whisper::{WhisperFile, ArchiveData};
 
 use actix_web::{FromRequest, HttpRequest};
 use serde::{Deserialize, Deserializer};
@@ -160,14 +161,12 @@ fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>
     let full_path = path(dir, metric)?;
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
-    let archive = WhisperFile::open(&full_path)?.fetch_auto_points(interval, now)?;
+    let ArchiveData { from_interval, step, values, .. } = WhisperFile::open(&full_path)?.fetch_auto_points(interval, now)?;
 
-    let mut points = Vec::new();
-
-    for (index, value) in archive.values.iter().enumerate() {
-        let time = archive.from_interval + archive.step * index as u32;
-        points.push(RenderPoint(*value, time));
-    }
+    let timestamps = successors(Some(from_interval), |i| i.checked_add(step));
+    let points = values.into_iter().zip(timestamps)
+        .map(|(value, time)| RenderPoint(value, time))
+        .collect();
 
     Ok(points)
 }
