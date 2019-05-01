@@ -16,7 +16,7 @@ use crate::opts::*;
 use actix_web::HttpMessage;
 use futures::future::Future;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct RenderQuery {
     target: Vec<String>,
     format: RenderFormat,
@@ -24,17 +24,6 @@ pub struct RenderQuery {
     from: u32,
     #[serde(deserialize_with = "de_time_parse")]
     until: u32,
-}
-
-impl Default for RenderQuery {
-    fn default() -> Self {
-        RenderQuery {
-            target: Vec::new(),
-            format: RenderFormat::Json,
-            from: 0,
-            until: 0,
-        }
-    }
 }
 
 impl FromStr for RenderQuery {
@@ -125,6 +114,12 @@ pub enum RenderFormat {
     Pdf,
     Dygraph,
     Rickshaw,
+}
+
+impl Default for RenderFormat {
+    fn default() -> Self {
+        RenderFormat::Json
+    }
 }
 
 impl FromStr for RenderFormat {
