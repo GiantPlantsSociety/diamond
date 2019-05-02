@@ -2,7 +2,10 @@ extern crate tokio;
 
 use carbon::line_update;
 use carbon::settings::Settings;
+use failure::Error;
+use std::io;
 use std::path::PathBuf;
+use std::process::exit;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
@@ -10,7 +13,6 @@ use tokio::codec::Framed;
 use tokio::codec::LinesCodec;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
-use std::process::exit;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "carbon-server")]
@@ -24,20 +26,17 @@ struct Args {
     generate: bool,
 }
 
-fn main() {
-    let args = Args::from_args();
-
+fn run(args: Args) -> Result<(), Error> {
     if args.generate {
-        Settings::generate(args.config.unwrap()).unwrap();
+        Settings::generate(args.config.unwrap())?;
         exit(1);
     }
 
-    let settings = Settings::new(args.config).expect("Failed to parse config");
+    let settings = Settings::new(args.config)?;
     println!("{:?}", settings);
 
-
-    let addr = format!("127.0.0.1:{}", settings.tcp.port).parse().unwrap();
-    let listener = TcpListener::bind(&addr).unwrap();
+    let addr = format!("127.0.0.1:{}", settings.tcp.port).parse()?;
+    let listener = TcpListener::bind(&addr)?;
     let path = Arc::new(settings.db_path);
 
     let server = listener
@@ -50,7 +49,8 @@ fn main() {
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_secs() as u32;
-                line_update(&line, &lpath, now).unwrap();
+                line_update(&line, &lpath, now)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
                 Ok(())
             })
         })
@@ -60,4 +60,14 @@ fn main() {
 
     println!("server running on {}", addr);
     tokio::run(server);
+
+    Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }

@@ -1,4 +1,3 @@
-use failure::Error;
 use failure::*;
 use lazy_static::lazy_static;
 

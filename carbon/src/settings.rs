@@ -18,10 +18,12 @@ pub struct Settings {
 
 impl Settings {
     pub fn new(file: Option<PathBuf>) -> Result<Self, ConfigError> {
-        let mut s = Config::new();
+        let mut s = Config::default();
 
         match file {
-            Some(file) => s.merge(File::from_str(CONFIG, FileFormat::Toml))?.merge(File::from(file))?,
+            Some(file) => s
+                .merge(File::from_str(CONFIG, FileFormat::Toml))?
+                .merge(File::from(file))?,
             _ => s.merge(File::from_str(CONFIG, FileFormat::Toml))?,
         };
 
