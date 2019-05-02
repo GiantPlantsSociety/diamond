@@ -4,4 +4,8 @@ members = [
     "whisper_tests",
     "carbon",
     "graphite-api",
+    "rrd-sys",
+    "rrd",
+    "rrd_tests",
+    "rrd2whisper",
 ]

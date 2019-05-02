@@ -7,7 +7,7 @@ task:
   env:
     RUST_BACKTRACE: 1
   setup_script:
-    - pkg install -y curl
+    - pkg install -y curl rrdtool
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh -y
   test_script:
