@@ -1,6 +1,9 @@
 use config::*;
 use serde::*;
+use std::fs;
 use std::path::PathBuf;
+
+const CONFIG: &str = include_str!("config.toml");
 
 #[derive(Debug, Deserialize)]
 pub struct Tcp {
@@ -14,13 +17,18 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new() -> Result<Self, ConfigError> {
+    pub fn new(file: Option<PathBuf>) -> Result<Self, ConfigError> {
         let mut s = Config::new();
-        s.merge(File::from_str(
-            include_str!("config.toml"),
-            FileFormat::Toml,
-        ))?;
+
+        match file {
+            Some(file) => s.merge(File::from_str(CONFIG, FileFormat::Toml))?.merge(File::from(file))?,
+            _ => s.merge(File::from_str(CONFIG, FileFormat::Toml))?,
+        };
 
         s.try_into()
+    }
+
+    pub fn generate(path: PathBuf) -> Result<(), std::io::Error> {
+        fs::write(path, CONFIG)
     }
 }

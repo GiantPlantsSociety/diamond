@@ -1,3 +1,4 @@
+use carbon::line_update;
 use failure::Error;
 use std::io;
 use std::io::BufRead;
@@ -7,28 +8,28 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
-use carbon::line_update;
 
 /// Receive metrics from pipe
 #[derive(Debug, StructOpt)]
 #[structopt(name = "carbon-pipe")]
 struct Args {
-    /// Path to data file
+    /// Path to the directory with data files
     #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,
 
-    /// XFILESFACTOR
+    /// Default value for the xFilesFactor for new files
     #[structopt(long = "xFilesFactor", default_value = "0.5")]
     x_files_factor: f32,
 
-    /// Function to use when aggregating values
+    /// Default function to use when aggregating values
     /// (average, sum, last, max, min, avg_zero, absmax, absmin)
     #[structopt(long = "aggregationMethod", default_value = "average")]
     aggregation_method: AggregationMethod,
 
     #[structopt(
         name = "retentions",
-        help = r#"Specify lengths of time, for example:
+        help = r#" Default retentions for new files
+Specify lengths of time, for example:
 60:1440      60 seconds per datapoint, 1440 datapoints = 1 day of retention
 15m:8        15 minutes per datapoint, 8 datapoints = 2 hours of retention
 1h:7d        1 hour per datapoint, 7 days of retention
@@ -41,9 +42,9 @@ struct Args {
 
 fn run(args: &Args) -> Result<(), Error> {
     let stdin = io::stdin();
-    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
     for line in stdin.lock().lines() {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
         line_update(&line?, &args.path, now)?;
     }
     Ok(())
