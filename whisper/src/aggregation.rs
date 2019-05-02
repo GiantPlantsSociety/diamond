@@ -2,6 +2,7 @@ use std::cmp;
 use std::str::FromStr;
 use std::fmt;
 use std::convert::Into;
+use serde::*;
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 fn cmp_f64(a: &f64, b: &f64) -> cmp::Ordering {
@@ -13,7 +14,7 @@ fn cmp_f64_abs(a: &f64, b: &f64) -> cmp::Ordering {
     cmp_f64(&a.abs(), &b.abs())
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 pub enum AggregationMethod {
     Average,
     Sum,

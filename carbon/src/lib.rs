@@ -108,7 +108,7 @@ impl MetricPath {
 impl FromStr for MetricPath {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<MetricPath, Error> {
+    fn from_str(s: &str) -> Result<Self, Error> {
         MetricPath::validate(s)?;
         let segments: Vec<&str> = s.split('.').collect();
 
@@ -122,13 +122,13 @@ impl FromStr for MetricPath {
 }
 
 impl From<MetricPath> for PathBuf {
-    fn from(metric_path: MetricPath) -> PathBuf {
+    fn from(metric_path: MetricPath) -> Self {
         metric_path.0
     }
 }
 
 impl From<PathBuf> for MetricPath {
-    fn from(metric_path: PathBuf) -> MetricPath {
+    fn from(metric_path: PathBuf) -> Self {
         MetricPath(metric_path)
     }
 }

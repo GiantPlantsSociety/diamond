@@ -35,7 +35,7 @@ fn run(args: Args) -> Result<(), Error> {
     let settings = Settings::new(args.config)?;
     println!("{:?}", settings);
 
-    let addr = format!("127.0.0.1:{}", settings.tcp.port).parse()?;
+    let addr = format!("{0}:{1}", &settings.tcp.host, settings.tcp.port).parse()?;
     let listener = TcpListener::bind(&addr)?;
     let path = Arc::new(settings.db_path);
 

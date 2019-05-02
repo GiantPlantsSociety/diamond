@@ -2,3 +2,9 @@ db_path = "/var/db/carbon"
 
 [tcp]
 port = 6142
+host = "0.0.0.0"
+
+[whisper]
+x_files_factor = 0.5
+retentions = [ [60,1440] ]
+aggregation_method = "average"
