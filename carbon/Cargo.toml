@@ -17,3 +17,6 @@ futures = "0.1"
 config = "0.9"
 serde = { version = "1", features = ["derive"] }
 whisper = { path = "../whisper" }
+
+[dev-dependencies]
+tempfile = "3"
