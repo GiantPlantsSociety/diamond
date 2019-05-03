@@ -8,6 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
+use carbon::settings::WhisperConfig;
 
 /// Receive metrics from pipe
 #[derive(Debug, StructOpt)]
@@ -40,19 +41,25 @@ Specify lengths of time, for example:
     retentions: Vec<Retention>,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: Args) -> Result<(), Error> {
     let stdin = io::stdin();
+
+    let conf = WhisperConfig {
+        retentions: args.retentions,
+        aggregation_method: args.aggregation_method,
+        x_files_factor: args.x_files_factor,
+    };
 
     for line in stdin.lock().lines() {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
-        line_update(&line?, &args.path, now)?;
+        line_update(&line?, &args.path, &conf, now)?;
     }
     Ok(())
 }
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = run(args) {
         eprintln!("{}", err);
         exit(1);
     }

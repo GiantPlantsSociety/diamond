@@ -38,18 +38,21 @@ fn run(args: Args) -> Result<(), Error> {
     let addr = format!("{0}:{1}", &settings.tcp.host, settings.tcp.port).parse()?;
     let listener = TcpListener::bind(&addr)?;
     let path = Arc::new(settings.db_path);
+    let config = Arc::new(settings.whisper);
 
     let server = listener
         .incoming()
         .for_each(move |sock| {
             let framed_sock = Framed::new(sock, LinesCodec::new());
-            let lpath = path.clone();
+            let p = path.clone();
+            let conf = config.clone();
+
             framed_sock.for_each(move |line| {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_secs() as u32;
-                line_update(&line, &lpath, now)
+                line_update(&line, &p, &conf, now)
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
                 Ok(())
             })

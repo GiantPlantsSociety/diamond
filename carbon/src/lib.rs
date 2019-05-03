@@ -3,18 +3,16 @@ use lazy_static::lazy_static;
 
 use regex::Regex;
 use std::convert::From;
+use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-use whisper::point::Point;
-
-use std::fs;
-
-use whisper::aggregation::AggregationMethod;
 use whisper::builder::WhisperBuilder;
-use whisper::retention::Retention;
+use whisper::point::Point;
 use whisper::WhisperFile;
 
 pub mod settings;
+
+use settings::WhisperConfig;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MetricPoint {
@@ -133,7 +131,12 @@ impl From<PathBuf> for MetricPath {
     }
 }
 
-pub fn line_update(message: &str, dir: &PathBuf, now: u32) -> Result<(), Error> {
+pub fn line_update(
+    message: &str,
+    dir: &PathBuf,
+    config: &WhisperConfig,
+    now: u32,
+) -> Result<(), Error> {
     let metric: MetricPoint = message.parse()?;
     let metric_path: MetricPath = metric.name.parse()?;
 
@@ -147,12 +150,9 @@ pub fn line_update(message: &str, dir: &PathBuf, now: u32) -> Result<(), Error> 
         fs::create_dir_all(&dir_path)?;
 
         WhisperBuilder::default()
-            .add_retentions(&[Retention {
-                seconds_per_point: 1,
-                points: 1000,
-            }])
-            .x_files_factor(0.5)
-            .aggregation_method(AggregationMethod::Average)
+            .add_retentions(&config.retentions)
+            .x_files_factor(config.x_files_factor)
+            .aggregation_method(config.aggregation_method)
             .build(&file_path)?
     };
 
@@ -164,7 +164,10 @@ pub fn line_update(message: &str, dir: &PathBuf, now: u32) -> Result<(), Error> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use settings::WhisperConfig;
     use std::path::Path;
+    use whisper::aggregation::AggregationMethod;
+    use whisper::retention::Retention;
 
     #[test]
     fn test_metric_correct_parse() {
@@ -277,9 +280,16 @@ mod tests {
     fn test_update_line() -> Result<(), Error> {
         let message = "this.is.correct 1545778338 123";
         let dir = PathBuf::from(".");
-        //let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32;
+        let config = WhisperConfig {
+            retentions: vec![Retention {
+                seconds_per_point: 1,
+                points: 1000,
+            }],
+            x_files_factor: 0.5,
+            aggregation_method: AggregationMethod::Average,
+        };
         let now = 1545778348;
-        line_update(message, &dir, now)?;
+        line_update(message, &dir, &config, now)?;
         Ok(())
     }
 }

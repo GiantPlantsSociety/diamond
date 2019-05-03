@@ -5,7 +5,7 @@ use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use whisper::aggregation::AggregationMethod;
-use whisper::retention;
+use whisper::retention::Retention;
 
 const CONFIG: &str = include_str!("config.toml");
 
@@ -13,18 +13,6 @@ const CONFIG: &str = include_str!("config.toml");
 pub struct Tcp {
     pub port: u32,
     pub host: IpAddr,
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-pub struct Retention(u32, u32);
-
-impl From<Retention> for retention::Retention {
-    fn from(r: Retention) -> Self {
-        retention::Retention {
-            seconds_per_point: r.0,
-            points: r.1,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -66,6 +54,7 @@ mod tests {
     use std::fs::read_to_string;
     use std::net::IpAddr::V4;
     use tempfile::Builder;
+    use whisper::retention::Retention;
 
     #[test]
     fn test_default_config() {
@@ -79,7 +68,10 @@ mod tests {
             },
             whisper: WhisperConfig {
                 x_files_factor: 0.5,
-                retentions: vec![Retention(60, 1440)],
+                retentions: vec![Retention {
+                    seconds_per_point: 60,
+                    points: 1440,
+                }],
                 aggregation_method: AggregationMethod::Average,
             },
         };
@@ -110,7 +102,10 @@ mod tests {
             },
             whisper: WhisperConfig {
                 x_files_factor: 0.5,
-                retentions: vec![Retention(60, 1440)],
+                retentions: vec![Retention {
+                    seconds_per_point: 60,
+                    points: 1440,
+                }],
                 aggregation_method: AggregationMethod::Average,
             },
         };

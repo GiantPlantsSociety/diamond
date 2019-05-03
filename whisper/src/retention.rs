@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use regex::Regex;
 use lazy_static::lazy_static;
+use serde::*;
 
 fn get_unit_multiplier(s: &str) -> Result<u32, String> {
     if s.is_empty() || "seconds".starts_with(s) {
@@ -53,6 +54,19 @@ impl FromStr for Retention {
         }
 
         Ok(Self { seconds_per_point: precision, points })
+    }
+}
+
+impl<'de> Deserialize<'de> for Retention {
+    fn deserialize<D>(deserializer: D) -> Result<Retention, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let seq = <[u32; 2]>::deserialize(deserializer)?;
+        Ok(Retention {
+            seconds_per_point: seq[0],
+            points: seq[1],
+        })
     }
 }
 
