@@ -137,4 +137,18 @@ mod tests {
         assert!(parse_duration("-10").is_err());
         assert!(parse_duration("0").is_err());
     }
+
+    #[test]
+    fn test_de_retention_ok() {
+        let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("[60,1440]"));
+        let r = Retention::deserialize(&mut de).unwrap();
+        assert_eq!(r, Retention{ seconds_per_point: 60, points: 1440 });
+    }
+
+    #[test]
+    fn test_de_retention_error() {
+        let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("[60]"));
+        let err = Retention::deserialize(&mut de).unwrap_err();
+        assert_eq!(err.to_string().as_str(), "invalid length 1, expected an array of length 2 at line 1 column 4");
+    }
 }
