@@ -130,7 +130,7 @@ pub struct WhisperFile {
 }
 
 impl WhisperFile {
-    fn create(header: &WhisperMetadata, path: &Path, sparse: bool) -> Result<Self, io::Error> {
+    fn create<P: AsRef<Path>>(header: &WhisperMetadata, path: P, sparse: bool) -> Result<Self, io::Error> {
         let mut metainfo_bytes = Vec::<u8>::new();
         header.write(&mut metainfo_bytes)?;
 
@@ -156,7 +156,7 @@ impl WhisperFile {
         })
     }
 
-    pub fn open(path: &Path) -> Result<Self, io::Error> {
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
         let mut file = fs::OpenOptions::new().read(true).write(true).open(path)?;
         let metadata = WhisperMetadata::read(&mut file)?;
         Ok(Self {
