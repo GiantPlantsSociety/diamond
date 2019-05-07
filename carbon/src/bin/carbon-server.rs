@@ -33,18 +33,15 @@ fn run(args: Args) -> Result<(), Error> {
     }
 
     let settings = Settings::new(args.config)?;
-    println!("{:?}", settings);
 
     let addr = format!("{0}:{1}", &settings.tcp.host, settings.tcp.port).parse()?;
     let listener = TcpListener::bind(&addr)?;
-    let path = Arc::new(settings.db_path);
-    let config = Arc::new(settings.whisper);
+    let config = Arc::new(settings);
 
     let server = listener
         .incoming()
         .for_each(move |sock| {
             let framed_sock = Framed::new(sock, LinesCodec::new());
-            let p = path.clone();
             let conf = config.clone();
 
             framed_sock.for_each(move |line| {
@@ -52,13 +49,13 @@ fn run(args: Args) -> Result<(), Error> {
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_secs() as u32;
-                line_update(&line, &p, &conf, now)
+                line_update(&line, &conf.db_path, &conf.whisper, now)
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
                 Ok(())
             })
         })
         .map_err(|err| {
-            println!("accept error = {:?}", err);
+            eprintln!("accept error = {:?}", err);
         });
 
     println!("server running on {}", addr);

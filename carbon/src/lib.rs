@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::convert::From;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use whisper::builder::WhisperBuilder;
 use whisper::point::Point;
@@ -131,17 +131,16 @@ impl From<PathBuf> for MetricPath {
     }
 }
 
-pub fn line_update(
+pub fn line_update<P: AsRef<Path>>(
     message: &str,
-    dir: &PathBuf,
+    dir: P,
     config: &WhisperConfig,
     now: u32,
 ) -> Result<(), Error> {
     let metric: MetricPoint = message.parse()?;
     let metric_path: MetricPath = metric.name.parse()?;
 
-    let mut file_path: PathBuf = dir.clone();
-    file_path.push(metric_path.0);
+    let file_path = dir.as_ref().join(metric_path.0);
 
     let mut file = if file_path.exists() {
         WhisperFile::open(&file_path)?
