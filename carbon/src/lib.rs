@@ -165,9 +165,35 @@ pub fn line_update(
 mod tests {
     use super::*;
     use settings::WhisperConfig;
-    use std::path::Path;
+    use std::convert::From;
+    use std::path::{Path, PathBuf};
+    use tempfile::Builder;
     use whisper::aggregation::AggregationMethod;
     use whisper::retention::Retention;
+
+    #[test]
+    fn metric_path_validate_ok() {
+        assert!(MetricPath::validate("this.is.correct").is_ok());
+    }
+
+    #[test]
+    fn metric_path_validate_err() {
+        assert!(MetricPath::validate("$this.is.not.correct").is_err());
+        assert!(MetricPath::validate(",this.is.not.correct").is_err());
+        assert!(MetricPath::validate("@this.is.not.correct").is_err());
+        assert!(MetricPath::validate("\\this.is.not.correct").is_err());
+        assert!(MetricPath::validate("/this.is.not.correct").is_err());
+        assert!(MetricPath::validate("[this.is.not.correct").is_err());
+        assert!(MetricPath::validate("{this.is.not.correct").is_err());
+        assert!(MetricPath::validate("%this.is.not.correct").is_err());
+        assert!(MetricPath::validate("#this.is.not.correct").is_err());
+    }
+
+    #[test]
+    fn metric_path_conversion_ok() {
+        let m: PathBuf = "this.is.ok".parse::<MetricPath>().unwrap().into();
+        assert_eq!(PathBuf::from("./this/is/ok.wsp"), m);
+    }
 
     #[test]
     fn test_metric_correct_parse() {
@@ -209,6 +235,12 @@ mod tests {
     #[test]
     fn test_metric_parse_incorrect_value() {
         let metric_result = "this.is.correct 1 a123".parse::<MetricPoint>();
+        assert!(metric_result.is_err(), "It should not be parsed");
+    }
+
+    #[test]
+    fn test_metric_parse_incorrect_parts_count() {
+        let metric_result = "this.is.correct 1 123 1".parse::<MetricPoint>();
         assert!(metric_result.is_err(), "It should not be parsed");
     }
 
@@ -277,9 +309,16 @@ mod tests {
     }
 
     #[test]
-    fn test_update_line() -> Result<(), Error> {
-        let message = "this.is.correct 1545778338 123";
-        let dir = PathBuf::from(".");
+    fn update_line_with_absent_wsp() -> Result<(), Error> {
+        let dir = Builder::new()
+            .prefix("carbon")
+            .tempdir()
+            .unwrap()
+            .path()
+            .to_path_buf();
+
+        let message = "this.is.correct1 1545778338 124";
+
         let config = WhisperConfig {
             retentions: vec![Retention {
                 seconds_per_point: 1,
@@ -290,6 +329,62 @@ mod tests {
         };
         let now = 1545778348;
         line_update(message, &dir, &config, now)?;
+
+        let file = dir.join("this").join("is").join("correct1.wsp");
+        assert_eq!(
+            WhisperFile::open(&file)?.dump(1)?[0],
+            Point {
+                interval: 1545778338,
+                value: 124.0
+            }
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn update_line_with_present_wsp() -> Result<(), Error> {
+        let dir = Builder::new()
+            .prefix("carbon")
+            .tempdir()
+            .unwrap()
+            .path()
+            .to_path_buf();
+
+        let file_path = dir.join("this").join("is").join("correct2.wsp");
+
+        fs::create_dir_all(&file_path.parent().unwrap())?;
+
+        let mut file = WhisperBuilder::default()
+            .add_retentions(&[Retention {
+                seconds_per_point: 1,
+                points: 20,
+            }])
+            .x_files_factor(0.5)
+            .aggregation_method(AggregationMethod::Average)
+            .build(&file_path)?;
+
+        let message = "this.is.correct2 1545778338 123";
+
+        let config = WhisperConfig {
+            retentions: vec![Retention {
+                seconds_per_point: 1,
+                points: 20,
+            }],
+            x_files_factor: 0.5,
+            aggregation_method: AggregationMethod::Average,
+        };
+        let now = 1545778348;
+        line_update(message, &dir, &config, now)?;
+
+        assert_eq!(
+            file.dump(1)?[0],
+            Point {
+                interval: 1545778338,
+                value: 123.0
+            }
+        );
+
         Ok(())
     }
 }

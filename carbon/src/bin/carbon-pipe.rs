@@ -1,4 +1,5 @@
 use carbon::line_update;
+use carbon::settings::WhisperConfig;
 use failure::Error;
 use std::io;
 use std::io::BufRead;
@@ -8,7 +9,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
-use carbon::settings::WhisperConfig;
 
 /// Receive metrics from pipe
 #[derive(Debug, StructOpt)]
