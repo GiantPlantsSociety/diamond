@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use regex::Regex;
 use lazy_static::lazy_static;
+use serde::*;
 
 fn get_unit_multiplier(s: &str) -> Result<u32, String> {
     if s.is_empty() || "seconds".starts_with(s) {
@@ -53,6 +54,19 @@ impl FromStr for Retention {
         }
 
         Ok(Self { seconds_per_point: precision, points })
+    }
+}
+
+impl<'de> Deserialize<'de> for Retention {
+    fn deserialize<D>(deserializer: D) -> Result<Retention, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let seq = <[u32; 2]>::deserialize(deserializer)?;
+        Ok(Retention {
+            seconds_per_point: seq[0],
+            points: seq[1],
+        })
     }
 }
 
@@ -122,5 +136,19 @@ mod tests {
         assert!(parse_duration("10$").is_err());
         assert!(parse_duration("-10").is_err());
         assert!(parse_duration("0").is_err());
+    }
+
+    #[test]
+    fn test_de_retention_ok() {
+        let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("[60,1440]"));
+        let r = Retention::deserialize(&mut de).unwrap();
+        assert_eq!(r, Retention{ seconds_per_point: 60, points: 1440 });
+    }
+
+    #[test]
+    fn test_de_retention_error() {
+        let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("[60]"));
+        let err = Retention::deserialize(&mut de).unwrap_err();
+        assert_eq!(err.to_string().as_str(), "invalid length 1, expected an array of length 2 at line 1 column 4");
     }
 }
