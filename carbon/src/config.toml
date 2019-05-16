@@ -4,6 +4,10 @@ db_path = "/var/db/carbon"
 port = 6142
 host = "0.0.0.0"
 
+[udp]
+port = 6142
+host = "0.0.0.0"
+
 [whisper]
 x_files_factor = 0.5
 retentions = [ [60,1440] ]

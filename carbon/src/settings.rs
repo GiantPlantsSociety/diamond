@@ -10,7 +10,7 @@ use whisper::retention::Retention;
 const CONFIG: &str = include_str!("config.toml");
 
 #[derive(Debug, PartialEq, Deserialize)]
-pub struct Tcp {
+pub struct Net {
     pub port: u32,
     pub host: IpAddr,
 }
@@ -25,7 +25,8 @@ pub struct WhisperConfig {
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct Settings {
     pub db_path: PathBuf,
-    pub tcp: Tcp,
+    pub tcp: Net,
+    pub udp: Net,
     pub whisper: WhisperConfig,
 }
 
@@ -62,7 +63,11 @@ mod tests {
 
         let etalon = Settings {
             db_path: PathBuf::from("/var/db/carbon"),
-            tcp: Tcp {
+            tcp: Net {
+                port: 6142,
+                host: V4("0.0.0.0".parse().unwrap()),
+            },
+            udp: Net {
                 port: 6142,
                 host: V4("0.0.0.0".parse().unwrap()),
             },
@@ -96,7 +101,11 @@ mod tests {
 
         let etalon = Settings {
             db_path: PathBuf::from("/tmp/"),
-            tcp: Tcp {
+            tcp: Net {
+                port: 6142,
+                host: V4("0.0.0.0".parse().unwrap()),
+            },
+            udp: Net {
                 port: 6142,
                 host: V4("0.0.0.0".parse().unwrap()),
             },

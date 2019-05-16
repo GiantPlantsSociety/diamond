@@ -6,12 +6,14 @@ use std::convert::From;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::builder::WhisperBuilder;
 use whisper::point::Point;
 use whisper::WhisperFile;
 
 pub mod settings;
 
+use settings::Settings;
 use settings::WhisperConfig;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -87,7 +89,7 @@ impl From<MetricPoints> for Vec<MetricPoint> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MetricPath(pub PathBuf);
+pub struct MetricPath(PathBuf);
 
 impl MetricPath {
     fn validate(s: &str) -> Result<(), MetricError> {
@@ -131,6 +133,7 @@ impl From<PathBuf> for MetricPath {
     }
 }
 
+#[inline]
 pub fn line_update<P: AsRef<Path>>(
     message: &str,
     dir: P,
@@ -160,11 +163,22 @@ pub fn line_update<P: AsRef<Path>>(
     Ok(())
 }
 
+#[inline]
+pub fn update_silently(line: &str, conf: &Settings) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u32;
+
+    line_update(&line, &conf.db_path, &conf.whisper, now).unwrap_or_else(|e| eprintln!("{}", e));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use settings::WhisperConfig;
+    use settings::{Net, WhisperConfig};
     use std::convert::From;
+    use std::net::IpAddr::V4;
     use std::path::{Path, PathBuf};
     use tempfile::Builder;
     use whisper::aggregation::AggregationMethod;
@@ -381,6 +395,57 @@ mod tests {
             Point {
                 interval: 1545778338,
                 value: 123.0
+            }
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn update_silently_with_absent_wsp() -> Result<(), Error> {
+        let dir = Builder::new()
+            .prefix("carbon_silent")
+            .tempdir()
+            .unwrap()
+            .path()
+            .to_path_buf();
+
+        let config = Settings {
+            db_path: dir.clone(),
+            tcp: Net {
+                port: 6142,
+                host: V4("0.0.0.0".parse().unwrap()),
+            },
+            udp: Net {
+                port: 6142,
+                host: V4("0.0.0.0".parse().unwrap()),
+            },
+            whisper: WhisperConfig {
+                x_files_factor: 0.5,
+                retentions: vec![Retention {
+                    seconds_per_point: 1,
+                    points: 1000,
+                }],
+                aggregation_method: AggregationMethod::Average,
+            },
+        };
+
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as u32
+            - 10;
+
+        let message = format!("this.is.correct1 {} 124", timestamp);
+
+        update_silently(&message, &config);
+
+        let file = dir.join("this").join("is").join("correct1.wsp");
+        assert_eq!(
+            WhisperFile::open(&file)?.dump(1)?[0],
+            Point {
+                interval: timestamp,
+                value: 124.0
             }
         );
 
