@@ -1,13 +1,9 @@
-extern crate tokio;
-
-use carbon::line_update;
 use carbon::settings::Settings;
+use carbon::update_silently;
 use failure::Error;
-use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 use tokio::codec::Framed;
 use tokio::codec::LinesCodec;
@@ -43,19 +39,14 @@ fn run(args: Args) -> Result<(), Error> {
     let config_tcp = Arc::new(settings);
     let config_udp = config_tcp.clone();
 
-    let server = tcp_listener
+    let tcp_server = tcp_listener
         .incoming()
         .for_each(move |sock| {
             let framed_sock = Framed::new(sock, LinesCodec::new());
             let conf = config_tcp.clone();
 
             framed_sock.for_each(move |line| {
-                let now = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs() as u32;
-                line_update(&line, &conf.db_path, &conf.whisper, now)
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+                update_silently(&line, &conf);
                 Ok(())
             })
         })
@@ -67,13 +58,7 @@ fn run(args: Args) -> Result<(), Error> {
 
     let udp_server = UdpFramed::new(udp_listener, LinesCodec::new())
         .for_each(move |(line, _)| {
-            let conf = config_udp.clone();
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as u32;
-            line_update(&line, &conf.db_path, &conf.whisper, now)
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+            update_silently(&line, &config_udp);
             Ok(())
         })
         .map_err(|err| {
@@ -83,7 +68,7 @@ fn run(args: Args) -> Result<(), Error> {
     println!("server running on udp {}", udp_addr);
 
     tokio::run({
-        server
+        tcp_server
             .join(udp_server)
             .map(|_| ())
             .map_err(|e| println!("error = {:?}", e))
