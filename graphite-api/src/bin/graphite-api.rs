@@ -7,12 +7,11 @@ use std::io;
 use std::process::exit;
 use structopt::StructOpt;
 
-fn main() -> io::Result<()> {
+fn run(args: Args) -> io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
-    let args = Args::from_args();
-    let path = args.path.clone();
+    let path = &args.path;
 
     if !path.is_dir() {
         if args.force {
@@ -20,14 +19,13 @@ fn main() -> io::Result<()> {
                 "Directory {} is not found, trying to create it",
                 path.display()
             );
-            create_dir(&path).unwrap_or_else(|e| {
-                eprintln!("{}", e);
-                exit(1);
-            });
+            create_dir(path)?;
             eprintln!("Directory {} has been created", path.display());
         } else {
-            eprintln!("Directory {} is not found", path.display());
-            exit(1);
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Directory {} is not found", path.display()),
+            ));
         }
     }
 
@@ -38,4 +36,12 @@ fn main() -> io::Result<()> {
         .run();
 
     Ok(())
+}
+
+fn main() {
+    let args = Args::from_args();
+    if let Err(err) = run(args) {
+        eprintln!("{}", err);
+        exit(1);
+    }
 }

@@ -1,5 +1,8 @@
-use actix_web::{Form, HttpResponse, Json, Query, State};
+use actix_web::{
+    AsyncResponder, Form, FromRequest, HttpMessage, HttpRequest, HttpResponse, Json, Query, State,
+};
 use failure::*;
+use futures::future::{err, result, Future};
 use glob::Pattern;
 use serde::*;
 use std::convert::From;
@@ -81,6 +84,21 @@ pub struct FindQuery {
     until: u32,
 }
 
+impl<S: 'static> FromRequest<S> for FindQuery {
+    type Config = ();
+    type Result = Result<Self, actix_web::error::Error>;
+
+    fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
+        match req.content_type().to_lowercase().as_str() {
+            "application/x-www-form-urlencoded" => {
+                Ok(Form::<FindQuery>::extract(req).wait()?.into_inner())
+            }
+            "application/json" => Ok(Json::<FindQuery>::extract(req).wait()?.into_inner()),
+            _ => Ok(Query::<FindQuery>::extract(req)?.into_inner()),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct FindPath {
     path: PathBuf,
@@ -129,6 +147,7 @@ fn create_leaf(name: &str, dir: &str, is_leaf: bool) -> MetricResponseLeaf {
     }
 }
 
+#[inline]
 fn walk_tree(
     dir: &Path,
     subdir: &Path,
@@ -195,46 +214,28 @@ fn walk_tree(
     Ok(metrics)
 }
 
-fn metrics_find(args: &Args, params: &FindQuery) -> Result<HttpResponse, Error> {
-    let dir = &args.path;
-    let path: FindPath = FindPath::from(params)?;
-
-    let metrics = walk_tree(&dir, &path.path, &path.pattern)?;
-
-    if params.format == FindFormat::TreeJson {
-        let metrics_json: Vec<JsonTreeLeaf> = metrics
-            .iter()
-            .map(|x| JsonTreeLeaf::from(x.to_owned()))
-            .collect();
-        Ok(HttpResponse::Ok().json(metrics_json))
-    } else {
-        let metrics_completer = MetricResponse { metrics };
-        Ok(HttpResponse::Ok().json(metrics_completer))
+pub fn find_handler(
+    args: State<Args>,
+    params: FindQuery,
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    match FindPath::from(&params) {
+        Ok(path) => match walk_tree(&args.path, &path.path, &path.pattern) {
+            Ok(metrics) => {
+                if params.format == FindFormat::TreeJson {
+                    let metrics_json: Vec<JsonTreeLeaf> = metrics
+                        .iter()
+                        .map(|x| JsonTreeLeaf::from(x.to_owned()))
+                        .collect();
+                    result(Ok(HttpResponse::Ok().json(metrics_json))).responder()
+                } else {
+                    let metrics_completer = MetricResponse { metrics };
+                    result(Ok(HttpResponse::Ok().json(metrics_completer))).responder()
+                }
+            }
+            Err(e) => Box::new(err(e)),
+        },
+        Err(e) => Box::new(err(e.into())),
     }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn metrics_find_get(
-    state: State<Args>,
-    params: Query<FindQuery>,
-) -> Result<HttpResponse, Error> {
-    metrics_find(&state, &params.into_inner())
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn metrics_find_form(
-    state: State<Args>,
-    params: Form<FindQuery>,
-) -> Result<HttpResponse, Error> {
-    metrics_find(&state, &params.into_inner())
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn metrics_find_json(
-    state: State<Args>,
-    params: Json<FindQuery>,
-) -> Result<HttpResponse, Error> {
-    metrics_find(&state, &params.into_inner())
 }
 
 #[cfg(test)]

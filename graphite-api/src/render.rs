@@ -1,13 +1,11 @@
-use actix_web::{FromRequest, HttpMessage, HttpRequest, HttpResponse, Json, State};
+use actix_web::{AsyncResponder, FromRequest, HttpMessage, HttpRequest, HttpResponse, Json, State};
 use failure::*;
-use futures::future::Future;
-use serde::Deserialize;
+use futures::future::{err, result, Future};
 use serde::*;
 use std::iter::successors;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
-
 use whisper::interval::Interval;
 use whisper::{ArchiveData, WhisperFile};
 
@@ -147,22 +145,32 @@ pub struct RenderResponce {
     entries: Vec<Option<RenderResponceEntry>>,
 }
 
-pub fn render_handler(state: State<Args>, params: RenderQuery) -> Result<HttpResponse, Error> {
+pub fn render_handler(
+    state: State<Args>,
+    params: RenderQuery,
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
     let dir = &state.path;
-    let interval = Interval::new(params.from, params.until).map_err(err_msg)?;
 
-    let response: Vec<RenderResponceEntry> = params
-        .target
-        .into_iter()
-        .map(|x| {
-            Ok(RenderResponceEntry {
-                datapoints: walk(&dir, &x, interval)?,
-                target: x,
-            })
-        })
-        .collect::<Result<_, Error>>()?;
+    match Interval::new(params.from, params.until).map_err(err_msg) {
+        Ok(interval) => {
+            let response: Result<Vec<RenderResponceEntry>, Error> = params
+                .target
+                .into_iter()
+                .map(|x| {
+                    Ok(RenderResponceEntry {
+                        datapoints: walk(&dir, &x, interval)?,
+                        target: x,
+                    })
+                })
+                .collect();
 
-    Ok(HttpResponse::Ok().json(response))
+            match response {
+                Ok(response) => result(Ok(HttpResponse::Ok().json(response))).responder(),
+                Err(e) => Box::new(err(e)),
+            }
+        }
+        Err(e) => Box::new(err(e)),
+    }
 }
 
 #[cfg(test)]
