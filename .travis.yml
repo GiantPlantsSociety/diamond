@@ -8,11 +8,6 @@ rust:
 os:
   - osx
   - linux
-  - windows
-
-matrix:
-  allow_failures:
-    - os: windows
 
 services:
   - docker
