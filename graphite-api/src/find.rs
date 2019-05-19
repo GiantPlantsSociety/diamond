@@ -247,6 +247,7 @@ mod tests {
     use std::fs::create_dir;
     use std::fs::File;
     use std::path::{Path, PathBuf};
+    use actix_web::test::TestRequest;
 
     fn get_temp_dir() -> tempfile::TempDir {
         tempfile::Builder::new()
@@ -460,5 +461,60 @@ mod tests {
         };
 
         assert_eq!(mleaf2, leaf2);
+    }
+
+    #[test]
+    fn find_request_parse_url() -> Result<(), actix_web::error::Error> {
+        let r = TestRequest::with_uri("/find?query=123&format=treejson&wildcards=1&from=0&until=10")
+            .finish();
+
+        let params = FindQuery {
+            query: "123".to_owned(),
+            format: FindFormat::TreeJson,
+            wildcards: 1,
+            from: 0,
+            until: 10,
+        };
+
+        assert_eq!(FindQuery::from_request(&r, &())?, params);
+        Ok(())
+    }
+
+    #[test]
+    fn find_request_parse_form() -> Result<(), actix_web::error::Error> {
+        let r = TestRequest::with_uri("/find")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .set_payload("query=123&format=treejson&wildcards=1&from=0&until=10")
+            .finish();
+
+        let params = FindQuery {
+            query: "123".to_owned(),
+            format: FindFormat::TreeJson,
+            wildcards: 1,
+            from: 0,
+            until: 10,
+        };
+
+        assert_eq!(FindQuery::from_request(&r, &())?, params);
+        Ok(())
+    }
+
+    #[test]
+    fn render_request_parse_json() -> Result<(), actix_web::error::Error> {
+        let r = TestRequest::with_uri("/render")
+            .header("content-type", "application/json")
+            .set_payload(r#"{"query":"123","format":"treejson","wildcards":1,"from":"0","until":"10"}"#)
+            .finish();
+
+        let params = FindQuery {
+            query: "123".to_owned(),
+            format: FindFormat::TreeJson,
+            wildcards: 1,
+            from: 0,
+            until: 10,
+        };
+
+        assert_eq!(FindQuery::from_request(&r, &())?, params);
+        Ok(())
     }
 }
