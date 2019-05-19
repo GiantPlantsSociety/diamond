@@ -1,3 +1,4 @@
+use glob::PatternError;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
@@ -11,6 +12,8 @@ pub enum ParseError {
     ParseIntError(ParseIntError),
     EmptyString,
     Time,
+    Unknown,
+    Pattern(usize, &'static str),
 }
 
 impl fmt::Display for ParseError {
@@ -25,6 +28,10 @@ impl fmt::Display for ParseError {
             ),
             ParseError::ParseIntError(s) => write!(f, "{}", s),
             ParseError::EmptyString => write!(f, "Cannot parse empty string"),
+            ParseError::Unknown => write!(f, "Unknown parse error"),
+            ParseError::Pattern(pos, msg) => {
+                write!(f, "Pattern syntax error near position {}: {}", pos, msg)
+            }
         }
     }
 }
@@ -40,5 +47,11 @@ impl From<SystemTimeError> for ParseError {
 impl From<ParseIntError> for ParseError {
     fn from(error: ParseIntError) -> Self {
         ParseError::ParseIntError(error)
+    }
+}
+
+impl From<PatternError> for ParseError {
+    fn from(error: PatternError) -> Self {
+        ParseError::Pattern(error.pos, error.msg)
     }
 }
