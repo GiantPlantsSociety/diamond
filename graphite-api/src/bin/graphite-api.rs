@@ -1,4 +1,3 @@
-use actix;
 use actix_web::server;
 use env_logger;
 use graphite_api::application::create_app;
@@ -33,13 +32,10 @@ fn main() -> io::Result<()> {
     }
 
     let listen = format!("127.0.0.1:{}", &args.port);
-    let sys = actix::System::new("graphite-api");
 
     server::new(move || create_app(args.clone()))
         .bind(listen)?
-        .start();
-
-    let _ = sys.run();
+        .run();
 
     Ok(())
 }
