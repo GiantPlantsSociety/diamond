@@ -7,7 +7,9 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::error::ParseError;
 use crate::opts::*;
+use crate::parse::de_time_parse;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MetricResponse {
@@ -73,9 +75,9 @@ pub struct FindQuery {
     format: FindFormat,
     #[serde(default)]
     wildcards: u8,
-    #[serde(default)]
+    #[serde(deserialize_with = "de_time_parse", default)]
     from: u32,
-    #[serde(default = "u32::max_value")]
+    #[serde(deserialize_with = "de_time_parse", default = "u32::max_value")]
     until: u32,
 }
 
@@ -86,18 +88,18 @@ pub struct FindPath {
 }
 
 impl FindPath {
-    fn from(query: &FindQuery) -> Result<FindPath, Error> {
+    fn from(query: &FindQuery) -> Result<FindPath, ParseError> {
         let s = &query.query;
         let mut segments: Vec<&str> = s.split('.').collect();
 
         let (path, pattern) = match segments.len() {
             len if len > 1 => {
-                let pattern = segments.pop().ok_or(FindError::UnknownParse)?;
+                let pattern = segments.pop().ok_or(ParseError::Unknown)?;
                 let path = segments.iter().fold(PathBuf::new(), |acc, x| acc.join(x));
                 (path, pattern)
             }
             1 => (PathBuf::from(""), s.as_str()),
-            _ => return Err(FindError::Unknown.into()),
+            _ => return Err(ParseError::Unknown),
         };
 
         let pattern_str = match query.wildcards {
@@ -111,14 +113,6 @@ impl FindPath {
             pattern: Pattern::new(&pattern_str)?,
         })
     }
-}
-
-#[derive(Fail, Debug)]
-pub enum FindError {
-    #[fail(display = "Unknown error")]
-    Unknown,
-    #[fail(display = "Unknown parse error")]
-    UnknownParse,
 }
 
 fn create_leaf(name: &str, dir: &str, is_leaf: bool) -> MetricResponseLeaf {
