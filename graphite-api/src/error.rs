@@ -55,3 +55,40 @@ impl From<PatternError> for ParseError {
         ParseError::Pattern(error.pos, error.msg)
     }
 }
+
+#[derive(Debug, PartialEq)]
+pub enum ResponseError {
+    SystemTime(Duration),
+    NotFound,
+    Path,
+    Kind(String),
+}
+
+impl Error for ResponseError {}
+
+impl fmt::Display for ResponseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ResponseError::NotFound => write!(f, "NotFound"),
+            ResponseError::Path => write!(f, "PathError"),
+            ResponseError::SystemTime(d) => write!(
+                f,
+                "Second time provided was later than self in duration {:?}",
+                d
+            ),
+            ResponseError::Kind(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl From<std::io::Error> for ResponseError {
+    fn from(error: std::io::Error) -> Self {
+        ResponseError::Kind(error.to_string())
+    }
+}
+
+impl From<SystemTimeError> for ResponseError {
+    fn from(error: SystemTimeError) -> Self {
+        ResponseError::SystemTime(error.duration())
+    }
+}

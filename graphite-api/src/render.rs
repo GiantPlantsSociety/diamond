@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::interval::Interval;
 use whisper::{ArchiveData, WhisperFile};
 
-use crate::error::ParseError;
+use crate::error::{ParseError, ResponseError};
 use crate::opts::*;
 use crate::parse::{de_time_parse, time_parse};
 
@@ -101,16 +101,19 @@ pub struct RenderMetric(String);
 pub struct RenderPath(PathBuf);
 
 #[inline]
-fn path(dir: &Path, metric: &str) -> Result<PathBuf, Error> {
+fn path(dir: &Path, metric: &str) -> Result<PathBuf, ResponseError> {
     let path = metric
         .split('.')
         .fold(PathBuf::new(), |acc, x| acc.join(x))
         .with_extension("wsp");
-    let full_path = dir.canonicalize()?.join(&path);
+    let full_path = dir
+        .canonicalize()
+        .map_err(|_| ResponseError::Path)?
+        .join(&path);
     Ok(full_path)
 }
 
-fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>, Error> {
+fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>, ResponseError> {
     let full_path = path(dir, metric)?;
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
@@ -153,12 +156,12 @@ pub fn render_handler(
 
     match Interval::new(params.from, params.until).map_err(err_msg) {
         Ok(interval) => {
-            let response: Result<Vec<RenderResponceEntry>, Error> = params
+            let response: Result<Vec<RenderResponceEntry>, ResponseError> = params
                 .target
                 .into_iter()
                 .map(|x| {
-                    Ok(RenderResponceEntry {
-                        datapoints: walk(&dir, &x, interval)?,
+                    walk(&dir, &x, interval).map(|datapoints| RenderResponceEntry {
+                        datapoints,
                         target: x,
                     })
                 })
@@ -166,7 +169,7 @@ pub fn render_handler(
 
             match response {
                 Ok(response) => result(Ok(HttpResponse::Ok().json(response))).responder(),
-                Err(e) => Box::new(err(e)),
+                Err(e) => Box::new(err(e.into())),
             }
         }
         Err(e) => Box::new(err(e)),
