@@ -1,5 +1,5 @@
-use std::fmt;
 use std::collections::BTreeSet;
+use std::fmt;
 
 // Literal
 
@@ -46,7 +46,7 @@ impl fmt::Display for PathExpression {
                             write!(f, "{}", ch)?;
                         }
                         write!(f, "]")?;
-                    },
+                    }
                     PathElement::Enum(ref e) => {
                         write!(f, "{{")?;
                         for (index, part) in e.iter().enumerate() {
@@ -97,14 +97,8 @@ pub struct Template {
 // Expression
 
 #[derive(Debug)]
-pub enum ExpressionBase {
+pub enum Expression {
+    Path(PathExpression),
     Call(Call),
     Template(Template),
-    Path(PathExpression),
-}
-
-#[derive(Debug)]
-pub struct Expression {
-    pub base: ExpressionBase,
-    pub pipe_calls: Vec<Call>,
 }

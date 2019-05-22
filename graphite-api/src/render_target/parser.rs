@@ -1,7 +1,7 @@
 use super::ast::*;
-use std::collections::BTreeSet;
-use nom::*;
 use nom::types::CompleteByteSlice;
+use nom::*;
+use std::collections::BTreeSet;
 
 // literals
 
@@ -36,10 +36,16 @@ named!(number<CompleteByteSlice, Number>,
 fn parse_number(b: CompleteByteSlice) -> Result<Number, String> {
     let s = std::str::from_utf8(b.0).map_err(|e| e.to_string())?;
     if s.contains(".") || s.contains("e") || s.contains("E") {
-        let n = s.parse::<f64>().map(Number::Float).map_err(|e| e.to_string())?;
+        let n = s
+            .parse::<f64>()
+            .map(Number::Float)
+            .map_err(|e| e.to_string())?;
         Ok(n)
     } else {
-        let n = s.parse::<i64>().map(Number::Integer).map_err(|e| e.to_string())?;
+        let n = s
+            .parse::<i64>()
+            .map(Number::Integer)
+            .map_err(|e| e.to_string())?;
         Ok(n)
     }
 }
@@ -107,21 +113,28 @@ fn split_args<T>(all_args: Vec<(Option<String>, T)>) -> Option<(Vec<T>, Vec<(Str
                 Some(name) => {
                     named_arg_was_met = true;
                     named_args.push((name, arg));
-                },
+                }
                 None => {
                     args.push(arg);
                 }
             }
         } else {
-            named_args.push((name?, arg))
+            match name {
+                Some(name) => named_args.push((name, arg)),
+                None => return None, // non-named argument after named one
+            }
         }
     }
     Some((args, named_args))
 }
 
 fn parse_call((function, all_args): (String, Vec<(Option<String>, Arg)>)) -> Result<Call, String> {
-    let (args, named_args) = split_args(all_args)
-        .ok_or_else(|| format!("Bad call of {}: positional argument after named one.", function))?;
+    let (args, named_args) = split_args(all_args).ok_or_else(|| {
+        format!(
+            "Bad call of {}: positional argument after named one.",
+            function
+        )
+    })?;
     Ok(Call {
         function,
         args,
@@ -263,9 +276,15 @@ named!(template_arg<CompleteByteSlice, (Option<String>, LiteralValue)>,
     )
 );
 
-fn parse_template((source, all_args): (Source, Option<Vec<(Option<String>, LiteralValue)>>)) -> Result<Template, String> {
-    let (args, named_args) = split_args(all_args.unwrap_or_default())
-        .ok_or_else(|| format!("Bad call of template {:?}: positional argument after named one.", source))?;
+fn parse_template(
+    (source, all_args): (Source, Option<Vec<(Option<String>, LiteralValue)>>),
+) -> Result<Template, String> {
+    let (args, named_args) = split_args(all_args.unwrap_or_default()).ok_or_else(|| {
+        format!(
+            "Bad call of template {:?}: positional argument after named one.",
+            source
+        )
+    })?;
     Ok(Template {
         source,
         args,
@@ -289,15 +308,27 @@ named!(template<CompleteByteSlice, Template>,
 
 // expression
 
-named!(expression_base<CompleteByteSlice, ExpressionBase>,
+named!(expression_base<CompleteByteSlice, Expression>,
     alt!(
-        map!(template, ExpressionBase::Template)
+        map!(template, Expression::Template)
         |
-        map!(call, ExpressionBase::Call)
+        map!(call, Expression::Call)
         |
-        map!(path_expression, ExpressionBase::Path)
+        map!(path_expression, Expression::Path)
     )
 );
+
+fn parse_expression((base, pipe_calls): (Expression, Vec<Call>)) -> Expression {
+    fn wrap(base: Expression, mut call: Call) -> Expression {
+        call.args.insert(0, Arg::Expression(base));
+        Expression::Call(call)
+    }
+    let mut wrapped = base;
+    for call in pipe_calls {
+        wrapped = wrap(wrapped, call);
+    }
+    wrapped
+}
 
 named!(expression<CompleteByteSlice, Expression>,
     map!(
@@ -306,7 +337,7 @@ named!(expression<CompleteByteSlice, Expression>,
             pipe_calls: many0!(preceded!(tag!("|"), call)) >>
             (base, pipe_calls)
         ),
-        |(base, pipe_calls)| Expression { base, pipe_calls }
+        parse_expression
     )
 );
 
@@ -316,13 +347,16 @@ macro_rules! impl_try_from {
             type Error = String;
 
             fn try_from(input: &[u8]) -> Result<Self, Self::Error> {
-                let (tail, result) = $parser(CompleteByteSlice(input))
-                    .map_err(|e| e.to_string())?;
+                let (tail, result) =
+                    $parser(CompleteByteSlice(input)).map_err(|e| e.to_string())?;
 
                 if tail.len() == 0 {
                     Ok(result)
                 } else {
-                    Err(format!("Unexpected input at position {}.", input.len() - tail.len()))
+                    Err(format!(
+                        "Unexpected input at position {}.",
+                        input.len() - tail.len()
+                    ))
                 }
             }
         }
@@ -345,13 +379,11 @@ mod tests {
     use super::*;
 
     macro_rules! parse {
-        ($parser:ident, $input:tt) => {
-            {
-                let (tail, result) = $parser(CompleteByteSlice($input)).unwrap();
-                assert_eq!(tail.len(), 0);
-                result
-            }
-        };
+        ($parser:ident, $input:tt) => {{
+            let (tail, result) = $parser(CompleteByteSlice($input)).unwrap();
+            assert_eq!(tail.len(), 0);
+            result
+        }};
     }
 
     #[test]
@@ -379,60 +411,123 @@ mod tests {
 
     #[test]
     fn test_template() {
-        println!("Parsed {:#?}", parse!(template, b"template(emea.events\\[2019\\].clicks)"));
-        println!("Parsed {:#?}", parse!(template, b"template(emea.events\\[2019\\].clicks,skip_empty=true)"));
-        println!("Parsed {:#?}", parse!(template, b"template(average(emea.events\\[2019\\].clicks))"));
-        println!("Parsed {:#?}", parse!(template, b"template(average(emea.events\\[2019\\].clicks,n=7))"));
-        println!("Parsed {:#?}", parse!(template, b"template(average(emea.events\\[2019\\].clicks,n=7),skip_empty=false)"));
-        println!("Parsed {:#?}", parse!(template, b"template(average(emea.events\\[2019\\].clicks,n=7),skip_empty=false,none=none)"));
+        println!(
+            "Parsed {:#?}",
+            parse!(template, b"template(emea.events\\[2019\\].clicks)")
+        );
+        println!(
+            "Parsed {:#?}",
+            parse!(
+                template,
+                b"template(emea.events\\[2019\\].clicks,skip_empty=true)"
+            )
+        );
+        println!(
+            "Parsed {:#?}",
+            parse!(template, b"template(average(emea.events\\[2019\\].clicks))")
+        );
+        println!(
+            "Parsed {:#?}",
+            parse!(
+                template,
+                b"template(average(emea.events\\[2019\\].clicks,n=7))"
+            )
+        );
+        println!(
+            "Parsed {:#?}",
+            parse!(
+                template,
+                b"template(average(emea.events\\[2019\\].clicks,n=7),skip_empty=false)"
+            )
+        );
+        println!(
+            "Parsed {:#?}",
+            parse!(
+                template,
+                b"template(average(emea.events\\[2019\\].clicks,n=7),skip_empty=false,none=none)"
+            )
+        );
     }
 
     #[test]
     fn test_path_expression() {
-        assert_eq!("a.b.c".parse::<PathExpression>().unwrap(), PathExpression(vec![
-            PathWord(vec![
-                PathElement::Partial("a".to_string()),
-            ]),
-            PathWord(vec![
-                PathElement::Partial("b".to_string()),
-            ]),
-            PathWord(vec![
-                PathElement::Partial("c".to_string()),
-            ]),
-        ]));
-        assert_eq!(parse!(path_expression, b"a.b.c").to_string().as_str(), "a.b.c");
-        assert_eq!(parse!(path_expression, b"a.b.[0-9]").to_string().as_str(), "a.b.[0123456789]");
-        assert_eq!(parse!(path_expression, b"a.b.[0-9_A-F-]").to_string().as_str(), "a.b.[-0123456789ABCDEF_]");
-        assert_eq!(parse!(path_expression, b"a.[cat]").to_string().as_str(), "a.[act]");
-        assert_eq!(parse!(path_expression, b"hosts.$hostname.cpu").to_string().as_str(), "hosts.$hostname.cpu");
-        assert_eq!("hosts.$hostname.cpu".parse::<PathExpression>().unwrap(), PathExpression(vec![
-            PathWord(vec![
-                PathElement::Partial("hosts".to_string()),
-            ]),
-            PathWord(vec![
-                PathElement::Variable("hostname".to_string()),
-            ]),
-            PathWord(vec![
-                PathElement::Partial("cpu".to_string()),
-            ]),
-        ]));
+        assert_eq!(
+            "a.b.c".parse::<PathExpression>().unwrap(),
+            PathExpression(vec![
+                PathWord(vec![PathElement::Partial("a".to_string()),]),
+                PathWord(vec![PathElement::Partial("b".to_string()),]),
+                PathWord(vec![PathElement::Partial("c".to_string()),]),
+            ])
+        );
+        assert_eq!(
+            parse!(path_expression, b"a.b.c").to_string().as_str(),
+            "a.b.c"
+        );
+        assert_eq!(
+            parse!(path_expression, b"a.b.[0-9]").to_string().as_str(),
+            "a.b.[0123456789]"
+        );
+        assert_eq!(
+            parse!(path_expression, b"a.b.[0-9_A-F-]")
+                .to_string()
+                .as_str(),
+            "a.b.[-0123456789ABCDEF_]"
+        );
+        assert_eq!(
+            parse!(path_expression, b"a.[cat]").to_string().as_str(),
+            "a.[act]"
+        );
+        assert_eq!(
+            parse!(path_expression, b"hosts.$hostname.cpu")
+                .to_string()
+                .as_str(),
+            "hosts.$hostname.cpu"
+        );
+        assert_eq!(
+            "hosts.$hostname.cpu".parse::<PathExpression>().unwrap(),
+            PathExpression(vec![
+                PathWord(vec![PathElement::Partial("hosts".to_string()),]),
+                PathWord(vec![PathElement::Variable("hostname".to_string()),]),
+                PathWord(vec![PathElement::Partial("cpu".to_string()),]),
+            ])
+        );
 
-        assert_eq!(parse!(path_expression, b"alpha.beta.gamma").to_string().as_str(), "alpha.beta.gamma");
-        assert_eq!(parse!(path_expression, b"alpha.*.gamma").to_string().as_str(), "alpha.*.gamma");
-        assert_eq!(parse!(path_expression, b"alpha.*.gamma"), PathExpression(vec![
-            PathWord(vec![
-                PathElement::Partial("alpha".to_string()),
-            ]),
-            PathWord(vec![
-                PathElement::Asterisk,
-            ]),
-            PathWord(vec![
-                PathElement::Partial("gamma".to_string()),
-            ]),
-        ]));
+        assert_eq!(
+            parse!(path_expression, b"alpha.beta.gamma")
+                .to_string()
+                .as_str(),
+            "alpha.beta.gamma"
+        );
+        assert_eq!(
+            parse!(path_expression, b"alpha.*.gamma")
+                .to_string()
+                .as_str(),
+            "alpha.*.gamma"
+        );
+        assert_eq!(
+            parse!(path_expression, b"alpha.*.gamma"),
+            PathExpression(vec![
+                PathWord(vec![PathElement::Partial("alpha".to_string()),]),
+                PathWord(vec![PathElement::Asterisk,]),
+                PathWord(vec![PathElement::Partial("gamma".to_string()),]),
+            ])
+        );
 
-        assert_eq!(parse!(path_expression, b"emea.events.clicks{2018,2019}").to_string().as_str(), "emea.events.clicks{2018,2019}");
-        assert_eq!(parse!(path_expression, br"emea.events\[\]\{\}.clicks{2018,2019}.05").to_string().as_str(), "emea.events\\[\\]\\{\\}.clicks{2018,2019}.05");
+        assert_eq!(
+            parse!(path_expression, b"emea.events.clicks{2018,2019}")
+                .to_string()
+                .as_str(),
+            "emea.events.clicks{2018,2019}"
+        );
+        assert_eq!(
+            parse!(
+                path_expression,
+                br"emea.events\[\]\{\}.clicks{2018,2019}.05"
+            )
+            .to_string()
+            .as_str(),
+            "emea.events\\[\\]\\{\\}.clicks{2018,2019}.05"
+        );
     }
 
     #[test]
