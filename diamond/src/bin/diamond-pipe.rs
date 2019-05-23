@@ -1,5 +1,5 @@
-use carbon::line_update;
-use carbon::settings::WhisperConfig;
+use diamond::line_update;
+use diamond::settings::WhisperConfig;
 use failure::Error;
 use std::io;
 use std::io::BufRead;

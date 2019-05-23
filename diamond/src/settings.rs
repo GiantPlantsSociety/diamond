@@ -62,7 +62,7 @@ mod tests {
         let default_config = Settings::new(None).unwrap();
 
         let etalon = Settings {
-            db_path: PathBuf::from("/var/db/carbon"),
+            db_path: PathBuf::from("/var/db/diamond"),
             tcp: Net {
                 port: 6142,
                 host: V4("0.0.0.0".parse().unwrap()),
