@@ -1,7 +1,7 @@
 use actix_web::server;
+use diamond_api::application::create_app;
+use diamond_api::opts::Args;
 use env_logger;
-use graphite_api::application::create_app;
-use graphite_api::opts::Args;
 use std::fs::create_dir;
 use std::io;
 use std::process::exit;

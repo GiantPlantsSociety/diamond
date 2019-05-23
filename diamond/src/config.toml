@@ -1,4 +1,4 @@
-db_path = "/var/db/carbon"
+db_path = "/var/db/diamond"
 
 [tcp]
 port = 6142
