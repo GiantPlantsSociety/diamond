@@ -3,6 +3,7 @@ name = "rrd"
 version = "0.1.0"
 authors = ["Andrey Kutejko <andy128k@gmail.com>"]
 edition = "2018"
+license = "GPLv2+"
 
 [dependencies]
 regex = "1"
