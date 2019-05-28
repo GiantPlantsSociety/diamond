@@ -1,0 +1,13 @@
+[package]
+name = "rrd2whisper"
+version = "0.1.0"
+authors = ["Andrey Kutejko <andy128k@gmail.com>"]
+edition = "2018"
+license = "GPLv2+"
+
+[dependencies]
+failure = "0.1.1"
+structopt = "0.2"
+regex = "1"
+whisper = { path = "../whisper" }
+rrd = { path = "../rrd" }

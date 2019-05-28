@@ -1241,6 +1241,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "rrd"
+version = "0.1.0"
+dependencies = [
+ "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 1.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rrd-sys 0.1.0",
+]
+
+[[package]]
+name = "rrd-sys"
+version = "0.1.0"
+dependencies = [
+ "libc 0.2.55 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rrd2whisper"
+version = "0.1.0"
+dependencies = [
+ "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 1.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rrd 0.1.0",
+ "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "whisper 0.1.0",
+]
+
+[[package]]
+name = "rrd_test"
+version = "0.1.0"
+dependencies = [
+ "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rrd 0.1.0",
+ "tempfile 3.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rust-ini"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
