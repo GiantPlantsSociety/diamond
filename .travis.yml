@@ -40,6 +40,9 @@ script:
 after_success:
   - |
     if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin:latest sh -c "cargo tarpaulin -f -t 5 --out Xml -v"
+      docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin:latest sh -c "\
+        apt update \
+        && apt install -y librrd-dev rrdtool \
+        && cargo tarpaulin -f -t 5 --out Xml -v"
       bash <(curl -s https://codecov.io/bash)
     fi
