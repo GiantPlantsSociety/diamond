@@ -1,7 +1,6 @@
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Form, Json, Query};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
-//use failure::*;
 use futures::future::{err, result, Future};
 use glob::Pattern;
 use serde::*;
@@ -271,7 +270,7 @@ mod tests {
         let _file1 = File::create(&path3).unwrap();
         let _file2 = File::create(&path4).unwrap();
 
-        let metric = walk_tree(&path, &Path::new(""), &Pattern::new("*")?)?;
+        let metric = walk_tree(&path, &Path::new(""), &Pattern::new("*").unwrap())?;
 
         let mut metric_cmp = vec![
             MetricResponseLeaf {
@@ -295,7 +294,7 @@ mod tests {
 
         assert_eq!(metric, metric_cmp);
 
-        let metric2 = walk_tree(&path, &Path::new("foo"), &Pattern::new("*")?)?;
+        let metric2 = walk_tree(&path, &Path::new("foo"), &Pattern::new("*").unwrap())?;
 
         let mut metric_cmp2 = vec![MetricResponseLeaf {
             name: "bar".into(),
@@ -311,7 +310,7 @@ mod tests {
     }
 
     #[test]
-    fn url_serialize() -> Result<(), Error> {
+    fn url_serialize() -> Result<(), failure::Error> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -342,7 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize() -> Result<(), Error> {
+    fn url_deserialize() -> Result<(), failure::Error> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -373,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_default() -> Result<(), Error> {
+    fn url_deserialize_default() -> Result<(), failure::Error> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::default(),
@@ -388,7 +387,7 @@ mod tests {
     }
 
     #[test]
-    fn findpath_convert() -> Result<(), Error> {
+    fn findpath_convert() -> Result<(), failure::Error> {
         let path = FindPath {
             path: PathBuf::from("123/456/"),
             pattern: Pattern::new("789")?,
@@ -408,7 +407,7 @@ mod tests {
     }
 
     #[test]
-    fn query_convertion() -> Result<(), Error> {
+    fn query_convertion() -> Result<(), failure::Error> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -468,7 +467,9 @@ mod tests {
     fn find_request_parse_url() -> Result<(), actix_web::error::Error> {
         let r =
             TestRequest::with_uri("/find?query=123&format=treejson&wildcards=1&from=0&until=10")
-                .finish();
+            .to_srv_request();
+
+        let (req, mut pl) = r.into_parts();
 
         let params = FindQuery {
             query: "123".to_owned(),
@@ -478,7 +479,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(FindQuery::from_request(&r, &())?, params);
+        assert_eq!(FindQuery::from_request(&req, &mut pl)?, params);
         Ok(())
     }
 
@@ -487,7 +488,9 @@ mod tests {
         let r = TestRequest::with_uri("/find")
             .header("content-type", "application/x-www-form-urlencoded")
             .set_payload("query=123&format=treejson&wildcards=1&from=0&until=10")
-            .finish();
+            .to_srv_request();
+
+        let (req, mut pl) = r.into_parts();
 
         let params = FindQuery {
             query: "123".to_owned(),
@@ -497,7 +500,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(FindQuery::from_request(&r, &())?, params);
+        assert_eq!(FindQuery::from_request(&req, &mut pl)?, params);
         Ok(())
     }
 
@@ -508,7 +511,9 @@ mod tests {
             .set_payload(
                 r#"{"query":"123","format":"treejson","wildcards":1,"from":"0","until":"10"}"#,
             )
-            .finish();
+            .to_srv_request();
+
+        let (req, mut pl) = r.into_parts();
 
         let params = FindQuery {
             query: "123".to_owned(),
@@ -518,7 +523,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(FindQuery::from_request(&r, &())?, params);
+        assert_eq!(FindQuery::from_request(&req, &mut pl)?, params);
         Ok(())
     }
 }

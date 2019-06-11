@@ -415,7 +415,9 @@ mod tests {
     #[test]
     fn render_request_parse_url() -> Result<(), actix_web::error::Error> {
         let r = TestRequest::with_uri("/render?target=app.numUsers&format=json&from=0&until=10")
-            .finish();
+            .to_srv_request();
+
+        let (req, mut pl) = r.into_parts();
 
         let params = RenderQuery {
             format: RenderFormat::Json,
@@ -424,7 +426,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(RenderQuery::from_request(&r, &())?, params);
+        assert_eq!(RenderQuery::from_request(&req, &mut pl)?, params);
         Ok(())
     }
 
@@ -433,7 +435,9 @@ mod tests {
         let r = TestRequest::with_uri("/render")
             .header("content-type", "application/x-www-form-urlencoded")
             .set_payload("target=app.numUsers&format=json&from=0&until=10")
-            .finish();
+            .to_srv_request();
+
+        let (req, mut pl) = r.into_parts();
 
         let params = RenderQuery {
             format: RenderFormat::Json,
@@ -442,7 +446,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(RenderQuery::from_request(&r, &())?, params);
+        assert_eq!(RenderQuery::from_request(&req, &mut pl)?, params);
         Ok(())
     }
 
@@ -451,7 +455,9 @@ mod tests {
         let r = TestRequest::with_uri("/render")
             .header("content-type", "application/json")
             .set_payload(r#"{ "target":["app.numUsers"],"format":"json","from":"0","until":"10"}"#)
-            .finish();
+            .to_srv_request();
+
+        let (req, mut pl) = r.into_parts();
 
         let params = RenderQuery {
             format: RenderFormat::Json,
@@ -460,7 +466,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(RenderQuery::from_request(&r, &())?, params);
+        assert_eq!(RenderQuery::from_request(&req, &mut pl)?, params);
         Ok(())
     }
 }
