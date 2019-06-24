@@ -505,7 +505,7 @@ mod tests {
     }
 
     #[test]
-    fn render_request_parse_json() -> Result<(), actix_web::error::Error> {
+    fn find_request_parse_json() -> Result<(), actix_web::error::Error> {
         let r = TestRequest::with_uri("/render")
             .header("content-type", "application/json")
             .set_payload(
