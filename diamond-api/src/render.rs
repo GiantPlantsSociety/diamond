@@ -1,5 +1,7 @@
-use actix_web::{AsyncResponder, FromRequest, HttpMessage, HttpRequest, HttpResponse, Json, State};
-use failure::*;
+use actix_web::error::ErrorInternalServerError;
+use actix_web::web::{Data, Json};
+use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse};
+use failure::err_msg;
 use futures::future::{err, result, Future};
 use serde::*;
 use std::iter::successors;
@@ -24,7 +26,7 @@ pub struct RenderQuery {
 }
 
 impl FromStr for RenderQuery {
-    type Err = Error;
+    type Err = failure::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let raw: Vec<(String, String)> = serde_urlencoded::from_str(s)?;
@@ -44,15 +46,22 @@ impl FromStr for RenderQuery {
     }
 }
 
-impl<S: 'static> FromRequest<S> for RenderQuery {
+impl FromRequest for RenderQuery {
+    type Error = Error;
+    type Future = Result<Self, Self::Error>;
     type Config = ();
-    type Result = Result<Self, actix_web::error::Error>;
 
-    fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
+    fn from_request(req: &HttpRequest, _payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
-            "application/x-www-form-urlencoded" => Ok(String::extract(req)?.wait()?.parse()?),
+            "application/x-www-form-urlencoded" => Ok(String::extract(req)
+                .wait()?
+                .parse()
+                .map_err(ErrorInternalServerError)?),
             "application/json" => Ok(Json::<RenderQuery>::extract(req).wait()?.into_inner()),
-            _ => Ok(req.query_string().parse()?),
+            _ => Ok(req
+                .query_string()
+                .parse()
+                .map_err(ErrorInternalServerError)?),
         }
     }
 }
@@ -149,9 +158,9 @@ pub struct RenderResponce {
 }
 
 pub fn render_handler(
-    state: State<Args>,
+    state: Data<Args>,
     params: RenderQuery,
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
+) -> impl Future<Item = HttpResponse, Error = failure::Error> {
     let dir = &state.path;
 
     match Interval::new(params.from, params.until).map_err(err_msg) {
@@ -168,11 +177,11 @@ pub fn render_handler(
                 .collect();
 
             match response {
-                Ok(response) => result(Ok(HttpResponse::Ok().json(response))).responder(),
-                Err(e) => Box::new(err(e.into())),
+                Ok(response) => result(Ok(HttpResponse::Ok().json(response))),
+                Err(e) => err(e.into()),
             }
         }
-        Err(e) => Box::new(err(e)),
+        Err(e) => err(e),
     }
 }
 

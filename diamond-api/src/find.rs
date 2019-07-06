@@ -1,7 +1,7 @@
-use actix_web::{
-    AsyncResponder, Form, FromRequest, HttpMessage, HttpRequest, HttpResponse, Json, Query, State,
-};
-use failure::*;
+use actix_web::error::ErrorInternalServerError;
+use actix_web::web::{Data, Form, Json, Query};
+use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
+//use failure::*;
 use futures::future::{err, result, Future};
 use glob::Pattern;
 use serde::*;
@@ -84,11 +84,12 @@ pub struct FindQuery {
     until: u32,
 }
 
-impl<S: 'static> FromRequest<S> for FindQuery {
+impl FromRequest for FindQuery {
+    type Error = Error;
+    type Future = Result<Self, Self::Error>;
     type Config = ();
-    type Result = Result<Self, actix_web::error::Error>;
 
-    fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
+    fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
             "application/x-www-form-urlencoded" => {
                 Ok(Form::<FindQuery>::extract(req).wait()?.into_inner())
@@ -215,9 +216,9 @@ fn walk_tree(
 }
 
 pub fn find_handler(
-    args: State<Args>,
+    args: Data<Args>,
     params: FindQuery,
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
+) -> impl Future<Item = HttpResponse, Error = Error> {
     match FindPath::from(&params) {
         Ok(path) => match walk_tree(&args.path, &path.path, &path.pattern) {
             Ok(metrics) => {
@@ -226,15 +227,15 @@ pub fn find_handler(
                         .iter()
                         .map(|x| JsonTreeLeaf::from(x.to_owned()))
                         .collect();
-                    result(Ok(HttpResponse::Ok().json(metrics_json))).responder()
+                    result(Ok(HttpResponse::Ok().json(metrics_json)))
                 } else {
                     let metrics_completer = MetricResponse { metrics };
-                    result(Ok(HttpResponse::Ok().json(metrics_completer))).responder()
+                    result(Ok(HttpResponse::Ok().json(metrics_completer)))
                 }
             }
-            Err(e) => Box::new(err(e)),
+            Err(e) => err(e),
         },
-        Err(e) => Box::new(err(e.into())),
+        Err(e) => err(ErrorInternalServerError(e)),
     }
 }
 
