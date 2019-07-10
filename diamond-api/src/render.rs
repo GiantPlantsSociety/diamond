@@ -2,7 +2,7 @@ use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Json};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse};
 use failure::err_msg;
-use futures::future::{err, ok, result, Future};
+use futures::future::{err, result, Future};
 use serde::*;
 use std::iter::successors;
 use std::path::{Path, PathBuf};
@@ -54,14 +54,12 @@ impl FromRequest for RenderQuery {
     fn from_request(req: &HttpRequest, _payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
             "application/x-www-form-urlencoded" => Box::new(
-                // String::extract(req).map(|x| x.parse().map_err(ErrorInternalServerError).unwrap())
                 String::extract(req)
                     .and_then(|x| result(x.parse().map_err(ErrorInternalServerError))),
             ),
-            "application/json" => Box::new(
-                // Json::<RenderQuery>::extract(req).map(|x| x.into_inner())
-                Json::<RenderQuery>::extract(req).and_then(|x| ok(x.into_inner())),
-            ),
+            "application/json" => {
+                Box::new(Json::<RenderQuery>::extract(req).map(|x| x.into_inner()))
+            }
             _ => Box::new(result(
                 req.query_string().parse().map_err(ErrorInternalServerError),
             )),

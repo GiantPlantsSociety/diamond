@@ -1,7 +1,7 @@
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Form, Json, Query};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
-use futures::future::{err, ok, result, Future};
+use futures::future::{err, result, Future};
 use glob::Pattern;
 use serde::*;
 use std::convert::From;
@@ -90,18 +90,13 @@ impl FromRequest for FindQuery {
 
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
-            "application/x-www-form-urlencoded" => Box::new(
-                Form::<FindQuery>::extract(req)
-                    .and_then(|x| ok(x.into_inner()))
-            ),
-            "application/json" => Box::new(
-                Json::<FindQuery>::extract(req)
-                    .and_then(|x| ok(x.into_inner()))
-            ),
-            _ => Box::new(
-                Query::<FindQuery>::extract(req)
-                    .and_then(|x| ok(x.into_inner()))
-            ),
+            "application/x-www-form-urlencoded" => {
+                Box::new(Form::<FindQuery>::extract(req).map(|x| x.into_inner()))
+            }
+            "application/json" => Box::new(Json::<FindQuery>::extract(req).map(|x| x.into_inner())),
+            _ => Box::new(result(
+                Query::<FindQuery>::extract(req).map(|x| x.into_inner()),
+            )),
         }
     }
 }
