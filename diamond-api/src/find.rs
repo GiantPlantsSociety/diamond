@@ -1,7 +1,7 @@
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Form, Json, Query};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
-use futures::future::{err, result, Future};
+use futures::future::{err, ok, result, Future};
 use glob::Pattern;
 use serde::*;
 use std::convert::From;
@@ -85,16 +85,23 @@ pub struct FindQuery {
 
 impl FromRequest for FindQuery {
     type Error = Error;
-    type Future = Result<Self, Self::Error>;
+    type Future = Box<Future<Item = Self, Error = Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
-            "application/x-www-form-urlencoded" => {
-                Ok(Form::<FindQuery>::extract(req).wait()?.into_inner())
-            }
-            "application/json" => Ok(Json::<FindQuery>::extract(req).wait()?.into_inner()),
-            _ => Ok(Query::<FindQuery>::extract(req)?.into_inner()),
+            "application/x-www-form-urlencoded" => Box::new(
+                Form::<FindQuery>::extract(req)
+                    .and_then(|x| ok(x.into_inner()))
+            ),
+            "application/json" => Box::new(
+                Json::<FindQuery>::extract(req)
+                    .and_then(|x| ok(x.into_inner()))
+            ),
+            _ => Box::new(
+                Query::<FindQuery>::extract(req)
+                    .and_then(|x| ok(x.into_inner()))
+            ),
         }
     }
 }
@@ -244,7 +251,7 @@ mod tests {
     use tempfile;
 
     use super::*;
-    use actix_web::test::TestRequest;
+    use actix_web::test::{block_on, TestRequest};
     use std::fs::create_dir;
     use std::fs::File;
     use std::path::{Path, PathBuf};
@@ -467,7 +474,7 @@ mod tests {
     fn find_request_parse_url() -> Result<(), actix_web::error::Error> {
         let r =
             TestRequest::with_uri("/find?query=123&format=treejson&wildcards=1&from=0&until=10")
-            .to_srv_request();
+                .to_srv_request();
 
         let (req, mut pl) = r.into_parts();
 
@@ -479,7 +486,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(FindQuery::from_request(&req, &mut pl)?, params);
+        assert_eq!(block_on(FindQuery::from_request(&req, &mut pl))?, params);
         Ok(())
     }
 
@@ -500,7 +507,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(FindQuery::from_request(&req, &mut pl)?, params);
+        assert_eq!(block_on(FindQuery::from_request(&req, &mut pl))?, params);
         Ok(())
     }
 
@@ -523,7 +530,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(FindQuery::from_request(&req, &mut pl)?, params);
+        assert_eq!(block_on(FindQuery::from_request(&req, &mut pl))?, params);
         Ok(())
     }
 }

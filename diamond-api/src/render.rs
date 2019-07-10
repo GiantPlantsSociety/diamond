@@ -2,7 +2,7 @@ use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Json};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse};
 use failure::err_msg;
-use futures::future::{err, result, Future};
+use futures::future::{err, ok, result, Future};
 use serde::*;
 use std::iter::successors;
 use std::path::{Path, PathBuf};
@@ -48,20 +48,23 @@ impl FromStr for RenderQuery {
 
 impl FromRequest for RenderQuery {
     type Error = Error;
-    type Future = Result<Self, Self::Error>;
+    type Future = Box<Future<Item = Self, Error = Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, _payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
-            "application/x-www-form-urlencoded" => Ok(String::extract(req)
-                .wait()?
-                .parse()
-                .map_err(ErrorInternalServerError)?),
-            "application/json" => Ok(Json::<RenderQuery>::extract(req).wait()?.into_inner()),
-            _ => Ok(req
-                .query_string()
-                .parse()
-                .map_err(ErrorInternalServerError)?),
+            "application/x-www-form-urlencoded" => Box::new(
+                // String::extract(req).map(|x| x.parse().map_err(ErrorInternalServerError).unwrap())
+                String::extract(req)
+                    .and_then(|x| result(x.parse().map_err(ErrorInternalServerError))),
+            ),
+            "application/json" => Box::new(
+                // Json::<RenderQuery>::extract(req).map(|x| x.into_inner())
+                Json::<RenderQuery>::extract(req).and_then(|x| ok(x.into_inner())),
+            ),
+            _ => Box::new(result(
+                req.query_string().parse().map_err(ErrorInternalServerError),
+            )),
         }
     }
 }
@@ -188,8 +191,8 @@ pub fn render_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::test::TestRequest;
-	use actix_web::http::header::{CONTENT_TYPE, CONTENT_LENGTH};
+    use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
+    use actix_web::test::{block_on, TestRequest};
     use failure::Error;
 
     #[test]
@@ -415,10 +418,8 @@ mod tests {
 
     #[test]
     fn render_request_parse_url() -> Result<(), actix_web::error::Error> {
-        let r = TestRequest::with_uri("/render?target=app.numUsers&format=json&from=0&until=10")
-            .to_srv_request();
-
-        let (req, mut pl) = r.into_parts();
+        let req = TestRequest::with_uri("/render?target=app.numUsers&format=json&from=0&until=10")
+            .to_http_request();
 
         let params = RenderQuery {
             format: RenderFormat::Json,
@@ -427,7 +428,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(RenderQuery::from_request(&req, &mut pl)?, params);
+        assert_eq!(block_on(RenderQuery::extract(&req))?, params);
         Ok(())
     }
 
@@ -435,11 +436,10 @@ mod tests {
     fn render_request_parse_form() -> Result<(), actix_web::error::Error> {
         let s = "target=app.numUsers&format=json&from=0&until=10";
 
-        let (req, mut pl) =
-            TestRequest::with_header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(CONTENT_LENGTH, s.len())
-                .set_payload(s)
-                .to_http_parts();
+        let req = TestRequest::with_header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .header(CONTENT_LENGTH, s.len())
+            .set_payload(s)
+            .to_http_request();
 
         let params = RenderQuery {
             format: RenderFormat::Json,
@@ -448,9 +448,9 @@ mod tests {
             until: 10,
         };
 
-        println!("Request: {:?}", req);
+        let res = block_on(RenderQuery::extract(&req))?;
 
-        assert_eq!(RenderQuery::from_request(&req, &mut pl)?, params);
+        assert_eq!(res, params);
         Ok(())
     }
 
@@ -458,13 +458,12 @@ mod tests {
     fn render_request_parse_json() -> Result<(), actix_web::error::Error> {
         let s = r#"{ "target":["app.numUsers"],"format":"json","from":"0","until":"10"}"#;
 
-        let r = TestRequest::with_uri("/render")
+        let (req, mut pl) = TestRequest::with_uri("/render")
             .header("content-type", "application/json")
             .header(CONTENT_LENGTH, s.len())
             .set_payload(s)
-            .to_srv_request();
-
-        let (req, mut pl) = r.into_parts();
+            //.to_http_request();
+            .to_http_parts();
 
         let params = RenderQuery {
             format: RenderFormat::Json,
@@ -473,7 +472,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(RenderQuery::from_request(&req, &mut pl)?, params);
+        assert_eq!(block_on(RenderQuery::from_request(&req, &mut pl))?, params);
         Ok(())
     }
 }
