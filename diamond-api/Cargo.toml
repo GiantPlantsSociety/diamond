@@ -1,10 +1,10 @@
 [package]
-name = "graphite-api"
-description = "Graphite API"
+name = "diamond-api"
+description = "Diamond Web API, subset of Graphite Web API"
 version = "0.1.0"
 authors = ["Andrii Radyk <ander.ender@gmail.com>"]
 license = "MIT"
-repository = "https://github.com/GiantPlantsSociety/graphite-rs"
+repository = "https://github.com/GiantPlantsSociety/diamond-rs"
 edition = "2018"
 
 [dependencies]

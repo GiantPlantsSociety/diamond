@@ -1,5 +1,5 @@
-use carbon::settings::Settings;
-use carbon::update_silently;
+use diamond::settings::Settings;
+use diamond::update_silently;
 use failure::Error;
 use std::path::PathBuf;
 use std::process::exit;

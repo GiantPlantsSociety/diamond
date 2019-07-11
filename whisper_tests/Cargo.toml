@@ -4,7 +4,7 @@ description = "Bench/Test suite for whisper crate"
 version = "0.1.0"
 authors = ["Vladyslav Boridko <vboridko@gmail.com>"]
 license = "MIT"
-repository = "https://github.com/GiantPlantsSociety/graphite-rs"
+repository = "https://github.com/GiantPlantsSociety/diamond-rs"
 edition = "2018"
 
 [dependencies]
