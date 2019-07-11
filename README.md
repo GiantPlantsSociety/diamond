@@ -1,7 +1,7 @@
-# Diamond (AKA Graphite Under Pressure)
+# Diamond
 
-[![build status](https://travis-ci.com/GiantPlantsSociety/graphite-rs.svg?branch=master)](https://travis-ci.com/GiantPlantsSociety/graphite-rs)
-[![codecov](https://codecov.io/gh/GiantPlantsSociety/graphite-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/GiantPlantsSociety/graphite-rs)
+[![build status](https://travis-ci.com/GiantPlantsSociety/diamond.svg?branch=master)](https://travis-ci.com/GiantPlantsSociety/diamond)
+[![codecov](https://codecov.io/gh/GiantPlantsSociety/diamond/branch/master/graph/badge.svg)](https://codecov.io/gh/GiantPlantsSociety/diamond)
 
 ##### Compile
 

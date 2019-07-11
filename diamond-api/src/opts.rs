@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
-#[structopt(name = "graphite-api")]
+#[structopt(name = "diamond-api")]
 pub struct Args {
     /// Path to data dir, default value is current dir
     #[structopt(name = "path", short = "d", long = "data-dir", parse(from_os_str))]

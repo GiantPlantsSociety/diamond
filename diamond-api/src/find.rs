@@ -251,7 +251,7 @@ mod tests {
 
     fn get_temp_dir() -> tempfile::TempDir {
         tempfile::Builder::new()
-            .prefix("carbon")
+            .prefix("diamond-api")
             .tempdir()
             .expect("Temp dir created")
     }
