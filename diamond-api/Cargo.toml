@@ -4,7 +4,7 @@ description = "Diamond Web API, subset of Graphite Web API"
 version = "0.1.0"
 authors = ["Andrii Radyk <ander.ender@gmail.com>"]
 license = "MIT"
-repository = "https://github.com/GiantPlantsSociety/diamond-rs"
+repository = "https://github.com/GiantPlantsSociety/diamond"
 edition = "2018"
 
 [dependencies]
