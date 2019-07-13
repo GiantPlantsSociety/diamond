@@ -88,14 +88,14 @@ impl FromRequest for FindQuery {
     type Future = Box<Future<Item = Self, Error = Error>>;
     type Config = ();
 
-    fn from_request(req: &HttpRequest, _: &mut dev::Payload) -> Self::Future {
+    fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
             "application/x-www-form-urlencoded" => {
-                Box::new(Form::<FindQuery>::extract(req).map(|x| x.into_inner()))
+                Box::new(Form::<FindQuery>::from_request(req, payload).map(|x| x.into_inner()))
             }
-            "application/json" => Box::new(Json::<FindQuery>::extract(req).map(|x| x.into_inner())),
+            "application/json" => Box::new(Json::<FindQuery>::from_request(req, payload).map(|x| x.into_inner())),
             _ => Box::new(result(
-                Query::<FindQuery>::extract(req).map(|x| x.into_inner()),
+                Query::<FindQuery>::from_request(req, payload).map(|x| x.into_inner()),
             )),
         }
     }
