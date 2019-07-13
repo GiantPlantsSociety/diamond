@@ -1,9 +1,8 @@
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use env_logger;
-use diamond_api::find::find_handler;
+use diamond_api::application::app_config;
 use diamond_api::opts::Args;
-use diamond_api::render::render_handler;
 use std::fs::create_dir;
 use std::io;
 use std::process::exit;
@@ -36,10 +35,7 @@ fn run(args: Args) -> io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
-            .data(args.clone())
-            .service(web::resource("/render").to_async(render_handler))
-            .service(web::resource("/metrics/find").to_async(find_handler))
-            .service(web::resource("/metrics").to_async(find_handler))
+            .configure(app_config(args.clone()))
             .default_service(web::route().to(|| HttpResponse::NotFound()))
     })
     .bind(listen)?
