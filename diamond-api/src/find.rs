@@ -85,7 +85,7 @@ pub struct FindQuery {
 
 impl FromRequest for FindQuery {
     type Error = Error;
-    type Future = Box<Future<Item = Self, Error = Error>>;
+    type Future = Box<dyn Future<Item = Self, Error = Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {

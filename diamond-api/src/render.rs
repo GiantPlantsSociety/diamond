@@ -48,7 +48,7 @@ impl FromStr for RenderQuery {
 
 impl FromRequest for RenderQuery {
     type Error = Error;
-    type Future = Box<Future<Item = Self, Error = Error>>;
+    type Future = Box<dyn Future<Item = Self, Error = Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
