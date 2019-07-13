@@ -3,7 +3,7 @@ use std::fmt;
 
 // Literal
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LiteralValue {
     Boolean(bool),
     Integer(i64),
@@ -66,14 +66,14 @@ impl fmt::Display for PathExpression {
 
 // Call
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Call {
     pub function: String,
     pub args: Vec<Arg>,
     pub named_args: Vec<(String, Arg)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Arg {
     Literal(LiteralValue),
     Expression(Expression),
@@ -81,13 +81,13 @@ pub enum Arg {
 
 // Template
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Source {
     Call(Call),
     Path(PathExpression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Template {
     pub source: Source,
     pub args: Vec<LiteralValue>,
@@ -96,7 +96,7 @@ pub struct Template {
 
 // Expression
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Path(PathExpression),
     Call(Call),
