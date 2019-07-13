@@ -8,6 +8,7 @@
 Install [rrdtool](https://oss.oetiker.ch/rrdtool/index.en.html):
 - Linux: `<package manager> install librrd-dev rrdtool`
 - MacOS: `brew install rrdtool`
+- FreeBSD: `pkg install rrdtool`
 
 ##### Build
 
