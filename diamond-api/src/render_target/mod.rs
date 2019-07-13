@@ -16,6 +16,6 @@ mod tests {
 
     #[test]
     fn test_from_bytes() {
-        let _ex = ast::Expression::try_from(&b"template(average(emea.events\\[2019\\].clicks,n=7),skip_empty=false,none=none)|aliasByNode(1)|movingAverage(\"5min\")"[..]).unwrap();
+        let _ex = ast::Expression::try_from("template(average(emea.events\\[2019\\].clicks,n=7),skip_empty=false,none=none)|aliasByNode(1)|movingAverage(\"5min\")").unwrap();
     }
 }

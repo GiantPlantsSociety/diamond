@@ -1,3 +1,5 @@
+#![type_length_limit="1519486"]
+
 pub mod application;
 pub mod error;
 pub mod find;
