@@ -1,14 +1,14 @@
 use crate::find::*;
 use crate::opts::*;
 use crate::render::*;
-use actix_web::middleware::Logger;
-use actix_web::{App, HttpResponse};
+use actix_web::web::{ServiceConfig, resource};
 
-pub fn create_app(opt: Args) -> App<Args> {
-    App::with_state(opt)
-        .middleware(Logger::default())
-        .resource("/render", |r| r.with(render_handler))
-        .resource("/metrics/find", |r| r.with(find_handler))
-        .resource("/metrics", |r| r.with(find_handler))
-        .default_resource(|_| HttpResponse::NotFound())
+pub fn app_config(args: Args) -> impl Fn(&mut ServiceConfig) {
+    move |config: &mut ServiceConfig| {
+        config
+            .data(args.clone())
+            .service(resource("/render").to_async(render_handler))
+            .service(resource("/metrics/find").to_async(find_handler))
+            .service(resource("/metrics").to_async(find_handler));
+    }
 }
