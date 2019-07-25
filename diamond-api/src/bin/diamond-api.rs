@@ -9,7 +9,7 @@ use std::process::exit;
 use structopt::StructOpt;
 
 fn run(args: Args) -> io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
+    std::env::set_var("RUST_LOG", "actix_web=info,actix_server=info");
     env_logger::init();
 
     let path = &args.path;
