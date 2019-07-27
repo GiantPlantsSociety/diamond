@@ -247,6 +247,29 @@ mod tests {
     use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use actix_web::test::{block_on, TestRequest};
     use failure::Error;
+    use crate::opts::Args;
+    use actix_web::http::StatusCode;
+
+    #[test]
+    fn render_handler_svg_unsupported() {
+        let ctx = Context {
+            args: Args {
+                path: PathBuf::new(),
+                force: false,
+                port: 0,
+            },
+            walker: Walker::Const(vec![]),
+        };
+        let query = RenderQuery {
+            target: vec![],
+            format: RenderFormat::Svg, // SVG is unsupported currently
+            from: 0,
+            until: 0,
+        };
+        let f = render_handler(Data::new(ctx), query);
+        let response = f.wait().ok().unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
 
     #[test]
     fn url_deserialize_one() -> Result<(), Error> {
