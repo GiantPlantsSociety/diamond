@@ -155,14 +155,14 @@ fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>
 pub struct RenderPoint(Option<f64>, u32);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RenderResponceEntry {
+pub struct RenderResponseEntry {
     target: String,
     datapoints: Vec<RenderPoint>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RenderResponce {
-    entries: Vec<Option<RenderResponceEntry>>,
+pub struct RenderResponse {
+    entries: Vec<Option<RenderResponseEntry>>,
 }
 
 pub fn render_handler(
@@ -173,11 +173,11 @@ pub fn render_handler(
 
     match Interval::new(params.from, params.until).map_err(err_msg) {
         Ok(interval) => {
-            let response: Result<Vec<RenderResponceEntry>, ResponseError> = params
+            let response: Result<Vec<RenderResponseEntry>, ResponseError> = params
                 .target
                 .into_iter()
                 .map(|metric| {
-                    walk(&dir, &metric, interval).map(|datapoints| RenderResponceEntry {
+                    walk(&dir, &metric, interval).map(|datapoints| RenderResponseEntry {
                         datapoints,
                         target: metric,
                     })
@@ -193,7 +193,7 @@ pub fn render_handler(
     }
 }
 
-fn format_response(response: Vec<RenderResponceEntry>, format: RenderFormat) -> HttpResponse {
+fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> HttpResponse {
     match format {
         RenderFormat::Json => HttpResponse::Ok().json(response),
         _ => HttpResponse::BadRequest().body(format!("Format '{}' not supported", format))
@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn render_response_json() -> Result<(), Error> {
-        let rd = serde_json::to_string(&[RenderResponceEntry {
+        let rd = serde_json::to_string(&[RenderResponseEntry {
             target: "entries".into(),
             datapoints: vec![
                 RenderPoint(Some(1.0), 1_311_836_008),
@@ -395,7 +395,7 @@ mod tests {
     #[test]
     #[allow(clippy::unreadable_literal)]
     fn render_response_json_parse() -> Result<(), Error> {
-        let rd = [RenderResponceEntry {
+        let rd = [RenderResponseEntry {
             target: "entries".into(),
             datapoints: [
                 RenderPoint(Some(1.0), 1_311_836_008),
@@ -409,7 +409,7 @@ mod tests {
         }]
         .to_vec();
 
-        let rs: Vec<RenderResponceEntry> = serde_json::from_str(r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#)?;
+        let rs: Vec<RenderResponseEntry> = serde_json::from_str(r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#)?;
 
         assert_eq!(rd, rs);
         Ok(())
