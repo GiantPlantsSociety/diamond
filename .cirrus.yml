@@ -13,6 +13,7 @@ task:
     - . $HOME/.cargo/env
     - rustup component add rustfmt
   test_script:
+    - . $HOME/.cargo/env
     - cargo fmt --all -- --check
     - cargo build --verbose
     - cargo test -- --nocapture
