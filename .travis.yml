@@ -25,7 +25,11 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt update ; sudo apt install -y librrd-dev rrdtool ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; brew install rrdtool ; fi
 
+before_script:
+  - rustup component add rustfmt
+
 script:
+  - cargo fmt --all -- --check
   - |
     # Disable optimisation for bench build
     cat <<'CARGO' >> Cargo.toml
