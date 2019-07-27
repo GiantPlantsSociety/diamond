@@ -14,6 +14,7 @@ use whisper::{ArchiveData, WhisperFile};
 use crate::error::{ParseError, ResponseError};
 use crate::opts::*;
 use crate::parse::{de_time_parse, time_parse};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct RenderQuery {
@@ -104,6 +105,12 @@ impl FromStr for RenderFormat {
     }
 }
 
+impl Display for RenderFormat {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderMetric(String);
 
@@ -169,8 +176,8 @@ pub fn render_handler(
             let response: Result<Vec<RenderResponceEntry>, ResponseError> = params
                 .target
                 .into_iter()
-                .map(|x| {
-                    walk(&dir, &x, interval).map(|datapoints| RenderResponceEntry {
+                .map(|metric| {
+                    walk(&dir, &metric, interval).map(|datapoints| RenderResponceEntry {
                         datapoints,
                         target: x,
                     })
@@ -178,11 +185,18 @@ pub fn render_handler(
                 .collect();
 
             match response {
-                Ok(response) => result(Ok(HttpResponse::Ok().json(response))),
+                Ok(response) => result(Ok(format_response(response, params.format))),
                 Err(e) => err(e.into()),
             }
         }
         Err(e) => err(e),
+    }
+}
+
+fn format_response(response: Vec<RenderResponceEntry>, format: RenderFormat) -> HttpResponse {
+    match format {
+        RenderFormat::Json => HttpResponse::Ok().json(response),
+        _ => HttpResponse::BadRequest().body(format!("Format '{}' not supported", format))
     }
 }
 
