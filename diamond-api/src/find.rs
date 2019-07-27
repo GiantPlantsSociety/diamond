@@ -10,8 +10,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::ParseError;
-use crate::opts::*;
 use crate::parse::de_time_parse;
+use crate::application::Context;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MetricResponse {
@@ -219,13 +219,13 @@ fn walk_tree(
 }
 
 pub fn find_handler(
-    args: Data<Args>,
-    params: FindQuery,
+    ctx: Data<Context>,
+    query: FindQuery,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    match FindPath::from(&params) {
-        Ok(path) => match walk_tree(&args.path, &path.path, &path.pattern) {
+    match FindPath::from(&query) {
+        Ok(path) => match walk_tree(&ctx.args.path, &path.path, &path.pattern) {
             Ok(metrics) => {
-                if params.format == FindFormat::TreeJson {
+                if query.format == FindFormat::TreeJson {
                     let metrics_json: Vec<JsonTreeLeaf> = metrics
                         .iter()
                         .map(|x| JsonTreeLeaf::from(x.to_owned()))

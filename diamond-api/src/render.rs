@@ -12,9 +12,9 @@ use whisper::interval::Interval;
 use whisper::{ArchiveData, WhisperFile};
 
 use crate::error::{ParseError, ResponseError};
-use crate::opts::*;
 use crate::parse::{de_time_parse, time_parse};
 use std::fmt::{Display, Formatter};
+use crate::application::{Walker, Context};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct RenderQuery {
@@ -151,12 +151,6 @@ fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>
     Ok(points)
 }
 
-#[derive(Clone)]
-enum Walker {
-    File(PathBuf),
-    Const(Vec<RenderPoint>),
-}
-
 fn walker(w: Walker) -> impl Fn(&str, Interval) -> Result<Vec<RenderPoint>, ResponseError> {
     move |metric, interval| {
         match &w {
@@ -181,29 +175,25 @@ pub struct RenderResponse {
 }
 
 pub fn render_handler(
-    state: Data<Args>,
-    params: RenderQuery,
+    ctx: Data<Context>,
+    query: RenderQuery,
 ) -> impl Future<Item = HttpResponse, Error = failure::Error> {
-    let dir = &state.path;
-
-    match Interval::new(params.from, params.until).map_err(err_msg) {
+    match Interval::new(query.from, query.until).map_err(err_msg) {
         Ok(interval) => {
-            let response: Result<Vec<RenderResponseEntry>, ResponseError> = params
+            let response: Result<Vec<RenderResponseEntry>, ResponseError> = query
                 .target
                 .into_iter()
                 .map(|metric| {
-                    // TODO Pass proper Walker via Args (or more generic Context)
-                    let w = Walker::File(state.path.clone());
-                    let f = walker(w);
-                    f(&metric, interval).map(|datapoints| RenderResponseEntry {
-                        datapoints,
+                    let w = walker(ctx.walker.clone());
+                    w(&metric, interval).map(|points| RenderResponseEntry {
+                        datapoints: points,
                         target: metric,
                     })
                 })
                 .collect();
 
             match response {
-                Ok(response) => result(Ok(format_response(response, params.format))),
+                Ok(response) => result(Ok(format_response(response, query.format))),
                 Err(e) => err(e.into()),
             }
         }
@@ -231,10 +221,17 @@ impl<T: IntoCsv> IntoCsv for Vec<T> {
 // TODO: Extract to response_format_csv module
 impl IntoCsv for RenderResponseEntry {
     fn into_csv(self) -> String {
-        "metric; 123; 1.0\n".to_owned()
+        let metric = self.target;
+        let lines: Vec<String> = self.datapoints.into_iter()
+            .map(|point| {
+                let (ts, val) = (point.1, point.0.unwrap_or(0.0 as f64));
+                // TODO: Use `csv` crate instead of 'string-concatenation' approach
+                format!("{},{},{}", metric, ts, val)
+            })
+            .collect();
+        lines.join("\n")
     }
 }
-
 
 fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> HttpResponse {
     match format {
