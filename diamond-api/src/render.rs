@@ -179,7 +179,7 @@ pub fn render_handler(
                 .map(|metric| {
                     walk(&dir, &metric, interval).map(|datapoints| RenderResponceEntry {
                         datapoints,
-                        target: x,
+                        target: metric,
                     })
                 })
                 .collect();
