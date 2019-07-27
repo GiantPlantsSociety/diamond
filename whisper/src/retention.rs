@@ -1,7 +1,7 @@
-use std::str::FromStr;
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
 use serde::*;
+use std::str::FromStr;
 
 fn get_unit_multiplier(s: &str) -> Result<u32, String> {
     if s.is_empty() || "seconds".starts_with(s) {
@@ -38,10 +38,13 @@ impl FromStr for Retention {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
-            static ref RETENTION_DEF_RE: Regex = Regex::new(r#"(?i)^\s*((\d+)([a-z]*)):((\d+)([a-z]*))\s*$"#).unwrap();
+            static ref RETENTION_DEF_RE: Regex =
+                Regex::new(r#"(?i)^\s*((\d+)([a-z]*)):((\d+)([a-z]*))\s*$"#).unwrap();
         }
 
-        let captures = RETENTION_DEF_RE.captures(s).ok_or_else(|| format!("Invalid retention definition '{}'", s))?;
+        let captures = RETENTION_DEF_RE
+            .captures(s)
+            .ok_or_else(|| format!("Invalid retention definition '{}'", s))?;
 
         let mut precision = u32::from_str_radix(captures.get(2).unwrap().as_str(), 10).unwrap();
         if !captures.get(3).unwrap().as_str().is_empty() {
@@ -53,7 +56,10 @@ impl FromStr for Retention {
             points = points * get_unit_multiplier(captures.get(6).unwrap().as_str())? / precision;
         }
 
-        Ok(Self { seconds_per_point: precision, points })
+        Ok(Self {
+            seconds_per_point: precision,
+            points,
+        })
     }
 }
 
@@ -75,7 +81,9 @@ pub fn parse_duration(s: &str) -> Result<u32, String> {
         static ref RETENTION_DEF_RE: Regex = Regex::new(r#"(?i)^\s*(\d+)([a-z]*)\s*$"#).unwrap();
     }
 
-    let captures = RETENTION_DEF_RE.captures(s).ok_or_else(|| format!("Invalid duration definition '{}'", s))?;
+    let captures = RETENTION_DEF_RE
+        .captures(s)
+        .ok_or_else(|| format!("Invalid duration definition '{}'", s))?;
 
     let mut precision = u32::from_str_radix(captures.get(1).unwrap().as_str(), 10).unwrap();
     if !captures.get(2).unwrap().as_str().is_empty() {
@@ -88,7 +96,6 @@ pub fn parse_duration(s: &str) -> Result<u32, String> {
         Ok(precision)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -103,26 +110,61 @@ mod tests {
         assert_eq!(get_unit_multiplier("d"), Ok(86400));
         assert_eq!(get_unit_multiplier("w"), Ok(604800));
         assert_eq!(get_unit_multiplier("y"), Ok(31536000));
-        assert_eq!(get_unit_multiplier("z"), Err("Invalid unit 'z'".to_string()));
+        assert_eq!(
+            get_unit_multiplier("z"),
+            Err("Invalid unit 'z'".to_string())
+        );
     }
 
     #[test]
     fn test_valid_retentions() {
-        assert_eq!("60:10".parse(), Ok(Retention { seconds_per_point: 60, points: 10 }));
-        assert_eq!("10:60".parse(), Ok(Retention { seconds_per_point: 10, points: 60 }));
-        assert_eq!("10s:10h".parse(), Ok(Retention { seconds_per_point: 10, points: 3600 }));
+        assert_eq!(
+            "60:10".parse(),
+            Ok(Retention {
+                seconds_per_point: 60,
+                points: 10
+            })
+        );
+        assert_eq!(
+            "10:60".parse(),
+            Ok(Retention {
+                seconds_per_point: 10,
+                points: 60
+            })
+        );
+        assert_eq!(
+            "10s:10h".parse(),
+            Ok(Retention {
+                seconds_per_point: 10,
+                points: 3600
+            })
+        );
     }
 
     #[test]
     fn test_invalid_retentions() {
-        assert_eq!("10".parse::<Retention>(), Err("Invalid retention definition '10'".to_string()));
-        assert_eq!("10:10$".parse::<Retention>(), Err("Invalid retention definition '10:10$'".to_string()));
+        assert_eq!(
+            "10".parse::<Retention>(),
+            Err("Invalid retention definition '10'".to_string())
+        );
+        assert_eq!(
+            "10:10$".parse::<Retention>(),
+            Err("Invalid retention definition '10:10$'".to_string())
+        );
 
-        assert_eq!("10x:10".parse::<Retention>(), Err("Invalid unit 'x'".to_string()));
-        assert_eq!("60:10x".parse::<Retention>(), Err("Invalid unit 'x'".to_string()));
-        assert_eq!("10X:10".parse::<Retention>(), Err("Invalid unit 'X'".to_string()));
+        assert_eq!(
+            "10x:10".parse::<Retention>(),
+            Err("Invalid unit 'x'".to_string())
+        );
+        assert_eq!(
+            "60:10x".parse::<Retention>(),
+            Err("Invalid unit 'x'".to_string())
+        );
+        assert_eq!(
+            "10X:10".parse::<Retention>(),
+            Err("Invalid unit 'X'".to_string())
+        );
     }
-
 
     #[test]
     fn test_valid_precision() {
@@ -142,13 +184,22 @@ mod tests {
     fn test_de_retention_ok() {
         let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("[60,1440]"));
         let r = Retention::deserialize(&mut de).unwrap();
-        assert_eq!(r, Retention{ seconds_per_point: 60, points: 1440 });
+        assert_eq!(
+            r,
+            Retention {
+                seconds_per_point: 60,
+                points: 1440
+            }
+        );
     }
 
     #[test]
     fn test_de_retention_error() {
         let mut de = serde_json::Deserializer::new(serde_json::de::StrRead::new("[60]"));
         let err = Retention::deserialize(&mut de).unwrap_err();
-        assert_eq!(err.to_string().as_str(), "invalid length 1, expected an array of length 2 at line 1 column 4");
+        assert_eq!(
+            err.to_string().as_str(),
+            "invalid length 1, expected an array of length 2 at line 1 column 4"
+        );
     }
 }

@@ -1,16 +1,11 @@
+use failure::{format_err, Error};
+use std::collections::HashMap;
 /// https://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html
-
 use std::path::PathBuf;
 use std::process::exit;
-use std::collections::{HashMap};
 use std::time::{SystemTime, UNIX_EPOCH};
-use failure::{Error, format_err};
 use structopt::StructOpt;
-use whisper::{
-    WhisperBuilder,
-    retention::Retention,
-    point::Point,
-};
+use whisper::{point::Point, retention::Retention, WhisperBuilder};
 
 // # Ignore SIGPIPE
 // signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -48,27 +43,47 @@ fn run(args: &Args) -> Result<(), Error> {
     let datasources = rrd_info.datasources();
 
     // Grab the archive configuration
-    let relevant_rras: Vec<_> = rras.iter().filter(|rra| rra.cf == args.aggregation_method).collect();
+    let relevant_rras: Vec<_> = rras
+        .iter()
+        .filter(|rra| rra.cf == args.aggregation_method)
+        .collect();
 
     if relevant_rras.is_empty() {
         let method: &str = args.aggregation_method.into();
-        return Err(format_err!("[ERROR] Unable to find any RRAs with consolidation function: {}", method));
+        return Err(format_err!(
+            "[ERROR] Unable to find any RRAs with consolidation function: {}",
+            method
+        ));
     }
 
-    let archives: Vec<_> = relevant_rras.iter()
+    let archives: Vec<_> = relevant_rras
+        .iter()
         .map(|rra| Retention {
             seconds_per_point: (rra.pdp_per_row * seconds_per_pdp) as u32,
             points: rra.rows as u32,
         })
         .collect();
 
-    let x_files_factor: f64 = args.x_files_factor.unwrap_or_else(|| relevant_rras.last().unwrap().xff);
+    let x_files_factor: f64 = args
+        .x_files_factor
+        .unwrap_or_else(|| relevant_rras.last().unwrap().xff);
 
     for datasource in &datasources {
-        let suffix = if datasources.len() > 1 { format!("_{}", datasource) } else { String::new() };
+        let suffix = if datasources.len() > 1 {
+            format!("_{}", datasource)
+        } else {
+            String::new()
+        };
 
-        let destination_directory = args.destination_path.as_ref().unwrap_or_else(|| &args.rrd_path);
-        let destination_name = format!("{}{}.wsp", args.rrd_path.file_stem().unwrap().to_str().unwrap(), suffix);
+        let destination_directory = args
+            .destination_path
+            .as_ref()
+            .unwrap_or_else(|| &args.rrd_path);
+        let destination_name = format!(
+            "{}{}.wsp",
+            args.rrd_path.file_stem().unwrap().to_str().unwrap(),
+            suffix
+        );
         let path = destination_directory.with_file_name(destination_name);
 
         let mut whisper_file = WhisperBuilder::default()
@@ -87,17 +102,37 @@ fn run(args: &Args) -> Result<(), Error> {
             let retention = archive.retention() as u64;
             let end_time = now - now % (archive.seconds_per_point as u64);
             let start_time = end_time - retention;
-            let data = rrd::fetch(&args.rrd_path, args.aggregation_method, Some(archive.seconds_per_point), start_time, end_time)?;
+            let data = rrd::fetch(
+                &args.rrd_path,
+                args.aggregation_method,
+                Some(archive.seconds_per_point),
+                start_time,
+                end_time,
+            )?;
 
-            let column_index = data.columns.iter().position(|column| column == datasource).unwrap();
+            let column_index = data
+                .columns
+                .iter()
+                .position(|column| column == datasource)
+                .unwrap();
 
-            let values: Vec<Point> = data.rows.iter().enumerate().map(|(index, row)| Point {
-                interval: ((data.time_info.start as u64) + (index as u64) * data.time_info.step) as u32,
-                value: row[column_index],
-            }).collect();
+            let values: Vec<Point> = data
+                .rows
+                .iter()
+                .enumerate()
+                .map(|(index, row)| Point {
+                    interval: ((data.time_info.start as u64) + (index as u64) * data.time_info.step)
+                        as u32,
+                    value: row[column_index],
+                })
+                .collect();
 
             archive_number -= 1;
-            println!(" migrating {} datapoints from archive {}", values.len(), archive_number);
+            println!(
+                " migrating {} datapoints from archive {}",
+                values.len(),
+                archive_number
+            );
             whisper_file.update_many(&values, now as u32)?;
         }
     }

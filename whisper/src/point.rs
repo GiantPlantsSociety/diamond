@@ -1,5 +1,5 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use crate::error::ParseError;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::str::FromStr;
 
@@ -54,11 +54,41 @@ mod tests {
 
     #[test]
     fn point_parse_valid() {
-        assert_eq!("1:2".parse(), Ok(Point{ interval: 1, value: 2.0}));
-        assert_eq!("1:2.01".parse(), Ok(Point{ interval: 1, value: 2.01}));
-        assert_eq!("1:0".parse(), Ok(Point{ interval: 1, value: 0.0}));
-        assert_eq!("1:-2.01".parse(), Ok(Point{ interval: 1, value: -2.01}));
-        assert_eq!("0:2".parse(), Ok(Point{ interval: 0, value: 2.0}));
+        assert_eq!(
+            "1:2".parse(),
+            Ok(Point {
+                interval: 1,
+                value: 2.0
+            })
+        );
+        assert_eq!(
+            "1:2.01".parse(),
+            Ok(Point {
+                interval: 1,
+                value: 2.01
+            })
+        );
+        assert_eq!(
+            "1:0".parse(),
+            Ok(Point {
+                interval: 1,
+                value: 0.0
+            })
+        );
+        assert_eq!(
+            "1:-2.01".parse(),
+            Ok(Point {
+                interval: 1,
+                value: -2.01
+            })
+        );
+        assert_eq!(
+            "0:2".parse(),
+            Ok(Point {
+                interval: 0,
+                value: 2.0
+            })
+        );
     }
 
     #[test]

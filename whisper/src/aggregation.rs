@@ -1,8 +1,8 @@
-use std::cmp;
-use std::str::FromStr;
-use std::fmt;
-use std::convert::Into;
 use serde::*;
+use std::cmp;
+use std::convert::Into;
+use std::fmt;
+use std::str::FromStr;
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
 fn cmp_f64(a: &f64, b: &f64) -> cmp::Ordering {
@@ -60,43 +60,43 @@ impl AggregationMethod {
                 let sum: f64 = values.iter().filter_map(|v| *v).sum();
                 let count = values.iter().filter_map(|v| *v).count();
                 Ok(sum / count as f64)
-            },
+            }
             AggregationMethod::Sum => {
                 let sum: f64 = values.iter().filter_map(|v| *v).sum();
                 Ok(sum)
-            },
+            }
             AggregationMethod::Last => {
                 if let Some(Some(v)) = values.iter().rev().find(|v| v.is_some()) {
                     Ok(*v)
                 } else {
                     Err("Empty list of values")
                 }
-            },
-            AggregationMethod::Max => {
-                values.iter().filter_map(|v| *v)
-                    .max_by(cmp_f64)
-                    .ok_or("Empty list of values")
-            },
-            AggregationMethod::Min => {
-                values.iter().filter_map(|v| *v)
-                    .min_by(cmp_f64)
-                    .ok_or("Empty list of values")
-            },
+            }
+            AggregationMethod::Max => values
+                .iter()
+                .filter_map(|v| *v)
+                .max_by(cmp_f64)
+                .ok_or("Empty list of values"),
+            AggregationMethod::Min => values
+                .iter()
+                .filter_map(|v| *v)
+                .min_by(cmp_f64)
+                .ok_or("Empty list of values"),
             AggregationMethod::AvgZero => {
                 let sum: f64 = values.iter().filter_map(|v| *v).sum();
                 let len = values.len();
                 Ok(sum / len as f64)
-            },
-            AggregationMethod::AbsMax => {
-                values.iter().filter_map(|v| *v)
-                    .max_by(cmp_f64_abs)
-                    .ok_or("Empty list of values")
-            },
-            AggregationMethod::AbsMin => {
-                values.iter().filter_map(|v| *v)
-                    .min_by(cmp_f64_abs)
-                    .ok_or("Empty list of values")
-            },
+            }
+            AggregationMethod::AbsMax => values
+                .iter()
+                .filter_map(|v| *v)
+                .max_by(cmp_f64_abs)
+                .ok_or("Empty list of values"),
+            AggregationMethod::AbsMin => values
+                .iter()
+                .filter_map(|v| *v)
+                .min_by(cmp_f64_abs)
+                .ok_or("Empty list of values"),
         }
     }
 }
@@ -167,31 +167,151 @@ mod tests {
 
     #[test]
     fn test_convert() {
-        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Average.to_string()), Ok(AggregationMethod::Average));
-        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Sum.to_string()), Ok(AggregationMethod::Sum));
-        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Last.to_string()), Ok(AggregationMethod::Last));
-        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Max.to_string()), Ok(AggregationMethod::Max));
-        assert_eq!(AggregationMethod::from_str(&AggregationMethod::Min.to_string()), Ok(AggregationMethod::Min));
-        assert_eq!(AggregationMethod::from_str(&AggregationMethod::AvgZero.to_string()), Ok(AggregationMethod::AvgZero));
-        assert_eq!(AggregationMethod::from_str(&AggregationMethod::AbsMax.to_string()), Ok(AggregationMethod::AbsMax));
-        assert_eq!(AggregationMethod::from_str(&AggregationMethod::AbsMin.to_string()), Ok(AggregationMethod::AbsMin));
+        assert_eq!(
+            AggregationMethod::from_str(&AggregationMethod::Average.to_string()),
+            Ok(AggregationMethod::Average)
+        );
+        assert_eq!(
+            AggregationMethod::from_str(&AggregationMethod::Sum.to_string()),
+            Ok(AggregationMethod::Sum)
+        );
+        assert_eq!(
+            AggregationMethod::from_str(&AggregationMethod::Last.to_string()),
+            Ok(AggregationMethod::Last)
+        );
+        assert_eq!(
+            AggregationMethod::from_str(&AggregationMethod::Max.to_string()),
+            Ok(AggregationMethod::Max)
+        );
+        assert_eq!(
+            AggregationMethod::from_str(&AggregationMethod::Min.to_string()),
+            Ok(AggregationMethod::Min)
+        );
+        assert_eq!(
+            AggregationMethod::from_str(&AggregationMethod::AvgZero.to_string()),
+            Ok(AggregationMethod::AvgZero)
+        );
+        assert_eq!(
+            AggregationMethod::from_str(&AggregationMethod::AbsMax.to_string()),
+            Ok(AggregationMethod::AbsMax)
+        );
+        assert_eq!(
+            AggregationMethod::from_str(&AggregationMethod::AbsMin.to_string()),
+            Ok(AggregationMethod::AbsMin)
+        );
 
         assert!(AggregationMethod::from_str("test").is_err());
     }
 
     #[test]
     fn test_aggregate() {
-        assert_eq!(AggregationMethod::Average.aggregate(&[Some(1.0), None, Some(2.0), None, Some(3.0), None, None, Some(4.0)]), Ok(2.5));
-        assert_eq!(AggregationMethod::Min.aggregate(&[Some(1.0), None, Some(2.0), None, Some(3.0), None, None, Some(4.0)]), Ok(1.0));
-        assert_eq!(AggregationMethod::Max.aggregate(&[Some(1.0), None, Some(2.0), None, Some(3.0), None, None, Some(4.0)]), Ok(4.0));
-        assert_eq!(AggregationMethod::Last.aggregate(&[Some(1.0), None, Some(2.0), None, Some(3.0), None, None, Some(4.0)]), Ok(4.0));
-        assert_eq!(AggregationMethod::Last.aggregate(&[Some(1.0), None, Some(2.0), None, Some(3.0), None, Some(4.0), None]), Ok(4.0));
-        assert_eq!(AggregationMethod::Sum.aggregate(&[Some(10.0), None, Some(2.0), None, Some(3.0), None, None, Some(4.0)]), Ok(19.0));
-        assert_eq!(AggregationMethod::AvgZero.aggregate(&[Some(1.0), Some(2.0), Some(3.0), Some(4.0), None, None, None, None]), Ok(1.25));
-        assert_eq!(AggregationMethod::AbsMax.aggregate(&[Some(-3.0), Some(-2.0), Some(1.0), Some(2.0)]), Ok(-3.0));
-        assert_eq!(AggregationMethod::AbsMax.aggregate(&[Some(-2.0), Some(-1.0), Some(2.0), Some(3.0)]), Ok(3.0));
-        assert_eq!(AggregationMethod::AbsMin.aggregate(&[Some(-3.0), Some(-2.0), Some(1.0), Some(2.0)]), Ok(1.0));
-        assert_eq!(AggregationMethod::AbsMin.aggregate(&[Some(-2.0), Some(-1.0), Some(2.0), Some(3.0)]), Ok(-1.0));
+        assert_eq!(
+            AggregationMethod::Average.aggregate(&[
+                Some(1.0),
+                None,
+                Some(2.0),
+                None,
+                Some(3.0),
+                None,
+                None,
+                Some(4.0)
+            ]),
+            Ok(2.5)
+        );
+        assert_eq!(
+            AggregationMethod::Min.aggregate(&[
+                Some(1.0),
+                None,
+                Some(2.0),
+                None,
+                Some(3.0),
+                None,
+                None,
+                Some(4.0)
+            ]),
+            Ok(1.0)
+        );
+        assert_eq!(
+            AggregationMethod::Max.aggregate(&[
+                Some(1.0),
+                None,
+                Some(2.0),
+                None,
+                Some(3.0),
+                None,
+                None,
+                Some(4.0)
+            ]),
+            Ok(4.0)
+        );
+        assert_eq!(
+            AggregationMethod::Last.aggregate(&[
+                Some(1.0),
+                None,
+                Some(2.0),
+                None,
+                Some(3.0),
+                None,
+                None,
+                Some(4.0)
+            ]),
+            Ok(4.0)
+        );
+        assert_eq!(
+            AggregationMethod::Last.aggregate(&[
+                Some(1.0),
+                None,
+                Some(2.0),
+                None,
+                Some(3.0),
+                None,
+                Some(4.0),
+                None
+            ]),
+            Ok(4.0)
+        );
+        assert_eq!(
+            AggregationMethod::Sum.aggregate(&[
+                Some(10.0),
+                None,
+                Some(2.0),
+                None,
+                Some(3.0),
+                None,
+                None,
+                Some(4.0)
+            ]),
+            Ok(19.0)
+        );
+        assert_eq!(
+            AggregationMethod::AvgZero.aggregate(&[
+                Some(1.0),
+                Some(2.0),
+                Some(3.0),
+                Some(4.0),
+                None,
+                None,
+                None,
+                None
+            ]),
+            Ok(1.25)
+        );
+        assert_eq!(
+            AggregationMethod::AbsMax.aggregate(&[Some(-3.0), Some(-2.0), Some(1.0), Some(2.0)]),
+            Ok(-3.0)
+        );
+        assert_eq!(
+            AggregationMethod::AbsMax.aggregate(&[Some(-2.0), Some(-1.0), Some(2.0), Some(3.0)]),
+            Ok(3.0)
+        );
+        assert_eq!(
+            AggregationMethod::AbsMin.aggregate(&[Some(-3.0), Some(-2.0), Some(1.0), Some(2.0)]),
+            Ok(1.0)
+        );
+        assert_eq!(
+            AggregationMethod::AbsMin.aggregate(&[Some(-2.0), Some(-1.0), Some(2.0), Some(3.0)]),
+            Ok(-1.0)
+        );
 
         assert!(AggregationMethod::Last.aggregate(&[]).is_err());
     }

@@ -88,19 +88,28 @@ fn test_merge_errors() -> Result<(), builder::BuilderError> {
     let now = 1528240800;
 
     let _file1 = WhisperBuilder::default()
-        .add_retention(Retention { seconds_per_point: 60, points: 11 })
+        .add_retention(Retention {
+            seconds_per_point: 60,
+            points: 11,
+        })
         .build(&path1)?;
 
     let _file2 = WhisperBuilder::default()
-        .add_retention(Retention { seconds_per_point: 60, points: 12 })
+        .add_retention(Retention {
+            seconds_per_point: 60,
+            points: 12,
+        })
         .build(&path2)?;
 
     let _file3 = WhisperBuilder::default()
-        .add_retention(Retention { seconds_per_point: 60, points: 11 })
+        .add_retention(Retention {
+            seconds_per_point: 60,
+            points: 11,
+        })
         .build(&path3)?;
 
     assert!(whisper::merge::merge(&path1, &path2, 0, now, now).is_err());
-    assert!(whisper::merge::merge(&path1, &path3, now-10, now-20, now).is_err());
+    assert!(whisper::merge::merge(&path1, &path3, now - 10, now - 20, now).is_err());
 
     Ok(())
 }
@@ -162,9 +171,8 @@ fn test_merge_overwrite() -> Result<(), Error> {
 
     for delta in &[60, 180, 300] {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta) && (p.value - f64::from(*delta)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta)
+                && (p.value - f64::from(*delta)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from file1: {:?}",
             delta,
             now - delta,
@@ -175,9 +183,8 @@ fn test_merge_overwrite() -> Result<(), Error> {
 
     for delta in &[120, 360, 480] {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta) && (p.value - f64::from(*delta)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta)
+                && (p.value - f64::from(*delta)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from file2, points: {:?}",
             delta,
             now - delta,
@@ -246,9 +253,8 @@ fn test_fill_overlap() -> Result<(), Error> {
 
     for delta in &[180] {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta) && (p.value - f64::from(*delta)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta)
+                && (p.value - f64::from(*delta)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from file1: {:?}",
             delta,
             now - delta,
@@ -259,9 +265,8 @@ fn test_fill_overlap() -> Result<(), Error> {
 
     for delta in &[120, 300, 360, 480] {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta) && (p.value - f64::from(*delta)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta)
+                && (p.value - f64::from(*delta)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from file2, points: {:?}",
             delta,
             now - delta,

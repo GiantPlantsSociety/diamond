@@ -1,7 +1,7 @@
 use crate::find::*;
 use crate::opts::*;
 use crate::render::*;
-use actix_web::web::{ServiceConfig, resource};
+use actix_web::web::{resource, ServiceConfig};
 
 pub fn app_config(args: Args) -> impl Fn(&mut ServiceConfig) {
     move |config: &mut ServiceConfig| {

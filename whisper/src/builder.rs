@@ -1,10 +1,10 @@
-use std::default;
-use std::convert::AsRef;
-use std::path::Path;
 use super::*;
-use crate::retention::Retention;
 use crate::aggregation::AggregationMethod;
+use crate::retention::Retention;
 use failure::*;
+use std::convert::AsRef;
+use std::default;
+use std::path::Path;
 
 pub struct WhisperBuilder {
     aggregation_method: AggregationMethod,
@@ -73,7 +73,11 @@ impl WhisperBuilder {
             offset += retention.points as usize * POINT_SIZE;
         }
 
-        let max_retention = archives.iter().map(|archive| archive.retention()).max().unwrap();
+        let max_retention = archives
+            .iter()
+            .map(|archive| archive.retention())
+            .max()
+            .unwrap();
 
         let metadata = WhisperMetadata {
             aggregation_method: self.aggregation_method,
@@ -88,7 +92,8 @@ impl WhisperBuilder {
     pub fn build<P: AsRef<Path>>(self, path: P) -> Result<WhisperFile, BuilderError> {
         let sparse = self.sparse;
         let metadata = self.into_metadata()?;
-        let file = WhisperFile::create(&metadata, path.as_ref(), sparse).map_err(BuilderError::Io)?;
+        let file =
+            WhisperFile::create(&metadata, path.as_ref(), sparse).map_err(BuilderError::Io)?;
         Ok(file)
     }
 }
@@ -112,7 +117,11 @@ fn validate_archive_list(archives: &[Retention]) -> Result<(), BuilderError> {
         }
 
         if next_archive.seconds_per_point % archive.seconds_per_point != 0 {
-            return Err(BuilderError::UndividablePrecision(i, *archive, *next_archive));
+            return Err(BuilderError::UndividablePrecision(
+                i,
+                *archive,
+                *next_archive,
+            ));
         }
 
         let retention = archive.retention();
@@ -124,7 +133,11 @@ fn validate_archive_list(archives: &[Retention]) -> Result<(), BuilderError> {
 
         let points_per_consolidation = next_archive.seconds_per_point / archive.seconds_per_point;
         if archive.points < points_per_consolidation {
-            return Err(BuilderError::NotEnoughPoints(i + 1, points_per_consolidation, archive.points));
+            return Err(BuilderError::NotEnoughPoints(
+                i + 1,
+                points_per_consolidation,
+                archive.points,
+            ));
         }
     }
 
@@ -136,16 +149,28 @@ pub enum BuilderError {
     #[fail(display = "You must specify at least one retention")]
     NoRetentions,
 
-    #[fail(display = "A Whisper database may not be configured having two archives with the same precision (at index {}, {:?} and next is {:?})", _0, _1, _2)]
+    #[fail(
+        display = "A Whisper database may not be configured having two archives with the same precision (at index {}, {:?} and next is {:?})",
+        _0, _1, _2
+    )]
     SamePrecision(usize, Retention, Retention),
 
-    #[fail(display = "Higher precision archives' precision must evenly divide all lower precision archives' precision (at index {}, {:?} and next is {:?})", _0, _1, _2)]
+    #[fail(
+        display = "Higher precision archives' precision must evenly divide all lower precision archives' precision (at index {}, {:?} and next is {:?})",
+        _0, _1, _2
+    )]
     UndividablePrecision(usize, Retention, Retention),
 
-    #[fail(display = "Lower precision archives must cover larger time intervals than higher precision archives (at index {}: {} seconds and next is {} seconds)", _0, _1, _2)]
+    #[fail(
+        display = "Lower precision archives must cover larger time intervals than higher precision archives (at index {}: {} seconds and next is {} seconds)",
+        _0, _1, _2
+    )]
     BadRetention(usize, u32, u32),
 
-    #[fail(display = "Each archive must have at least enough points to consolidate to the next archive (archive at index {} consolidates {} of previous archive's points but it has only {} total points)", _0, _1, _2)]
+    #[fail(
+        display = "Each archive must have at least enough points to consolidate to the next archive (archive at index {} consolidates {} of previous archive's points but it has only {} total points)",
+        _0, _1, _2
+    )]
     NotEnoughPoints(usize, u32, u32),
 
     #[fail(display = "Invalid xFilesFactor {}, not between 0 and 1", _0)]

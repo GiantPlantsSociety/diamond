@@ -1,9 +1,9 @@
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::Command;
-use std::collections::{HashMap, BTreeSet};
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
 use tempfile::{Builder, TempDir};
 
 fn get_temp_dir() -> TempDir {

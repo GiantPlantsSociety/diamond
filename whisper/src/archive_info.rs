@@ -1,7 +1,7 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use crate::point::Point;
-use std::io;
 use crate::POINT_SIZE;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ArchiveInfo {
@@ -50,13 +50,21 @@ mod tests {
 
     #[test]
     fn test_retention() {
-        let info = ArchiveInfo { offset: 10, seconds_per_point: 2, points: 20 };
-        assert_eq!(info.retention(), 20*2);
+        let info = ArchiveInfo {
+            offset: 10,
+            seconds_per_point: 2,
+            points: 20,
+        };
+        assert_eq!(info.retention(), 20 * 2);
     }
 
     #[test]
     fn test_size() {
-        let info = ArchiveInfo { offset: 10, seconds_per_point: 2, points: 20 };
-        assert_eq!(info.size(), 20*12);
+        let info = ArchiveInfo {
+            offset: 10,
+            seconds_per_point: 2,
+            points: 20,
+        };
+        assert_eq!(info.size(), 20 * 12);
     }
 }

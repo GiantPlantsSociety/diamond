@@ -5,7 +5,11 @@ use std::io::Result;
 pub fn fallocate(fd: &mut File, offset: usize, len: usize) -> Result<()> {
     use std::os::ext::io::AsRawFd;
 
-    libc::posix_fallocate(fd.as_raw_fd(), offset as ::libc::off_t, len as ::libc::off_t);
+    libc::posix_fallocate(
+        fd.as_raw_fd(),
+        offset as ::libc::off_t,
+        len as ::libc::off_t,
+    );
 }
 
 #[cfg(not(target_os = "unix"))]

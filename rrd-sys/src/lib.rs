@@ -4,7 +4,7 @@
 
 extern crate libc;
 
-use libc::{time_t, tm, FILE, mode_t};
+use libc::{mode_t, time_t, tm, FILE};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -154,7 +154,8 @@ extern "C" {
         argc: ::std::os::raw::c_int,
         argv: *mut *mut ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
-    pub fn rrd_first(arg1: ::std::os::raw::c_int, arg2: *mut *mut ::std::os::raw::c_char) -> time_t;
+    pub fn rrd_first(arg1: ::std::os::raw::c_int, arg2: *mut *mut ::std::os::raw::c_char)
+        -> time_t;
     pub fn rrd_resize(
         arg1: ::std::os::raw::c_int,
         arg2: *mut *mut ::std::os::raw::c_char,

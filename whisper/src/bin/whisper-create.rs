@@ -63,7 +63,8 @@ fn estimate_info(retentions: &[Retention]) {
 
     let total_points: usize = retentions.iter().map(|x| x.points as usize).sum();
 
-    let size = (whisper::METADATA_SIZE + (retentions.len() * whisper::ARCHIVE_INFO_SIZE)
+    let size = (whisper::METADATA_SIZE
+        + (retentions.len() * whisper::ARCHIVE_INFO_SIZE)
         + (total_points * whisper::POINT_SIZE)) as usize;
     let disk_size = (size as f64 / 4096.0).ceil() as usize * 4096;
 

@@ -93,7 +93,9 @@ impl FromRequest for FindQuery {
             "application/x-www-form-urlencoded" => {
                 Box::new(Form::<FindQuery>::from_request(req, payload).map(|x| x.into_inner()))
             }
-            "application/json" => Box::new(Json::<FindQuery>::from_request(req, payload).map(|x| x.into_inner())),
+            "application/json" => {
+                Box::new(Json::<FindQuery>::from_request(req, payload).map(|x| x.into_inner()))
+            }
             _ => Box::new(result(
                 Query::<FindQuery>::from_request(req, payload).map(|x| x.into_inner()),
             )),
