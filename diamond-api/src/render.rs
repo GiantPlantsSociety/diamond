@@ -151,6 +151,21 @@ fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>
     Ok(points)
 }
 
+#[derive(Clone)]
+enum Walker {
+    File(PathBuf),
+    Const(Vec<RenderPoint>),
+}
+
+fn walker(w: Walker) -> impl Fn(&str, Interval) -> Result<Vec<RenderPoint>, ResponseError> {
+    move |metric, interval| {
+        match &w {
+            Walker::File(dir) => walk(dir.as_path(), metric, interval),
+            Walker::Const(res) => Ok(res.to_vec())
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderPoint(Option<f64>, u32);
 
@@ -177,7 +192,10 @@ pub fn render_handler(
                 .target
                 .into_iter()
                 .map(|metric| {
-                    walk(&dir, &metric, interval).map(|datapoints| RenderResponseEntry {
+                    // TODO Pass proper Walker via Args (or more generic Context)
+                    let w = Walker::File(state.path.clone());
+                    let f = walker(w);
+                    f(&metric, interval).map(|datapoints| RenderResponseEntry {
                         datapoints,
                         target: metric,
                     })
@@ -193,9 +211,35 @@ pub fn render_handler(
     }
 }
 
+// TODO: Extract to response_format_csv module
+trait IntoCsv {
+    fn into_csv(self: Self) -> String;
+}
+
+// TODO: Extract to response_format_csv module
+impl<T: IntoCsv> IntoCsv for Vec<T> {
+    fn into_csv(self) -> String {
+        let mut csv = String::with_capacity(1024);
+        for item in self {
+            let item_csv = item.into_csv();
+            csv.push_str(&item_csv);
+        }
+        csv
+    }
+}
+
+// TODO: Extract to response_format_csv module
+impl IntoCsv for RenderResponseEntry {
+    fn into_csv(self) -> String {
+        "metric; 123; 1.0\n".to_owned()
+    }
+}
+
+
 fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> HttpResponse {
     match format {
         RenderFormat::Json => HttpResponse::Ok().json(response),
+        RenderFormat::Csv => HttpResponse::Ok().body(response.into_csv()),
         _ => HttpResponse::BadRequest().body(format!("Format '{}' not supported", format))
     }
 }
