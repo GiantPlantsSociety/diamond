@@ -1,8 +1,8 @@
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpResponse, HttpServer};
-use env_logger;
 use diamond_api::application::{app_config, Context, Walker};
 use diamond_api::opts::Args;
+use env_logger;
 use std::fs::create_dir;
 use std::io;
 use std::process::exit;

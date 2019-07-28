@@ -9,9 +9,9 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::application::Context;
 use crate::error::ParseError;
 use crate::parse::de_time_parse;
-use crate::application::Context;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MetricResponse {

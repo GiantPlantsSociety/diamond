@@ -11,10 +11,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::interval::Interval;
 use whisper::{ArchiveData, WhisperFile};
 
+use crate::application::{Context, Walker};
 use crate::error::{ParseError, ResponseError};
 use crate::parse::{de_time_parse, time_parse};
 use std::fmt::{Display, Formatter};
-use crate::application::{Walker, Context};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct RenderQuery {
@@ -153,11 +153,9 @@ fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>
 }
 
 fn walker(w: Walker) -> impl Fn(&str, Interval) -> Result<Vec<RenderPoint>, ResponseError> {
-    move |metric, interval| {
-        match &w {
-            Walker::File(dir) => walk(dir.as_path(), metric, interval),
-            Walker::Const(res) => Ok(res.to_vec())
-        }
+    move |metric, interval| match &w {
+        Walker::File(dir) => walk(dir.as_path(), metric, interval),
+        Walker::Const(res) => Ok(res.to_vec()),
     }
 }
 
@@ -221,7 +219,9 @@ impl<T: IntoCsv> IntoCsv for Vec<T> {
 impl IntoCsv for RenderResponseEntry {
     fn into_csv(self) -> String {
         let metric = self.target;
-        let lines: Vec<String> = self.datapoints.into_iter()
+        let lines: Vec<String> = self
+            .datapoints
+            .into_iter()
             .map(|point| {
                 let (ts, val) = (point.1, point.0.unwrap_or(0.0 as f64));
                 // TODO: Use `csv` crate instead of "manual" string formatting
@@ -237,18 +237,18 @@ fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> 
     match format {
         RenderFormat::Json => HttpResponse::Ok().json(response),
         RenderFormat::Csv => HttpResponse::Ok().body(response.into_csv()),
-        _ => HttpResponse::BadRequest().body(format!("Format '{}' not supported", format))
+        _ => HttpResponse::BadRequest().body(format!("Format '{}' not supported", format)),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::opts::Args;
     use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
+    use actix_web::http::StatusCode;
     use actix_web::test::{block_on, TestRequest};
     use failure::Error;
-    use crate::opts::Args;
-    use actix_web::http::StatusCode;
     use futures::stream::Stream;
 
     fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String) {
@@ -257,7 +257,12 @@ mod tests {
 
         let status = response.status();
 
-        let body: Vec<bytes::Bytes> = response.take_body().into_body::<bytes::Bytes>().collect().wait().unwrap();
+        let body: Vec<bytes::Bytes> = response
+            .take_body()
+            .into_body::<bytes::Bytes>()
+            .collect()
+            .wait()
+            .unwrap();
         let mut buf: Vec<u8> = Vec::with_capacity(1024);
         body.iter().for_each(|bs| {
             let mut v = bs[..].to_vec();
@@ -341,7 +346,10 @@ mod tests {
         };
         let (status, response) = render_response(ctx, query);
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(response, "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,123],[2.0,456],[3.0,789]]}]")
+        assert_eq!(
+            response,
+            "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,123],[2.0,456],[3.0,789]]}]"
+        )
     }
 
     #[test]
@@ -387,7 +395,10 @@ mod tests {
         };
         let (status, response) = render_response(ctx, query);
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(response, "i.am.a.metric,123,1.1\ni.am.a.metric,456,2.2\ni.am.a.metric,789,3.3\n")
+        assert_eq!(
+            response,
+            "i.am.a.metric,123,1.1\ni.am.a.metric,456,2.2\ni.am.a.metric,789,3.3\n"
+        )
     }
 
     #[test]
