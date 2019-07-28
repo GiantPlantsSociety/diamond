@@ -106,8 +106,9 @@ impl FromStr for RenderFormat {
 }
 
 impl Display for RenderFormat {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "{:?}", self)
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let s = format!("{:?}", self);
+        write!(f, "{}", s.to_ascii_lowercase())
     }
 }
 
@@ -201,12 +202,11 @@ pub fn render_handler(
     }
 }
 
-// TODO: Extract to response_format_csv module
+// TODO: Extract code BELOW to response_format_csv module
 trait IntoCsv {
     fn into_csv(self: Self) -> String;
 }
 
-// TODO: Extract to response_format_csv module
 impl<T: IntoCsv> IntoCsv for Vec<T> {
     fn into_csv(self) -> String {
         let mut csv = String::with_capacity(1024);
@@ -218,20 +218,20 @@ impl<T: IntoCsv> IntoCsv for Vec<T> {
     }
 }
 
-// TODO: Extract to response_format_csv module
 impl IntoCsv for RenderResponseEntry {
     fn into_csv(self) -> String {
         let metric = self.target;
         let lines: Vec<String> = self.datapoints.into_iter()
             .map(|point| {
                 let (ts, val) = (point.1, point.0.unwrap_or(0.0 as f64));
-                // TODO: Use `csv` crate instead of 'string-concatenation' approach
+                // TODO: Use `csv` crate instead of "manual" string formatting
                 format!("{},{},{}", metric, ts, val)
             })
             .collect();
-        lines.join("\n")
+        lines.join("\n") + "\n"
     }
 }
+// TODO: Extract code ABOVE to response_format_csv module
 
 fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> HttpResponse {
     match format {
@@ -249,9 +249,57 @@ mod tests {
     use failure::Error;
     use crate::opts::Args;
     use actix_web::http::StatusCode;
+    use futures::stream::Stream;
+
+    fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String) {
+        let f = render_handler(Data::new(ctx), query);
+        let mut response = f.wait().ok().unwrap();
+
+        let status = response.status();
+
+        let body: Vec<bytes::Bytes> = response.take_body().into_body::<bytes::Bytes>().collect().wait().unwrap();
+        let mut buf: Vec<u8> = Vec::with_capacity(1024);
+        body.iter().for_each(|bs| {
+            let mut v = bs[..].to_vec();
+            buf.append(&mut v);
+        });
+
+        (status, String::from_utf8(buf[..].to_vec()).unwrap())
+    }
 
     #[test]
-    fn render_handler_svg_unsupported() {
+    fn render_handler_unsupported() {
+        let formats: Vec<RenderFormat> = vec![
+            RenderFormat::Png,
+            RenderFormat::Raw,
+            RenderFormat::Svg,
+            RenderFormat::Pdf,
+            RenderFormat::Dygraph,
+            RenderFormat::Rickshaw,
+        ];
+        for format in formats {
+            let ctx = Context {
+                args: Args {
+                    path: PathBuf::new(),
+                    force: false,
+                    port: 0,
+                },
+                walker: Walker::Const(vec![]),
+            };
+            let query = RenderQuery {
+                target: vec![],
+                format: format.clone(),
+                from: 0,
+                until: 0,
+            };
+            let (status, response) = render_response(ctx, query);
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+            assert_eq!(response, format!("Format '{}' not supported", format));
+        }
+    }
+
+    #[test]
+    fn render_handler_json_ok_empty() {
         let ctx = Context {
             args: Args {
                 path: PathBuf::new(),
@@ -262,13 +310,84 @@ mod tests {
         };
         let query = RenderQuery {
             target: vec![],
-            format: RenderFormat::Svg, // SVG is unsupported currently
+            format: RenderFormat::Json,
             from: 0,
             until: 0,
         };
-        let f = render_handler(Data::new(ctx), query);
-        let response = f.wait().ok().unwrap();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let (status, response) = render_response(ctx, query);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(response, "[]");
+    }
+
+    #[test]
+    fn render_handler_json_ok_full() {
+        let ctx = Context {
+            args: Args {
+                path: PathBuf::new(),
+                force: false,
+                port: 0,
+            },
+            walker: Walker::Const(vec![
+                RenderPoint(Some(1.0 as f64), 123),
+                RenderPoint(Some(2.0 as f64), 456),
+                RenderPoint(Some(3.0 as f64), 789),
+            ]),
+        };
+        let query = RenderQuery {
+            target: vec!["i.am.a.metric".to_owned()],
+            format: RenderFormat::Json,
+            from: 0,
+            until: 0,
+        };
+        let (status, response) = render_response(ctx, query);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(response, "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,123],[2.0,456],[3.0,789]]}]")
+    }
+
+    #[test]
+    fn render_handler_csv_ok_empty() {
+        let ctx = Context {
+            args: Args {
+                path: PathBuf::new(),
+                force: false,
+                port: 0,
+            },
+            walker: Walker::Const(vec![]),
+        };
+        let query = RenderQuery {
+            target: vec![],
+            format: RenderFormat::Csv,
+            from: 0,
+            until: 0,
+        };
+        let (status, response) = render_response(ctx, query);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(response, "")
+    }
+
+    #[test]
+    fn render_handler_csv_ok_full() {
+        let ctx = Context {
+            args: Args {
+                path: PathBuf::new(),
+                force: false,
+                port: 0,
+            },
+            walker: Walker::Const(vec![
+                RenderPoint(Some(1.1 as f64), 123),
+                RenderPoint(Some(2.2 as f64), 456),
+                RenderPoint(Some(3.3 as f64), 789),
+            ]),
+        };
+        let query = RenderQuery {
+            target: vec!["i.am.a.metric".to_owned()],
+            format: RenderFormat::Csv,
+            from: 0,
+            until: 0,
+        };
+        let (status, response) = render_response(ctx, query);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(response, "i.am.a.metric,123,1.1\ni.am.a.metric,456,2.2\ni.am.a.metric,789,3.3\n")
     }
 
     #[test]
