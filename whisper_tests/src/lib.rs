@@ -40,7 +40,11 @@ pub fn copy_test_file(temp_dir: &TempDir, filename: &str) -> PathBuf {
     tmp_file_path
 }
 
-pub fn create_and_update_many(path: &PathBuf, timestamps: &[u32], now: u32) -> Result<WhisperFile, Error> {
+pub fn create_and_update_many(
+    path: &PathBuf,
+    timestamps: &[u32],
+    now: u32,
+) -> Result<WhisperFile, Error> {
     let mut file = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
@@ -61,7 +65,11 @@ pub fn create_and_update_many(path: &PathBuf, timestamps: &[u32], now: u32) -> R
     Ok(file)
 }
 
-pub fn create_and_update_points(path: &PathBuf, points: &[Point], now: u32) -> Result<WhisperFile, Error> {
+pub fn create_and_update_points(
+    path: &PathBuf,
+    points: &[Point],
+    now: u32,
+) -> Result<WhisperFile, Error> {
     let mut file = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,

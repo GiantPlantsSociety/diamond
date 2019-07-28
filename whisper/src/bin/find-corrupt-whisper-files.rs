@@ -18,7 +18,11 @@ struct Args {
     verbose: bool,
 
     /// Directory containing Whisper files.
-    #[structopt(name = "WHISPER_DIR", parse(from_os_str), raw(required = "true", min_values = "1"))]
+    #[structopt(
+        name = "WHISPER_DIR",
+        parse(from_os_str),
+        raw(required = "true", min_values = "1")
+    )]
     directories: Vec<PathBuf>,
 }
 
@@ -35,9 +39,7 @@ fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error
             Ok(ref entry) if is_whisper_file(entry.path()) => {
                 delete_corrupt_file(&entry.path(), delete_corrupt)?
             }
-            Err(e) => {
-                eprintln!("{}", e)
-            }
+            Err(e) => eprintln!("{}", e),
             _ => {}
         }
     }
@@ -53,7 +55,10 @@ fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<(), Error> {
         }
         _ => {
             if delete_corrupt {
-                eprintln!("Deleting corrupt Whisper file: {}", file.canonicalize()?.display());
+                eprintln!(
+                    "Deleting corrupt Whisper file: {}",
+                    file.canonicalize()?.display()
+                );
                 remove_file(file)?;
             } else {
                 eprintln!("Corrupt Whisper file: {}", file.canonicalize()?.display());

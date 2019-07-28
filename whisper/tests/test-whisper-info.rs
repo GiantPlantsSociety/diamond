@@ -195,9 +195,12 @@ fn calling_as_plain() -> Result<(), Box<dyn Error>> {
                 aggregationMethod: average
                 fileSize: 34600
                 ",
-                ).as_str(),
-            ).from_utf8(),
-        ).stdout(
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 unindent(
                     "
@@ -208,9 +211,12 @@ fn calling_as_plain() -> Result<(), Box<dyn Error>> {
                 size: 17280
                 offset: 40
                 ",
-                ).as_str(),
-            ).from_utf8(),
-        ).stdout(
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 unindent(
                     "
@@ -221,9 +227,12 @@ fn calling_as_plain() -> Result<(), Box<dyn Error>> {
                 size: 17280
                 offset: 17320
                 ",
-                ).as_str(),
-            ).from_utf8(),
-        ).stderr("");
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stderr("");
     Ok(())
 }
 
@@ -273,8 +282,11 @@ fn calling_as_json() -> Result<(), Box<dyn Error>> {
                   "xFilesFactor": 0.5
                 }
                 "#,
-                ).as_str(),
-            ).from_utf8(),
-        ).stderr("");
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stderr("");
     Ok(())
 }

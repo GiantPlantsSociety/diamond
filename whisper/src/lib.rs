@@ -36,24 +36,23 @@ BUFFERING = 0
 __headerCache = {}
 */
 
-
-pub mod error;
-pub mod interval;
 pub mod aggregation;
-pub mod retention;
-pub mod point;
 pub mod archive_info;
 pub mod builder;
-mod fallocate;
 pub mod diff;
-pub mod merge;
+pub mod error;
+mod fallocate;
 pub mod fill;
+pub mod interval;
+pub mod merge;
+pub mod point;
 pub mod resize;
+pub mod retention;
 
-use crate::interval::*;
 use crate::aggregation::*;
-use crate::point::*;
 use crate::archive_info::*;
+use crate::interval::*;
+use crate::point::*;
 
 pub use crate::builder::WhisperBuilder;
 
@@ -78,11 +77,19 @@ impl WhisperMetadata {
         let x_files_factor = fh.read_f32::<BigEndian>()?;
         let archive_count = fh.read_u32::<BigEndian>()?;
 
-        let aggregation_method = AggregationMethod::from_type(aggregation_type)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, format!("Bad aggregation method {}", aggregation_type)))?;
+        let aggregation_method =
+            AggregationMethod::from_type(aggregation_type).ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Bad aggregation method {}", aggregation_type),
+                )
+            })?;
 
         if x_files_factor < 0.0 || x_files_factor > 1.0 {
-            return Err(io::Error::new(io::ErrorKind::Other, format!("Bad x_files_factor {}", x_files_factor)));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Bad x_files_factor {}", x_files_factor),
+            ));
         }
 
         let mut archives = Vec::with_capacity(archive_count as usize);
@@ -104,7 +111,12 @@ impl WhisperMetadata {
     }
 
     pub fn file_size(&self) -> usize {
-        self.header_size() + self.archives.iter().map(|archive| archive.points as usize * POINT_SIZE).sum::<usize>()
+        self.header_size()
+            + self
+                .archives
+                .iter()
+                .map(|archive| archive.points as usize * POINT_SIZE)
+                .sum::<usize>()
     }
 
     fn write_metadata<W: Write>(&self, w: &mut W) -> Result<(), io::Error> {
@@ -130,11 +142,19 @@ pub struct WhisperFile {
 }
 
 impl WhisperFile {
-    fn create<P: AsRef<Path>>(header: &WhisperMetadata, path: P, sparse: bool) -> Result<Self, io::Error> {
+    fn create<P: AsRef<Path>>(
+        header: &WhisperMetadata,
+        path: P,
+        sparse: bool,
+    ) -> Result<Self, io::Error> {
         let mut metainfo_bytes = Vec::<u8>::new();
         header.write(&mut metainfo_bytes)?;
 
-        let mut fh = fs::OpenOptions::new().read(true).write(true).create_new(true).open(path)?;
+        let mut fh = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(path)?;
 
         // if LOCK {
         //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
@@ -145,7 +165,11 @@ impl WhisperFile {
             fh.seek(io::SeekFrom::Start(header.file_size() as u64 - 1))?;
             fh.write_all(&[0u8])?;
         } else {
-            fallocate::fallocate(&mut fh, header.header_size(), header.file_size() - header.header_size())?;
+            fallocate::fallocate(
+                &mut fh,
+                header.header_size(),
+                header.file_size() - header.header_size(),
+            )?;
         }
 
         fh.sync_all()?;
@@ -159,10 +183,7 @@ impl WhisperFile {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
         let mut file = fs::OpenOptions::new().read(true).write(true).open(path)?;
         let metadata = WhisperMetadata::read(&mut file)?;
-        Ok(Self {
-            metadata,
-            file,
-        })
+        Ok(Self { metadata, file })
     }
 
     pub fn info(&self) -> &WhisperMetadata {
@@ -171,7 +192,10 @@ impl WhisperFile {
 
     pub fn set_x_files_factor(&mut self, x_files_factor: f32) -> Result<(), io::Error> {
         if x_files_factor < 0.0 || x_files_factor > 1.0 {
-            return Err(io::Error::new(io::ErrorKind::Other, format!("Bad x_files_factor {}", x_files_factor)));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Bad x_files_factor {}", x_files_factor),
+            ));
         }
 
         // if LOCK:
@@ -185,7 +209,10 @@ impl WhisperFile {
         Ok(())
     }
 
-    pub fn set_aggregation_method(&mut self, aggregation_method: AggregationMethod) -> Result<(), io::Error> {
+    pub fn set_aggregation_method(
+        &mut self,
+        aggregation_method: AggregationMethod,
+    ) -> Result<(), io::Error> {
         // if LOCK:
         //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
 
@@ -197,7 +224,7 @@ impl WhisperFile {
         Ok(())
     }
 
-    pub fn update(&mut self, point: &Point,  now: u32) -> Result<(), io::Error> {
+    pub fn update(&mut self, point: &Point, now: u32) -> Result<(), io::Error> {
         // if LOCK:
         //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
         file_update(&mut self.file, &self.metadata, point, now)
@@ -220,7 +247,9 @@ impl WhisperFile {
     }
 
     fn find_archive(&self, seconds_per_point: u32) -> Result<ArchiveInfo, io::Error> {
-        self.metadata.archives.iter()
+        self.metadata
+            .archives
+            .iter()
             .find(|archive| archive.seconds_per_point == seconds_per_point)
             .map(|a| a.to_owned())
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Archive not found"))
@@ -240,7 +269,12 @@ impl WhisperFile {
             .next()
     }
 
-    pub fn fetch_points(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<(Interval, Option<Vec<Point>>), io::Error> {
+    pub fn fetch_points(
+        &mut self,
+        seconds_per_point: u32,
+        interval: Interval,
+        now: u32,
+    ) -> Result<(Interval, Option<Vec<Point>>), io::Error> {
         let archive = self.find_archive(seconds_per_point)?;
         let available = Interval::past(now, self.metadata.max_retention);
 
@@ -249,7 +283,8 @@ impl WhisperFile {
             return Ok((interval, None));
         }
 
-        let interval = available.intersection(interval)
+        let interval = available
+            .intersection(interval)
             .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
         let adjusted_interval = adjust_interval(interval, archive.seconds_per_point)
@@ -260,7 +295,11 @@ impl WhisperFile {
         Ok((adjusted_interval, points))
     }
 
-    pub fn fetch_auto_points(&mut self, interval: Interval, now: u32) -> Result<ArchiveData, io::Error> {
+    pub fn fetch_auto_points(
+        &mut self,
+        interval: Interval,
+        now: u32,
+    ) -> Result<ArchiveData, io::Error> {
         let seconds_per_point = self
             .suggest_archive(interval, now)
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "No data in selected timerange"))?;
@@ -270,7 +309,12 @@ impl WhisperFile {
         Ok(data)
     }
 
-    pub fn fetch(&mut self, seconds_per_point: u32, interval: Interval, now: u32) -> Result<ArchiveData, io::Error> {
+    pub fn fetch(
+        &mut self,
+        seconds_per_point: u32,
+        interval: Interval,
+        now: u32,
+    ) -> Result<ArchiveData, io::Error> {
         let (adjusted_interval, points) = self.fetch_points(seconds_per_point, interval, now)?;
         let data = points_to_data(&points, adjusted_interval, seconds_per_point);
         Ok(data)
@@ -293,15 +337,24 @@ fn instant_offset(archive: &ArchiveInfo, base_interval: u32, instant: u32) -> u3
     } else {
         let instant_aligned = modulo(instant / archive.seconds_per_point, archive.points);
         let base_aligned = modulo(base_interval / archive.seconds_per_point, archive.points);
-        modulo(archive.points + instant_aligned - base_aligned, archive.points)
+        modulo(
+            archive.points + instant_aligned - base_aligned,
+            archive.points,
+        )
     }
 }
 
-fn read_archive<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_index: u32, until_index: u32) -> Result<Vec<Point>, io::Error> {
+fn read_archive<R: Read + Seek>(
+    fh: &mut R,
+    archive: &ArchiveInfo,
+    from_index: u32,
+    until_index: u32,
+) -> Result<Vec<Point>, io::Error> {
     let from_index = from_index % archive.points;
     let until_index = until_index % archive.points;
 
-    let mut series = Vec::with_capacity(((archive.points + until_index - from_index) % archive.points) as usize);
+    let mut series =
+        Vec::with_capacity(((archive.points + until_index - from_index) % archive.points) as usize);
 
     let point_size = 12;
     let from_offset = archive.offset + from_index * point_size;
@@ -326,15 +379,26 @@ fn read_archive<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, from_index: u
     Ok(series)
 }
 
-fn write_archive_point<F: Read + Write + Seek>(fh: &mut F, archive: &ArchiveInfo, point: &Point) -> Result<(), io::Error> {
+fn write_archive_point<F: Read + Write + Seek>(
+    fh: &mut F,
+    archive: &ArchiveInfo,
+    point: &Point,
+) -> Result<(), io::Error> {
     let base = archive.read_base(fh)?;
     let index = instant_offset(archive, base.interval, point.interval);
-    fh.seek(io::SeekFrom::Start((archive.offset + index * POINT_SIZE as u32).into()))?;
+    fh.seek(io::SeekFrom::Start(
+        (archive.offset + index * POINT_SIZE as u32).into(),
+    ))?;
     point.write(fh)?;
     Ok(())
 }
 
-fn write_archive<F: Write + Seek>(fh: &mut F, archive: &ArchiveInfo, points: &[Point], base_interval: u32) -> Result<(), io::Error> {
+fn write_archive<F: Write + Seek>(
+    fh: &mut F,
+    archive: &ArchiveInfo,
+    points: &[Point],
+    base_interval: u32,
+) -> Result<(), io::Error> {
     let point_size = 12;
 
     let first_interval = points[0].interval;
@@ -346,7 +410,9 @@ fn write_archive<F: Write + Seek>(fh: &mut F, archive: &ArchiveInfo, points: &[P
     if available_tail_space < points.len() {
         let (tail, head) = points.split_at(available_tail_space);
 
-        fh.seek(io::SeekFrom::Start((archive.offset + offset * point_size).into()))?;
+        fh.seek(io::SeekFrom::Start(
+            (archive.offset + offset * point_size).into(),
+        ))?;
         for point in tail {
             point.write(fh)?;
         }
@@ -355,7 +421,9 @@ fn write_archive<F: Write + Seek>(fh: &mut F, archive: &ArchiveInfo, points: &[P
             point.write(fh)?;
         }
     } else {
-        fh.seek(io::SeekFrom::Start((archive.offset + offset * point_size).into()))?;
+        fh.seek(io::SeekFrom::Start(
+            (archive.offset + offset * point_size).into(),
+        ))?;
         for point in points {
             point.write(fh)?;
         }
@@ -376,7 +444,13 @@ fn points_to_values(points: &[Point], start: u32, step: u32) -> Vec<Option<f64>>
     values
 }
 
-fn __propagate<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMetadata, timestamp: u32, higher: &ArchiveInfo, lower: &ArchiveInfo) -> Result<bool, io::Error> {
+fn __propagate<F: Read + Write + Seek>(
+    fh: &mut F,
+    header: &WhisperMetadata,
+    timestamp: u32,
+    higher: &ArchiveInfo,
+    lower: &ArchiveInfo,
+) -> Result<bool, io::Error> {
     let lower_interval_start = timestamp - (timestamp % lower.seconds_per_point);
 
     fh.seek(io::SeekFrom::Start(higher.offset.into()))?;
@@ -401,11 +475,17 @@ fn __propagate<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMetadata, tim
     }
 
     let known_percent = known_values as f32 / neighbor_values.len() as f32;
-    if known_percent >= header.x_files_factor {  // We have enough data to propagate a value!
-        let aggregate_value = header.aggregation_method.aggregate(&neighbor_values)
+    if known_percent >= header.x_files_factor {
+        // We have enough data to propagate a value!
+        let aggregate_value = header
+            .aggregation_method
+            .aggregate(&neighbor_values)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        let my_point = Point { interval: lower_interval_start, value: aggregate_value };
+        let my_point = Point {
+            interval: lower_interval_start,
+            value: aggregate_value,
+        };
 
         write_archive_point(fh, lower, &my_point)?;
 
@@ -415,23 +495,41 @@ fn __propagate<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMetadata, tim
     }
 }
 
-fn file_update(fh: &mut fs::File, header: &WhisperMetadata, point: &Point, now: u32) -> Result<(), io::Error> {
+fn file_update(
+    fh: &mut fs::File,
+    header: &WhisperMetadata,
+    point: &Point,
+    now: u32,
+) -> Result<(), io::Error> {
     let timestamp = point.interval;
 
     if now >= timestamp + header.max_retention || now < timestamp {
-        return Err(io::Error::new(io::ErrorKind::Other, "Timestamp not covered by any archives in this database."));
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Timestamp not covered by any archives in this database.",
+        ));
     }
 
     // Find the highest-precision archive that covers timestamp
-    let archive_index = header.archives.iter()
+    let archive_index = header
+        .archives
+        .iter()
         .position(|a| timestamp + a.retention() >= now)
-        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Timestamp not covered by any archives in this database."))?;
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                "Timestamp not covered by any archives in this database.",
+            )
+        })?;
 
     let archive = &header.archives[archive_index];
 
     // First we update the highest-precision archive
     let interval = timestamp - (timestamp % archive.seconds_per_point);
-    let adjusted_point = Point { interval, value: point.value };
+    let adjusted_point = Point {
+        interval,
+        value: point.value,
+    };
 
     write_archive_point(fh, archive, &adjusted_point)?;
 
@@ -447,14 +545,21 @@ fn file_update(fh: &mut fs::File, header: &WhisperMetadata, point: &Point, now: 
     Ok(())
 }
 
-fn file_update_many(fh: &mut fs::File, header: &WhisperMetadata, points: &[Point], now: u32) -> Result<(), io::Error> {
+fn file_update_many(
+    fh: &mut fs::File,
+    header: &WhisperMetadata,
+    points: &[Point],
+    now: u32,
+) -> Result<(), io::Error> {
     let mut archive_index = 0;
     let mut current_points = vec![];
 
     for point in points {
-        while point.interval + header.archives[archive_index].retention() < now {  // We can't fit any more points in this archive
-            if !current_points.is_empty() { // Commit all the points we've found that it can fit
-                current_points.reverse();  // Put points in chronological order
+        while point.interval + header.archives[archive_index].retention() < now {
+            // We can't fit any more points in this archive
+            if !current_points.is_empty() {
+                // Commit all the points we've found that it can fit
+                current_points.reverse(); // Put points in chronological order
                 __archive_update_many(fh, &header, archive_index, &current_points)?;
                 current_points.clear();
             }
@@ -465,7 +570,7 @@ fn file_update_many(fh: &mut fs::File, header: &WhisperMetadata, points: &[Point
         }
 
         if archive_index >= header.archives.len() {
-            break;  // Drop remaining points that don't fit in the database
+            break; // Drop remaining points that don't fit in the database
         }
 
         current_points.push(*point);
@@ -499,7 +604,7 @@ fn pack_points(points: &[Point], step: u32) -> Vec<Vec<Point>> {
             current_chunk.push(*point);
         } else {
             chunks.push(current_chunk);
-            current_chunk = vec![ *point ];
+            current_chunk = vec![*point];
         }
         previous_interval = Some(point.interval);
     }
@@ -514,10 +619,18 @@ fn pack_points(points: &[Point], step: u32) -> Vec<Vec<Point>> {
 /**
  * It's expected that points are sorted in chronological order
  */
-fn __archive_update_many<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMetadata, archive_index: usize, points: &[Point]) -> Result<(), io::Error> {
+fn __archive_update_many<F: Read + Write + Seek>(
+    fh: &mut F,
+    header: &WhisperMetadata,
+    archive_index: usize,
+    points: &[Point],
+) -> Result<(), io::Error> {
     let archive = &header.archives[archive_index];
 
-    let aligned_points: Vec<Point> = points.iter().map(|p| p.align(archive.seconds_per_point)).collect();
+    let aligned_points: Vec<Point> = points
+        .iter()
+        .map(|p| p.align(archive.seconds_per_point))
+        .collect();
 
     let chunks: Vec<Vec<Point>> = pack_points(&aligned_points, archive.seconds_per_point);
 
@@ -526,7 +639,7 @@ fn __archive_update_many<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMet
 
     let base_interval = if base.interval == 0 {
         // This file's first update
-        chunks[0][0].interval  // Use our first string as the base, so we start at the start
+        chunks[0][0].interval // Use our first string as the base, so we start at the start
     } else {
         base.interval
     };
@@ -541,7 +654,10 @@ fn __archive_update_many<F: Read + Write + Seek>(fh: &mut F, header: &WhisperMet
         let higher = &pair[0];
         let lower = &pair[1];
 
-        let unique_lower_intervals: HashSet<u32> = aligned_points.iter().map(|p| p.align(lower.seconds_per_point).interval).collect();
+        let unique_lower_intervals: HashSet<u32> = aligned_points
+            .iter()
+            .map(|p| p.align(lower.seconds_per_point).interval)
+            .collect();
         let mut propagate_further = false;
         for interval in unique_lower_intervals {
             if __propagate(fh, header, interval, higher, lower)? {
@@ -569,7 +685,8 @@ pub struct ArchiveData {
 
 impl ArchiveData {
     pub fn points(&self) -> Vec<Point> {
-        (self.from_interval..self.until_interval).step_by(self.step as usize)
+        (self.from_interval..self.until_interval)
+            .step_by(self.step as usize)
             .zip(&self.values)
             .filter_map(|(interval, value)| value.map(|value| Point { interval, value }))
             .collect()
@@ -603,7 +720,11 @@ fn adjust_interval(interval: Interval, step: u32) -> Result<Interval, String> {
     }
 }
 
-fn archive_fetch_interval<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, interval: Interval) -> Result<Option<Vec<Point>>, io::Error> {
+fn archive_fetch_interval<R: Read + Seek>(
+    fh: &mut R,
+    archive: &ArchiveInfo,
+    interval: Interval,
+) -> Result<Option<Vec<Point>>, io::Error> {
     let base = archive.read_base(fh)?;
     if base.interval == 0 {
         Ok(None)
@@ -615,12 +736,16 @@ fn archive_fetch_interval<R: Read + Seek>(fh: &mut R, archive: &ArchiveInfo, int
     }
 }
 
-fn points_to_data(points: &Option<Vec<Point>>, interval: Interval, seconds_per_point: u32) -> ArchiveData {
+fn points_to_data(
+    points: &Option<Vec<Point>>,
+    interval: Interval,
+    seconds_per_point: u32,
+) -> ArchiveData {
     let values = match points {
         None => {
             let count = (interval.until() - interval.from()) / seconds_per_point;
             vec![None; count as usize]
-        },
+        }
         Some(points) => points_to_values(&points, interval.from(), seconds_per_point),
     };
 
@@ -638,7 +763,11 @@ mod tests {
 
     #[test]
     fn test_instant_offset() {
-        let archive = ArchiveInfo { offset: 100_000, seconds_per_point: 1, points: 60 };
+        let archive = ArchiveInfo {
+            offset: 100_000,
+            seconds_per_point: 1,
+            points: 60,
+        };
 
         assert_eq!(instant_offset(&archive, 0, 0), 0);
         assert_eq!(instant_offset(&archive, 0, 1), 0);
@@ -660,9 +789,21 @@ mod tests {
 
     #[test]
     fn test_adjust_interval() {
-        assert_eq!(adjust_interval(Interval::new(1, 1).unwrap(), 10).unwrap(), Interval::new(0, 10).unwrap());
-        assert_eq!(adjust_interval(Interval::new(1, 5).unwrap(), 10).unwrap(), Interval::new(0, 10).unwrap());
-        assert_eq!(adjust_interval(Interval::new(0, 10).unwrap(), 10).unwrap(), Interval::new(0, 10).unwrap());
-        assert_eq!(adjust_interval(Interval::new(0, 11).unwrap(), 10).unwrap(), Interval::new(0, 20).unwrap());
+        assert_eq!(
+            adjust_interval(Interval::new(1, 1).unwrap(), 10).unwrap(),
+            Interval::new(0, 10).unwrap()
+        );
+        assert_eq!(
+            adjust_interval(Interval::new(1, 5).unwrap(), 10).unwrap(),
+            Interval::new(0, 10).unwrap()
+        );
+        assert_eq!(
+            adjust_interval(Interval::new(0, 10).unwrap(), 10).unwrap(),
+            Interval::new(0, 10).unwrap()
+        );
+        assert_eq!(
+            adjust_interval(Interval::new(0, 11).unwrap(), 10).unwrap(),
+            Interval::new(0, 20).unwrap()
+        );
     }
 }

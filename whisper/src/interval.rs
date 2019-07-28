@@ -10,12 +10,18 @@ impl Interval {
         if from <= until {
             Ok(Self { from, until })
         } else {
-            Err(format!("Invalid time interval: from time '{}' is after until time '{}'.", from, until))
+            Err(format!(
+                "Invalid time interval: from time '{}' is after until time '{}'.",
+                from, until
+            ))
         }
     }
 
     pub fn past(until: u32, duration: u32) -> Self {
-        Self { from: until - duration, until }
+        Self {
+            from: until - duration,
+            until,
+        }
     }
 
     pub fn from(self) -> u32 {
@@ -37,7 +43,7 @@ impl Interval {
     pub fn intersection(self, other: Interval) -> Result<Interval, String> {
         Interval::new(
             u32::max(self.from, other.from),
-            u32::min(self.until, other.until)
+            u32::min(self.until, other.until),
         )
     }
 }
@@ -48,8 +54,8 @@ mod tests {
 
     #[test]
     fn interval_valid() {
-        assert_eq!(Interval::new(1, 2), Ok(Interval{ from: 1, until: 2 }));
-        assert_eq!(Interval::new(2, 2), Ok(Interval{ from: 2, until: 2 }));
+        assert_eq!(Interval::new(1, 2), Ok(Interval { from: 1, until: 2 }));
+        assert_eq!(Interval::new(2, 2), Ok(Interval { from: 2, until: 2 }));
     }
 
     #[test]
@@ -59,20 +65,20 @@ mod tests {
 
     #[test]
     fn is_contains() -> Result<(), String> {
-        let check = Interval::new(3, 10)?.contains(Interval::new(4,9)?);
+        let check = Interval::new(3, 10)?.contains(Interval::new(4, 9)?);
         assert!(check);
         Ok(())
     }
 
     #[test]
     fn is_not_contains() -> Result<(), String> {
-        let check1 = Interval::new(5, 10)?.contains(Interval::new(4,9)?);
+        let check1 = Interval::new(5, 10)?.contains(Interval::new(4, 9)?);
         assert!(!check1);
 
-        let check2 = Interval::new(5, 10)?.contains(Interval::new(6,11)?);
+        let check2 = Interval::new(5, 10)?.contains(Interval::new(6, 11)?);
         assert!(!check2);
 
-        let check3 = Interval::new(5, 10)?.contains(Interval::new(4,11)?);
+        let check3 = Interval::new(5, 10)?.contains(Interval::new(4, 11)?);
         assert!(!check3);
 
         Ok(())

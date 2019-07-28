@@ -1,8 +1,8 @@
-use std::path::Path;
-use std::io;
 use super::*;
 use crate::interval::Interval;
 use std::fmt;
+use std::io;
+use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DiffPoint {
@@ -132,11 +132,7 @@ impl fmt::Display for DiffArchiveSummary {
                     archive.index, archive.total, archive.points
                 )?;
             } else {
-                writeln!(
-                    f,
-                    "{} {} {}",
-                    archive.index, archive.total, archive.points
-                )?;
+                writeln!(f, "{} {} {}", archive.index, archive.total, archive.points)?;
             }
         }
 
@@ -158,12 +154,21 @@ impl fmt::Display for DiffSummaryHeader {
 }
 
 /** Compare two whisper databases. Each file must have the same archive configuration */
-pub fn diff(path1: &Path, path2: &Path, ignore_empty: bool, mut until_time: u32, now: u32) -> Result<Vec<DiffArchive>, io::Error> {
+pub fn diff(
+    path1: &Path,
+    path2: &Path,
+    ignore_empty: bool,
+    mut until_time: u32,
+    now: u32,
+) -> Result<Vec<DiffArchive>, io::Error> {
     let mut file1 = WhisperFile::open(path1)?;
     let mut file2 = WhisperFile::open(path2)?;
 
     if file1.info().archives != file2.info().archives {
-        return Err(io::Error::new(io::ErrorKind::Other, "Archive configurations are unalike. Resize the input before diffing"));
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Archive configurations are unalike. Resize the input before diffing",
+        ));
     }
 
     let mut archives = file1.info().archives.clone();
@@ -182,28 +187,37 @@ pub fn diff(path1: &Path, path2: &Path, ignore_empty: bool, mut until_time: u32,
         let end = u32::max(data1.until_interval, data2.until_interval);
         let archive_step = u32::min(data1.step, data2.step);
 
-        let points: Vec<DiffPoint> = (start..end).step_by(archive_step as usize)
+        let points: Vec<DiffPoint> = (start..end)
+            .step_by(archive_step as usize)
             .enumerate()
             .map(|(index, interval)| DiffPoint {
                 interval,
                 value1: data1.values[index],
                 value2: data2.values[index],
             })
-            .filter(|p|
+            .filter(|p| {
                 if ignore_empty {
                     p.value1.is_some() && p.value2.is_some()
                 } else {
                     p.value1.is_some() || p.value2.is_some()
                 }
-            )
+            })
             .collect();
 
         let total = points.len();
 
-        let diffs: Vec<DiffPoint> = points.into_iter().filter(|p| p.value1 != p.value2).collect();
+        let diffs: Vec<DiffPoint> = points
+            .into_iter()
+            .filter(|p| p.value1 != p.value2)
+            .collect();
         let points = diffs.len();
 
-        archive_diffs.push(DiffArchive { index, diffs, points, total });
+        archive_diffs.push(DiffArchive {
+            index,
+            diffs,
+            points,
+            total,
+        });
 
         until_time = u32::min(start_time, until_time);
     }
@@ -227,34 +241,39 @@ mod tests {
     fn from_archive_to_short() {
         let diff = DiffArchive {
             index: 2,
-            diffs: vec![
-                DiffPoint { interval: 1, value1: Some(1.0), value2: Some(2.1) },
-            ],
+            diffs: vec![DiffPoint {
+                interval: 1,
+                value1: Some(1.0),
+                value2: Some(2.1),
+            }],
             points: 1,
             total: 7,
         };
 
         let diff_short: DiffArchiveShort = diff.into();
-        assert_eq!(diff_short, DiffArchiveShort {index: 2, total: 7, points: 1 });
+        assert_eq!(
+            diff_short,
+            DiffArchiveShort {
+                index: 2,
+                total: 7,
+                points: 1
+            }
+        );
     }
 
     #[test]
     fn archive_info_fmt() {
         let diff_info = DiffArchiveInfo {
-            archives: vec![
-                DiffArchive {
-                    index: 0,
-                    diffs: vec![
-                        DiffPoint {
-                            interval: 1,
-                            value1: Some(1.0),
-                            value2: Some(2.1)
-                        },
-                    ],
-                    points: 1,
-                    total: 7,
-                }
-            ],
+            archives: vec![DiffArchive {
+                index: 0,
+                diffs: vec![DiffPoint {
+                    interval: 1,
+                    value1: Some(1.0),
+                    value2: Some(2.1),
+                }],
+                points: 1,
+                total: 7,
+            }],
             path_a: "path_a".to_owned(),
             path_b: "path_b".to_owned(),
         };
@@ -272,15 +291,12 @@ mod tests {
 
     #[test]
     fn archive_info_short_fmt() {
-
         let diff_info = DiffArchiveSummary {
-            archives: vec![
-                DiffArchiveShort {
-                    index: 0,
-                    total: 7,
-                    points: 1,
-                },
-            ],
+            archives: vec![DiffArchiveShort {
+                index: 0,
+                total: 7,
+                points: 1,
+            }],
             path_a: "path_a".to_owned(),
             path_b: "path_b".to_owned(),
         };
@@ -297,13 +313,13 @@ mod tests {
         let header = DiffHeader();
 
         let header_str1 = format!("{}", header);
-        for word in &[ "archive", "timestamp", "value_a", "value_b" ] {
-            assert!( header_str1.contains(word), "should contains {}", word);
+        for word in &["archive", "timestamp", "value_a", "value_b"] {
+            assert!(header_str1.contains(word), "should contains {}", word);
         }
 
         let header_str2 = format!("{:#}", header);
-        for word in &[ "archive", "timestamp", "value_a", "value_b" ] {
-            assert!( header_str2.contains(word), "should contains {}", word);
+        for word in &["archive", "timestamp", "value_a", "value_b"] {
+            assert!(header_str2.contains(word), "should contains {}", word);
         }
     }
 
@@ -312,15 +328,14 @@ mod tests {
         let header = DiffSummaryHeader();
 
         let header_str1 = format!("{}", header);
-        for word in &[ "archive", "total", "differing" ] {
-            assert!( header_str1.contains(word), "should contains {}", word);
+        for word in &["archive", "total", "differing"] {
+            assert!(header_str1.contains(word), "should contains {}", word);
         }
 
         let header_str2 = format!("{:#}", header);
-        for word in &[ "archive", "total", "differing" ] {
-            assert!( header_str2.contains(word), "should contains {}", word);
+        for word in &["archive", "total", "differing"] {
+            assert!(header_str2.contains(word), "should contains {}", word);
         }
-
     }
 
 }

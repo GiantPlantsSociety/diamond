@@ -4,8 +4,8 @@ use whisper::builder::WhisperBuilder;
 use whisper::interval::Interval;
 use whisper::point::Point;
 use whisper::retention::Retention;
-use whisper_tests::*;
 use whisper::ArchiveData;
+use whisper_tests::*;
 
 #[test]
 fn whisper_suggest_archive() -> Result<(), Error> {
@@ -49,26 +49,17 @@ fn whisper_suggest_archive() -> Result<(), Error> {
     file.update_many(&points, now)?;
 
     assert_eq!(
-        file.suggest_archive(
-            Interval::new(now - 600, now - 60).map_err(err_msg)?,
-            now
-        ),
+        file.suggest_archive(Interval::new(now - 600, now - 60).map_err(err_msg)?, now),
         Some(60)
     );
 
     assert_eq!(
-        file.suggest_archive(
-            Interval::new(now - 1200, now - 600).map_err(err_msg)?,
-            now
-        ),
+        file.suggest_archive(Interval::new(now - 1200, now - 600).map_err(err_msg)?, now),
         Some(300)
     );
 
     assert_eq!(
-        file.suggest_archive(
-            Interval::new(now - 6000, now - 3000).map_err(err_msg)?,
-            now
-        ),
+        file.suggest_archive(Interval::new(now - 6000, now - 3000).map_err(err_msg)?, now),
         Some(600)
     );
 

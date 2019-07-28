@@ -434,10 +434,11 @@ mod tests {
     fn render_request_parse_form() -> Result<(), actix_web::error::Error> {
         let s = "target=app.numUsers&format=json&from=0&until=10";
 
-        let (req, mut payload) = TestRequest::with_header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-            .header(CONTENT_LENGTH, s.len())
-            .set_payload(s)
-            .to_http_parts();
+        let (req, mut payload) =
+            TestRequest::with_header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(CONTENT_LENGTH, s.len())
+                .set_payload(s)
+                .to_http_parts();
 
         let params = RenderQuery {
             format: RenderFormat::Json,

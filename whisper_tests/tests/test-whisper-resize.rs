@@ -47,9 +47,8 @@ fn test_resize_simple_long() -> Result<(), Box<dyn Error>> {
 
     for delta in 1..10 {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta * 60) && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta * 60)
+                && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from original file1: {:?}",
             delta,
             now - delta,
@@ -108,9 +107,8 @@ fn test_resize_simple_short() -> Result<(), Box<dyn Error>> {
 
     for delta in 1..6 {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta * 60) && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta * 60)
+                && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from original file1: {:?}",
             delta,
             now - delta,
@@ -170,9 +168,8 @@ fn test_resize_extend_short() -> Result<(), Box<dyn Error>> {
 
     for delta in 1..6 {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta * 60) && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta * 60)
+                && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from original file1: {:?}",
             delta,
             now - delta,
@@ -224,9 +221,8 @@ fn test_resize_aggr_simple_long() -> Result<(), Box<dyn Error>> {
 
     for delta in 1..10 {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta * 60) && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta * 60)
+                && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from original file1: {:?}",
             delta,
             now - delta,
@@ -285,9 +281,8 @@ fn test_resize_aggr_simple_short() -> Result<(), Box<dyn Error>> {
 
     for delta in 1..6 {
         assert!(
-            points
-                .iter()
-                .any(|p| p.interval == (now - delta * 60) && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
+            points.iter().any(|p| p.interval == (now - delta * 60)
+                && (p.value - f64::from(delta * 60)) < std::f64::EPSILON),
             "should contain (now - {} = {}, {}) from original file1: {:?}",
             delta,
             now - delta,

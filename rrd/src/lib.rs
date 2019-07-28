@@ -2,24 +2,23 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-/// https://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html
-
-extern crate regex;
 extern crate num_traits;
+/// https://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html
+extern crate regex;
 extern crate rrd_sys;
 
-use std::ops::Drop;
-use std::str::FromStr;
+use num_traits::cast;
+use regex::Regex;
+use rrd_sys::*;
+use std::collections::{BTreeSet, HashMap};
 use std::ffi::{CStr, CString};
 use std::fmt;
-use std::ptr;
-use std::os::raw::{c_char, c_void, c_long, c_ulong};
-use std::marker::PhantomData; 
-use std::collections::{HashMap, BTreeSet};
+use std::marker::PhantomData;
+use std::ops::Drop;
+use std::os::raw::{c_char, c_long, c_ulong, c_void};
 use std::path::Path;
-use regex::Regex;
-use num_traits::cast;
-use rrd_sys::*;
+use std::ptr;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct Error(String);
@@ -141,15 +140,16 @@ impl Info {
 
     pub fn rra_count(&self) -> usize {
         let re = Regex::new("^rra\\[(\\d+)\\]").unwrap();
-        self.iter().filter_map(|(key, _value)| {
-            if let Some(m) = re.captures(&key) {
-                m.get(1).unwrap().as_str().parse::<usize>().ok()
-            } else {
-                None
-            }
-        })
-        .max()
-        .map_or(0, |c| c + 1)
+        self.iter()
+            .filter_map(|(key, _value)| {
+                if let Some(m) = re.captures(&key) {
+                    m.get(1).unwrap().as_str().parse::<usize>().ok()
+                } else {
+                    None
+                }
+            })
+            .max()
+            .map_or(0, |c| c + 1)
     }
 
     pub fn rras(&self) -> Vec<RRA> {
@@ -157,10 +157,15 @@ impl Info {
 
         (0..self.rra_count())
             .map(|index| RRA {
-                cf: AggregationMethod::from_str(hash[&format!("rra[{}].cf", index)].text().unwrap()).unwrap(),
+                cf: AggregationMethod::from_str(
+                    hash[&format!("rra[{}].cf", index)].text().unwrap(),
+                )
+                .unwrap(),
                 rows: hash[&format!("rra[{}].rows", index)].as_long().unwrap(),
                 cur_row: hash[&format!("rra[{}].cur_row", index)].as_long().unwrap(),
-                pdp_per_row: hash[&format!("rra[{}].pdp_per_row", index)].as_long().unwrap(),
+                pdp_per_row: hash[&format!("rra[{}].pdp_per_row", index)]
+                    .as_long()
+                    .unwrap(),
                 xff: hash[&format!("rra[{}].xff", index)].as_float().unwrap(),
             })
             .collect()
@@ -168,12 +173,13 @@ impl Info {
 
     pub fn datasources(&self) -> BTreeSet<String> {
         let re = Regex::new("^ds\\[([^\\]]+)\\]").unwrap();
-        self.iter().filter_map(|(key, _value)|
-            re.captures(&key)
-                .and_then(|c| c.get(1))
-                .map(|c| c.as_str().to_owned())
-        )
-        .collect()
+        self.iter()
+            .filter_map(|(key, _value)| {
+                re.captures(&key)
+                    .and_then(|c| c.get(1))
+                    .map(|c| c.as_str().to_owned())
+            })
+            .collect()
     }
 }
 
@@ -188,7 +194,10 @@ impl<'a> Iterator for InfoIter<'a> {
         } else {
             let info = self.0;
 
-            let key = unsafe { CStr::from_ptr((*info).key) }.to_str().unwrap().to_owned();
+            let key = unsafe { CStr::from_ptr((*info).key) }
+                .to_str()
+                .unwrap()
+                .to_owned();
 
             let value = match unsafe { (*info).type_ } {
                 rrd_info_type_RD_I_VAL => Value::Float(unsafe { (*info).value.u_val }),
@@ -198,15 +207,21 @@ impl<'a> Iterator for InfoIter<'a> {
                     let cstr = unsafe { CStr::from_ptr((*info).value.u_str) };
                     let text = cstr.to_str().unwrap().to_owned();
                     Value::Text(text)
-                },
+                }
                 rrd_info_type_RD_I_BLO => {
                     let block = unsafe { (*info).value.u_blo };
                     let mut buffer = Vec::<u8>::new();
                     buffer.resize(block.size as usize, 0u8);
-                    unsafe { ptr::copy_nonoverlapping(block.ptr, buffer.as_ptr() as *mut u8, block.size as usize) };
+                    unsafe {
+                        ptr::copy_nonoverlapping(
+                            block.ptr,
+                            buffer.as_ptr() as *mut u8,
+                            block.size as usize,
+                        )
+                    };
                     Value::Blob(buffer)
-                },
-                t => panic!("Unknown type of info value {}", t)
+                }
+                t => panic!("Unknown type of info value {}", t),
             };
             self.0 = unsafe { (*self.0).next };
             Some((key, value))
@@ -216,14 +231,22 @@ impl<'a> Iterator for InfoIter<'a> {
 
 impl Drop for Info {
     fn drop(&mut self) {
-        unsafe { rrd_info_free(self.0); }
+        unsafe {
+            rrd_info_free(self.0);
+        }
     }
 }
 
 fn get_and_clear_error() -> Error {
-    unsafe { 
+    unsafe {
         let c_err = rrd_get_error();
-        let error = Error(CStr::from_ptr(c_err).to_str().map_err(|e| Error(e.to_string())).unwrap().to_owned());
+        let error = Error(
+            CStr::from_ptr(c_err)
+                .to_str()
+                .map_err(|e| Error(e.to_string()))
+                .unwrap()
+                .to_owned(),
+        );
         rrd_clear_error();
         error
     }
@@ -268,9 +291,16 @@ pub struct Data {
     pub rows: Vec<Vec<f64>>,
 }
 
-pub fn fetch(filename: &Path, aggregation: AggregationMethod, resolution: Option<u32>, start: u64, end: u64) -> Result<Data, Error> {
+pub fn fetch(
+    filename: &Path,
+    aggregation: AggregationMethod,
+    resolution: Option<u32>,
+    start: u64,
+    end: u64,
+) -> Result<Data, Error> {
     let c_filename = CString::new(filename.to_str().unwrap().as_bytes()).unwrap();
-    let c_aggregation = CString::new(str::to_ascii_uppercase(aggregation.into()).as_bytes()).unwrap();
+    let c_aggregation =
+        CString::new(str::to_ascii_uppercase(aggregation.into()).as_bytes()).unwrap();
 
     let mut start = start as c_long;
     let mut end = end as c_long;
@@ -282,7 +312,12 @@ pub fn fetch(filename: &Path, aggregation: AggregationMethod, resolution: Option
         rrd_fetch_r(
             c_filename.as_ptr(),
             c_aggregation.as_ptr(),
-            &mut start, &mut end, &mut step, &mut ds_cnt, &mut ds_namv, &mut data
+            &mut start,
+            &mut end,
+            &mut step,
+            &mut ds_cnt,
+            &mut ds_namv,
+            &mut data,
         )
     };
 

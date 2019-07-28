@@ -73,9 +73,12 @@ Meta data:
   aggregation method: average
   max retention: 600
   xFilesFactor: 0.5",
-                ).as_str(),
-            ).from_utf8(),
-        ).stdout(
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 unindent(
                     "
@@ -85,9 +88,12 @@ Archive 0 info:
   points: 5
   retention: 300
   size: 60",
-                ).as_str(),
-            ).from_utf8(),
-        ).stdout(
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 unindent(
                     "
@@ -97,9 +103,12 @@ Archive 1 info:
   points: 5
   retention: 600
   size: 60",
-                ).as_str(),
-            ).from_utf8(),
-        ).stdout(
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 "
 Archive 0 data:
@@ -108,8 +117,10 @@ Archive 0 data:
 2: 0,          0
 3: 0,          0
 4: 0,          0",
-            ).from_utf8(),
-        ).stdout(
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 "
 Archive 1 data:
@@ -118,8 +129,10 @@ Archive 1 data:
 2: 0,          0
 3: 0,          0
 4: 0,          0",
-            ).from_utf8(),
-        ).stderr("");
+            )
+            .from_utf8(),
+        )
+        .stderr("");
     Ok(())
 }
 
@@ -150,9 +163,12 @@ Meta data:
   aggregation method: average
   max retention: 600
   xFilesFactor: 0.5",
-                ).as_str(),
-            ).from_utf8(),
-        ).stdout(
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 unindent(
                     "
@@ -162,9 +178,12 @@ Archive 0 info:
   points: 5
   retention: 300
   size: 60",
-                ).as_str(),
-            ).from_utf8(),
-        ).stdout(
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 unindent(
                     "
@@ -174,9 +193,12 @@ Archive 1 info:
   points: 5
   retention: 600
   size: 60",
-                ).as_str(),
-            ).from_utf8(),
-        ).stdout(
+                )
+                .as_str(),
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 "
 Archive 0 data:
@@ -185,8 +207,10 @@ Archive 0 data:
 2: Thu Jan  1 00:00:00 1970,          0
 3: Thu Jan  1 00:00:00 1970,          0
 4: Thu Jan  1 00:00:00 1970,          0",
-            ).from_utf8(),
-        ).stdout(
+            )
+            .from_utf8(),
+        )
+        .stdout(
             predicate::str::contains(
                 "
 Archive 1 data:
@@ -195,7 +219,9 @@ Archive 1 data:
 2: Thu Jan  1 00:00:00 1970,          0
 3: Thu Jan  1 00:00:00 1970,          0
 4: Thu Jan  1 00:00:00 1970,          0",
-            ).from_utf8(),
-        ).stderr("");
+            )
+            .from_utf8(),
+        )
+        .stderr("");
     Ok(())
 }

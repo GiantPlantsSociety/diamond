@@ -2,8 +2,16 @@ use super::*;
 
 #[test]
 fn bindgen_test_layout_rrd_file_t() {
-    assert_eq!(::std::mem::size_of::<rrd_file_t>(), 40usize, "Size of rrd_file_t");
-    assert_eq!(::std::mem::align_of::<rrd_file_t>(), 8usize, "Alignment of rrd_file_t");
+    assert_eq!(
+        ::std::mem::size_of::<rrd_file_t>(),
+        40usize,
+        "Size of rrd_file_t"
+    );
+    assert_eq!(
+        ::std::mem::align_of::<rrd_file_t>(),
+        8usize,
+        "Alignment of rrd_file_t"
+    );
     assert_eq!(
         unsafe { &(*(::std::ptr::null::<rrd_file_t>())).header_len as *const _ as usize },
         0usize,
@@ -58,11 +66,20 @@ fn bindgen_test_layout_rrd_file_t() {
 
 #[test]
 fn bindgen_test_layout_rrd_simple_file_t() {
-    assert_eq!(::std::mem::size_of::<rrd_simple_file_t>(), 4usize, "Size of rrd_simple_file_t");
-    assert_eq!(::std::mem::align_of::<rrd_simple_file_t>(), 4usize, "Alignment of rrd_simple_file_t");
+    assert_eq!(
+        ::std::mem::size_of::<rrd_simple_file_t>(),
+        4usize,
+        "Size of rrd_simple_file_t"
+    );
+    assert_eq!(
+        ::std::mem::align_of::<rrd_simple_file_t>(),
+        4usize,
+        "Alignment of rrd_simple_file_t"
+    );
     assert_eq!(
         unsafe { &(*(::std::ptr::null::<rrd_simple_file_t>())).fd as *const _ as usize },
-        0usize, "Offset of field rrd_simple_file_t::fd"
+        0usize,
+        "Offset of field rrd_simple_file_t::fd"
     );
 }
 

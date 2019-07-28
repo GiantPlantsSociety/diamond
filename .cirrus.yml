@@ -10,8 +10,11 @@ task:
     - pkg install -y curl rrdtool
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh -y
+    - . $HOME/.cargo/env
+    - rustup component add rustfmt
   test_script:
     - . $HOME/.cargo/env
+    - cargo fmt --all -- --check
     - cargo build --verbose
     - cargo test -- --nocapture
     - |

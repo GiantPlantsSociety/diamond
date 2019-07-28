@@ -63,10 +63,11 @@ fn calling_with_invalid_method() -> Result<(), Box<dyn Error>> {
             "60:1440",
             "--aggregationMethod",
             "unknown",
-        ]).assert()
+        ])
+        .assert()
         .code(1)
         .stderr(predicate::str::contains(error).from_utf8());
-     Ok(())
+    Ok(())
 }
 
 #[test]
