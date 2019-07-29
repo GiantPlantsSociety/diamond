@@ -210,7 +210,8 @@ impl<T: IntoCsv> IntoCsv for Vec<T> {
         self.into_iter()
             .map(|item| item.into_csv())
             .collect::<Vec<String>>()
-            .join("\n") + "\n"
+            .join("\n")
+            + "\n"
     }
 }
 
