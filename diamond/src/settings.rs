@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn test_config_load() {
         let path = Builder::new()
-            .prefix("carbon")
+            .prefix("diamond")
             .suffix("config.toml")
             .tempfile()
             .unwrap()
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn test_generate_config() {
         let path = Builder::new()
-            .prefix("carbon")
+            .prefix("diamond")
             .suffix("config.toml")
             .tempfile()
             .unwrap()

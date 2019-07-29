@@ -12,7 +12,7 @@ use whisper::retention::Retention;
 
 /// Receive metrics from pipe
 #[derive(Debug, StructOpt)]
-#[structopt(name = "carbon-pipe")]
+#[structopt(name = "diamond-pipe")]
 struct Args {
     /// Path to the directory with data files
     #[structopt(name = "path", parse(from_os_str))]
