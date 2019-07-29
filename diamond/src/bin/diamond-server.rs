@@ -11,7 +11,7 @@ use tokio::net::{TcpListener, UdpFramed, UdpSocket};
 use tokio::prelude::*;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "carbon-server")]
+#[structopt(name = "diamond-server")]
 struct Args {
     /// Path to config file
     #[structopt(name = "config", long = "config", short = "c", parse(from_os_str))]

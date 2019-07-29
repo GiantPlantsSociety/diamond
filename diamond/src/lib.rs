@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn update_line_with_absent_wsp() -> Result<(), Error> {
         let dir = Builder::new()
-            .prefix("carbon")
+            .prefix("diamond")
             .tempdir()
             .unwrap()
             .path()
@@ -358,7 +358,7 @@ mod tests {
     #[test]
     fn update_line_with_present_wsp() -> Result<(), Error> {
         let dir = Builder::new()
-            .prefix("carbon")
+            .prefix("diamond")
             .tempdir()
             .unwrap()
             .path()
@@ -404,7 +404,7 @@ mod tests {
     #[test]
     fn update_silently_with_absent_wsp() -> Result<(), Error> {
         let dir = Builder::new()
-            .prefix("carbon_silent")
+            .prefix("diamond_silent")
             .tempdir()
             .unwrap()
             .path()
