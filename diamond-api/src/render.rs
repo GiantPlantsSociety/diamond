@@ -235,8 +235,12 @@ impl IntoCsv for RenderResponseEntry {
 fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> HttpResponse {
     match format {
         RenderFormat::Json => HttpResponse::Ok().json(response),
-        RenderFormat::Csv => HttpResponse::Ok().body(response.into_csv()),
-        _ => HttpResponse::BadRequest().body(format!("Format '{}' not supported", format)),
+        RenderFormat::Csv => HttpResponse::Ok()
+            .content_type("text/csv")
+            .body(response.into_csv()),
+        _ => HttpResponse::BadRequest()
+            .content_type("text/plain")
+            .body(format!("Format '{}' not supported", format)),
     }
 }
 
@@ -250,10 +254,18 @@ mod tests {
     use failure::Error;
     use futures::stream::Stream;
 
-    fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String) {
+    fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String, String) {
         let f = render_handler(Data::new(ctx), query);
-        let mut response = f.wait().ok().unwrap();
-
+        let mut response: HttpResponse = f.wait().ok().unwrap();
+        let content_type: String = response
+            .head()
+            .headers()
+            .get(CONTENT_TYPE)
+            .unwrap()
+            .clone()
+            .to_str()
+            .unwrap()
+            .to_string();
         let status = response.status();
 
         let body: Vec<bytes::Bytes> = response
@@ -268,7 +280,11 @@ mod tests {
             buf.append(&mut v);
         });
 
-        (status, String::from_utf8(buf[..].to_vec()).unwrap())
+        (
+            status,
+            content_type,
+            String::from_utf8(buf[..].to_vec()).unwrap(),
+        )
     }
 
     #[test]
@@ -296,8 +312,9 @@ mod tests {
                 from: 0,
                 until: 0,
             };
-            let (status, response) = render_response(ctx, query);
+            let (status, ct, response) = render_response(ctx, query);
             assert_eq!(status, StatusCode::BAD_REQUEST);
+            assert_eq!(ct, "text/plain");
             assert_eq!(response, format!("Format '{}' not supported", format));
         }
     }
@@ -318,8 +335,9 @@ mod tests {
             from: 0,
             until: 0,
         };
-        let (status, response) = render_response(ctx, query);
+        let (status, ct, response) = render_response(ctx, query);
         assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "application/json");
         assert_eq!(response, "[]");
     }
 
@@ -343,8 +361,9 @@ mod tests {
             from: 0,
             until: 0,
         };
-        let (status, response) = render_response(ctx, query);
+        let (status, ct, response) = render_response(ctx, query);
         assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "application/json");
         assert_eq!(
             response,
             "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,123],[2.0,456],[3.0,789]]}]"
@@ -367,8 +386,9 @@ mod tests {
             from: 0,
             until: 0,
         };
-        let (status, response) = render_response(ctx, query);
+        let (status, ct, response) = render_response(ctx, query);
         assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "text/csv");
         assert_eq!(response, "\n")
     }
 
@@ -392,8 +412,9 @@ mod tests {
             from: 0,
             until: 0,
         };
-        let (status, response) = render_response(ctx, query);
+        let (status, ct, response) = render_response(ctx, query);
         assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "text/csv");
         assert_eq!(
             response,
             "i.am.a.metric,123,1.1\ni.am.a.metric,456,2.2\ni.am.a.metric,789,3.3\n"
