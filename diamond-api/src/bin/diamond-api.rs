@@ -33,8 +33,8 @@ fn run(args: Args) -> io::Result<()> {
     let listen = format!("127.0.0.1:{}", &args.port);
 
     let ctx = Context {
-        args: args.clone(),
         walker: Walker::File(args.path.clone()),
+        args,
     };
 
     HttpServer::new(move || {
