@@ -202,17 +202,15 @@ pub fn render_handler(
 
 // TODO: Extract code BELOW to response_format_csv module
 trait IntoCsv {
-    fn into_csv(self: Self) -> String;
+    fn into_csv(self) -> String;
 }
 
 impl<T: IntoCsv> IntoCsv for Vec<T> {
     fn into_csv(self) -> String {
-        let mut csv = String::with_capacity(1024);
-        for item in self {
-            let item_csv = item.into_csv();
-            csv.push_str(&item_csv);
-        }
-        csv
+        self.into_iter()
+            .map(|item| item.into_csv())
+            .collect::<Vec<String>>()
+            .join("\n") + "\n"
     }
 }
 
@@ -228,7 +226,7 @@ impl IntoCsv for RenderResponseEntry {
                 format!("{},{},{}", metric, ts, val)
             })
             .collect();
-        lines.join("\n") + "\n"
+        lines.join("\n")
     }
 }
 // TODO: Extract code ABOVE to response_format_csv module
@@ -370,7 +368,7 @@ mod tests {
         };
         let (status, response) = render_response(ctx, query);
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(response, "")
+        assert_eq!(response, "\n")
     }
 
     #[test]
