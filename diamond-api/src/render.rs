@@ -222,9 +222,10 @@ impl IntoCsv for RenderResponseEntry {
             .datapoints
             .into_iter()
             .map(|point| {
-                let (ts, val) = (point.1, point.0.unwrap_or(0.0 as f64));
+                let RenderPoint(val, ts) = point;
+                let v = val.map(|f| format!("{}", f)).unwrap_or("".to_owned());
                 // TODO: Use `csv` crate instead of "manual" string formatting
-                format!("{},{},{}", metric, ts, val)
+                format!("{},{},{}", metric, ts, v)
             })
             .collect();
         lines.join("\n")
@@ -351,6 +352,7 @@ mod tests {
             },
             walker: Walker::Const(vec![
                 RenderPoint(Some(1.0 as f64), 123),
+                RenderPoint(None, 777),
                 RenderPoint(Some(2.0 as f64), 456),
                 RenderPoint(Some(3.0 as f64), 789),
             ]),
@@ -366,7 +368,7 @@ mod tests {
         assert_eq!(ct, "application/json");
         assert_eq!(
             response,
-            "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,123],[2.0,456],[3.0,789]]}]"
+            "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,123],[null,777],[2.0,456],[3.0,789]]}]"
         )
     }
 
@@ -403,6 +405,7 @@ mod tests {
             walker: Walker::Const(vec![
                 RenderPoint(Some(1.1 as f64), 123),
                 RenderPoint(Some(2.2 as f64), 456),
+                RenderPoint(None, 777),
                 RenderPoint(Some(3.3 as f64), 789),
             ]),
         };
@@ -417,7 +420,7 @@ mod tests {
         assert_eq!(ct, "text/csv");
         assert_eq!(
             response,
-            "i.am.a.metric,123,1.1\ni.am.a.metric,456,2.2\ni.am.a.metric,789,3.3\n"
+            "i.am.a.metric,123,1.1\ni.am.a.metric,456,2.2\ni.am.a.metric,777,\ni.am.a.metric,789,3.3\n"
         )
     }
 
