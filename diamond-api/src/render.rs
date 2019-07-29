@@ -1,3 +1,6 @@
+extern crate chrono;
+use chrono::NaiveDateTime;
+
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Json};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse};
@@ -224,8 +227,9 @@ impl IntoCsv for RenderResponseEntry {
             .map(|point| {
                 let RenderPoint(val, ts) = point;
                 let v = val.map(|f| format!("{}", f)).unwrap_or("".to_owned());
+                let t = NaiveDateTime::from_timestamp(ts as i64, 0).format("%Y-%m-%d %H:%M:%S");
                 // TODO: Use `csv` crate instead of "manual" string formatting
-                format!("{},{},{}", metric, ts, v)
+                format!("{},{},{}", metric, t, v)
             })
             .collect();
         lines.join("\n")
@@ -344,6 +348,7 @@ mod tests {
 
     #[test]
     fn render_handler_json_ok_full() {
+        let t = 1564432988;
         let ctx = Context {
             args: Args {
                 path: PathBuf::new(),
@@ -351,10 +356,10 @@ mod tests {
                 port: 0,
             },
             walker: Walker::Const(vec![
-                RenderPoint(Some(1.0 as f64), 123),
-                RenderPoint(None, 777),
-                RenderPoint(Some(2.0 as f64), 456),
-                RenderPoint(Some(3.0 as f64), 789),
+                RenderPoint(Some(1.0 as f64), t),
+                RenderPoint(None, t + 10),
+                RenderPoint(Some(2.0 as f64), t + 100),
+                RenderPoint(Some(3.0 as f64), t + 1000),
             ]),
         };
         let query = RenderQuery {
@@ -368,7 +373,7 @@ mod tests {
         assert_eq!(ct, "application/json");
         assert_eq!(
             response,
-            "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,123],[null,777],[2.0,456],[3.0,789]]}]"
+            "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,1564432988],[null,1564432998],[2.0,1564433088],[3.0,1564433988]]}]"
         )
     }
 
@@ -396,6 +401,7 @@ mod tests {
 
     #[test]
     fn render_handler_csv_ok_full() {
+        let t = 1564432988;
         let ctx = Context {
             args: Args {
                 path: PathBuf::new(),
@@ -403,10 +409,10 @@ mod tests {
                 port: 0,
             },
             walker: Walker::Const(vec![
-                RenderPoint(Some(1.1 as f64), 123),
-                RenderPoint(Some(2.2 as f64), 456),
-                RenderPoint(None, 777),
-                RenderPoint(Some(3.3 as f64), 789),
+                RenderPoint(Some(1.1 as f64), t),
+                RenderPoint(Some(2.2 as f64), t + 60),
+                RenderPoint(None, t + 60 * 60),
+                RenderPoint(Some(3.3 as f64), t + 24 * 60 * 60),
             ]),
         };
         let query = RenderQuery {
@@ -420,7 +426,7 @@ mod tests {
         assert_eq!(ct, "text/csv");
         assert_eq!(
             response,
-            "i.am.a.metric,123,1.1\ni.am.a.metric,456,2.2\ni.am.a.metric,777,\ni.am.a.metric,789,3.3\n"
+            "i.am.a.metric,2019-07-29 20:43:08,1.1\ni.am.a.metric,2019-07-29 20:44:08,2.2\ni.am.a.metric,2019-07-29 21:43:08,\ni.am.a.metric,2019-07-30 20:43:08,3.3\n"
         )
     }
 
