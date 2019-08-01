@@ -226,8 +226,8 @@ impl IntoCsv for RenderResponseEntry {
             .into_iter()
             .map(|point| {
                 let RenderPoint(val, ts) = point;
-                let v = val.map(|f| format!("{}", f)).unwrap_or("".to_owned());
-                let t = NaiveDateTime::from_timestamp(ts as i64, 0).format("%Y-%m-%d %H:%M:%S");
+                let v = val.map(|f| format!("{}", f)).unwrap_or_default();
+                let t = NaiveDateTime::from_timestamp(i64::from(ts), 0).format("%Y-%m-%d %H:%M:%S");
                 // TODO: Use `csv` crate instead of "manual" string formatting
                 format!("{},{},{}", metric, t, v)
             })
