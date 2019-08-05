@@ -1,6 +1,6 @@
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpResponse, HttpServer};
-use diamond_api::application::app_config;
+use diamond_api::application::{app_config, Context, Walker};
 use diamond_api::opts::Args;
 use env_logger;
 use std::fs::create_dir;
@@ -32,10 +32,15 @@ fn run(args: Args) -> io::Result<()> {
 
     let listen = format!("127.0.0.1:{}", &args.port);
 
+    let ctx = Context {
+        walker: Walker::File(args.path.clone()),
+        args,
+    };
+
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
-            .configure(app_config(args.clone()))
+            .configure(app_config(ctx.clone()))
             .default_service(web::route().to(|| HttpResponse::NotFound()))
     })
     .bind(listen)?

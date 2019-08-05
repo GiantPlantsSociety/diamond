@@ -1,3 +1,6 @@
+extern crate chrono;
+use chrono::NaiveDateTime;
+
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Json};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse};
@@ -11,9 +14,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::interval::Interval;
 use whisper::{ArchiveData, WhisperFile};
 
+use crate::application::{Context, Walker};
 use crate::error::{ParseError, ResponseError};
-use crate::opts::*;
 use crate::parse::{de_time_parse, time_parse};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct RenderQuery {
@@ -104,6 +108,13 @@ impl FromStr for RenderFormat {
     }
 }
 
+impl Display for RenderFormat {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let s = format!("{:?}", self);
+        write!(f, "{}", s.to_ascii_lowercase())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderMetric(String);
 
@@ -144,41 +155,47 @@ fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>
     Ok(points)
 }
 
+fn walker(w: Walker) -> impl Fn(&str, Interval) -> Result<Vec<RenderPoint>, ResponseError> {
+    move |metric, interval| match &w {
+        Walker::File(dir) => walk(dir.as_path(), metric, interval),
+        Walker::Const(res) => Ok(res.to_vec()),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderPoint(Option<f64>, u32);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RenderResponceEntry {
+pub struct RenderResponseEntry {
     target: String,
     datapoints: Vec<RenderPoint>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RenderResponce {
-    entries: Vec<Option<RenderResponceEntry>>,
+pub struct RenderResponse {
+    entries: Vec<Option<RenderResponseEntry>>,
 }
 
 pub fn render_handler(
-    state: Data<Args>,
-    params: RenderQuery,
+    ctx: Data<Context>,
+    query: RenderQuery,
 ) -> impl Future<Item = HttpResponse, Error = failure::Error> {
-    let dir = &state.path;
-
-    match Interval::new(params.from, params.until).map_err(err_msg) {
+    match Interval::new(query.from, query.until).map_err(err_msg) {
         Ok(interval) => {
-            let response: Result<Vec<RenderResponceEntry>, ResponseError> = params
+            let response: Result<Vec<RenderResponseEntry>, ResponseError> = query
                 .target
                 .into_iter()
-                .map(|x| {
-                    walk(&dir, &x, interval).map(|datapoints| RenderResponceEntry {
-                        datapoints,
-                        target: x,
+                .map(|metric| {
+                    let w = walker(ctx.walker.clone());
+                    w(&metric, interval).map(|points| RenderResponseEntry {
+                        datapoints: points,
+                        target: metric,
                     })
                 })
                 .collect();
 
             match response {
-                Ok(response) => result(Ok(HttpResponse::Ok().json(response))),
+                Ok(response) => result(Ok(format_response(response, query.format))),
                 Err(e) => err(e.into()),
             }
         }
@@ -186,12 +203,232 @@ pub fn render_handler(
     }
 }
 
+// TODO: Extract code BELOW to response_format_csv module
+trait IntoCsv {
+    fn into_csv(self) -> String;
+}
+
+impl<T: IntoCsv> IntoCsv for Vec<T> {
+    fn into_csv(self) -> String {
+        self.into_iter()
+            .map(|item| item.into_csv())
+            .collect::<Vec<String>>()
+            .join("\n")
+            + "\n"
+    }
+}
+
+impl IntoCsv for RenderResponseEntry {
+    fn into_csv(self) -> String {
+        let metric = self.target;
+        let lines: Vec<String> = self
+            .datapoints
+            .into_iter()
+            .map(|point| {
+                let RenderPoint(val, ts) = point;
+                let v = val.map(|f| format!("{}", f)).unwrap_or_default();
+                let t = NaiveDateTime::from_timestamp(i64::from(ts), 0).format("%Y-%m-%d %H:%M:%S");
+                // TODO: Use `csv` crate instead of "manual" string formatting
+                format!("{},{},{}", metric, t, v)
+            })
+            .collect();
+        lines.join("\n")
+    }
+}
+// TODO: Extract code ABOVE to response_format_csv module
+
+fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> HttpResponse {
+    match format {
+        RenderFormat::Json => HttpResponse::Ok().json(response),
+        RenderFormat::Csv => HttpResponse::Ok()
+            .content_type("text/csv")
+            .body(response.into_csv()),
+        _ => HttpResponse::BadRequest()
+            .content_type("text/plain")
+            .body(format!("Format '{}' not supported", format)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::opts::Args;
     use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
+    use actix_web::http::StatusCode;
     use actix_web::test::{block_on, TestRequest};
     use failure::Error;
+    use futures::stream::Stream;
+
+    fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String, String) {
+        let f = render_handler(Data::new(ctx), query);
+        let mut response: HttpResponse = f.wait().ok().unwrap();
+        let content_type: String = response
+            .head()
+            .headers()
+            .get(CONTENT_TYPE)
+            .unwrap()
+            .clone()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let status = response.status();
+
+        let body: Vec<bytes::Bytes> = response
+            .take_body()
+            .into_body::<bytes::Bytes>()
+            .collect()
+            .wait()
+            .unwrap();
+        let mut buf: Vec<u8> = Vec::with_capacity(1024);
+        body.iter().for_each(|bs| {
+            let mut v = bs[..].to_vec();
+            buf.append(&mut v);
+        });
+
+        (
+            status,
+            content_type,
+            String::from_utf8(buf[..].to_vec()).unwrap(),
+        )
+    }
+
+    #[test]
+    fn render_handler_unsupported() {
+        let formats: Vec<RenderFormat> = vec![
+            RenderFormat::Png,
+            RenderFormat::Raw,
+            RenderFormat::Svg,
+            RenderFormat::Pdf,
+            RenderFormat::Dygraph,
+            RenderFormat::Rickshaw,
+        ];
+        for format in formats {
+            let ctx = Context {
+                args: Args {
+                    path: PathBuf::new(),
+                    force: false,
+                    port: 0,
+                },
+                walker: Walker::Const(vec![]),
+            };
+            let query = RenderQuery {
+                target: vec![],
+                format: format.clone(),
+                from: 0,
+                until: 0,
+            };
+            let (status, ct, response) = render_response(ctx, query);
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+            assert_eq!(ct, "text/plain");
+            assert_eq!(response, format!("Format '{}' not supported", format));
+        }
+    }
+
+    #[test]
+    fn render_handler_json_ok_empty() {
+        let ctx = Context {
+            args: Args {
+                path: PathBuf::new(),
+                force: false,
+                port: 0,
+            },
+            walker: Walker::Const(vec![]),
+        };
+        let query = RenderQuery {
+            target: vec![],
+            format: RenderFormat::Json,
+            from: 0,
+            until: 0,
+        };
+        let (status, ct, response) = render_response(ctx, query);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "application/json");
+        assert_eq!(response, "[]");
+    }
+
+    #[test]
+    fn render_handler_json_ok_full() {
+        let t = 1564432988;
+        let ctx = Context {
+            args: Args {
+                path: PathBuf::new(),
+                force: false,
+                port: 0,
+            },
+            walker: Walker::Const(vec![
+                RenderPoint(Some(1.0 as f64), t),
+                RenderPoint(None, t + 10),
+                RenderPoint(Some(2.0 as f64), t + 100),
+                RenderPoint(Some(3.0 as f64), t + 1000),
+            ]),
+        };
+        let query = RenderQuery {
+            target: vec!["i.am.a.metric".to_owned()],
+            format: RenderFormat::Json,
+            from: 0,
+            until: 0,
+        };
+        let (status, ct, response) = render_response(ctx, query);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "application/json");
+        assert_eq!(
+            response,
+            "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,1564432988],[null,1564432998],[2.0,1564433088],[3.0,1564433988]]}]"
+        )
+    }
+
+    #[test]
+    fn render_handler_csv_ok_empty() {
+        let ctx = Context {
+            args: Args {
+                path: PathBuf::new(),
+                force: false,
+                port: 0,
+            },
+            walker: Walker::Const(vec![]),
+        };
+        let query = RenderQuery {
+            target: vec![],
+            format: RenderFormat::Csv,
+            from: 0,
+            until: 0,
+        };
+        let (status, ct, response) = render_response(ctx, query);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "text/csv");
+        assert_eq!(response, "\n")
+    }
+
+    #[test]
+    fn render_handler_csv_ok_full() {
+        let t = 1564432988;
+        let ctx = Context {
+            args: Args {
+                path: PathBuf::new(),
+                force: false,
+                port: 0,
+            },
+            walker: Walker::Const(vec![
+                RenderPoint(Some(1.1 as f64), t),
+                RenderPoint(Some(2.2 as f64), t + 60),
+                RenderPoint(None, t + 60 * 60),
+                RenderPoint(Some(3.3 as f64), t + 24 * 60 * 60),
+            ]),
+        };
+        let query = RenderQuery {
+            target: vec!["i.am.a.metric".to_owned()],
+            format: RenderFormat::Csv,
+            from: 0,
+            until: 0,
+        };
+        let (status, ct, response) = render_response(ctx, query);
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "text/csv");
+        assert_eq!(
+            response,
+            "i.am.a.metric,2019-07-29 20:43:08,1.1\ni.am.a.metric,2019-07-29 20:44:08,2.2\ni.am.a.metric,2019-07-29 21:43:08,\ni.am.a.metric,2019-07-30 20:43:08,3.3\n"
+        )
+    }
 
     #[test]
     fn url_deserialize_one() -> Result<(), Error> {
@@ -359,7 +596,7 @@ mod tests {
 
     #[test]
     fn render_response_json() -> Result<(), Error> {
-        let rd = serde_json::to_string(&[RenderResponceEntry {
+        let rd = serde_json::to_string(&[RenderResponseEntry {
             target: "entries".into(),
             datapoints: vec![
                 RenderPoint(Some(1.0), 1_311_836_008),
@@ -381,7 +618,7 @@ mod tests {
     #[test]
     #[allow(clippy::unreadable_literal)]
     fn render_response_json_parse() -> Result<(), Error> {
-        let rd = [RenderResponceEntry {
+        let rd = [RenderResponseEntry {
             target: "entries".into(),
             datapoints: [
                 RenderPoint(Some(1.0), 1_311_836_008),
@@ -395,7 +632,7 @@ mod tests {
         }]
         .to_vec();
 
-        let rs: Vec<RenderResponceEntry> = serde_json::from_str(r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#)?;
+        let rs: Vec<RenderResponseEntry> = serde_json::from_str(r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#)?;
 
         assert_eq!(rd, rs);
         Ok(())
