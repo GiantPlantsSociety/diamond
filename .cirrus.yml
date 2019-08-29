@@ -13,7 +13,6 @@ task:
     - . $HOME/.cargo/env
   test_script:
     - . $HOME/.cargo/env
-    - cargo fmt --all -- --check
     - cargo build --verbose
     - cargo test -- --nocapture
     - |
