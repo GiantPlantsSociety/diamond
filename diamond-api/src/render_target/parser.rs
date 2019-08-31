@@ -28,7 +28,7 @@ pub enum Number {
     Float(f64),
 }
 
-fn number<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Number, E> {
+fn number<'a>(input: &'a [u8]) -> IResult<&'a [u8], Number> {
     map_res(
         recognize(
             tuple((
@@ -179,16 +179,6 @@ named!(call_arg<&[u8], (Option<String>, Arg)>,
          arg
     )
 );
-
-/*
-fn call_arg<'a>(input: &'a [u8]) -> IResult<&'a [u8],(Option<String>, Arg)> {
-    tuple(
-        opt(terminated(ident, tag("="))),
-        arg
-    )(input)
-}
-
-*/
 
 // path expression
 
