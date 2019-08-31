@@ -1,7 +1,24 @@
 use super::ast::*;
-use nom::types::CompleteByteSlice;
 use nom::*;
 use std::collections::BTreeSet;
+use nom::character::complete::digit1;
+use nom::IResult;
+use nom::error::ParseError;
+use nom::bytes::complete::tag;
+use nom::combinator::{map, opt, map_res};
+use nom::combinator::complete;
+use nom::sequence::tuple;
+use nom::bytes::complete::tag_no_case;
+use nom::combinator::recognize;
+use nom::bytes::complete::is_not;
+use nom::character::complete::char;
+use nom::sequence::delimited;
+use nom::branch::alt;
+use nom::character::complete::one_of;
+use nom::multi::many0;
+use nom::bytes::complete::escaped;
+use nom::multi::many1;
+use nom::multi::separated_nonempty_list;
 
 // literals
 
@@ -11,32 +28,32 @@ pub enum Number {
     Float(f64),
 }
 
-named!(number<CompleteByteSlice, Number>,
-    map_res!(
-        recognize!(
-            tuple!(
-                opt!(tag!("-")),
-                digit,
-                opt!(complete!(
-                    tuple!(tag!("."), digit)
+fn number<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Number, E> {
+    map_res(
+        recognize(
+            tuple((
+                opt(tag("-")),
+                digit1,
+                opt(complete(
+                    tuple((tag("."), digit1))
                 )),
-                opt!(complete!(
-                    tuple!(
-                        tag_no_case!("e"),
-                        opt!(tag!("-")),
-                        digit
-                    )
+                opt(complete(
+                    tuple((
+                        tag_no_case("e"),
+                        opt(tag("-")),
+                        digit1
+                    ))
                 ))
-            )
+            ))
         ),
         parse_number
-    )
-);
+    )(input)
+}
 
-fn parse_number(b: CompleteByteSlice) -> Result<Number, String> {
-    let s = std::str::from_utf8(b.0).map_err(|e| e.to_string())?;
+fn parse_number<'a>(b: &'a [u8]) -> Result<Number, String> {
+    let s = std::str::from_utf8(b).map_err(|e| e.to_string())?;
     if s.contains(".") || s.contains("e") || s.contains("E") {
-        let n = s
+            let n = s
             .parse::<f64>()
             .map(Number::Float)
             .map_err(|e| e.to_string())?;
@@ -50,59 +67,53 @@ fn parse_number(b: CompleteByteSlice) -> Result<Number, String> {
     }
 }
 
-named!(string<CompleteByteSlice, String>,
-    map_res!(
-        alt!(
-            delimited!(char!('"'), recognize!(opt!(is_not!("\""))), char!('"'))
-            |
-            delimited!(char!('\''), recognize!(opt!(is_not!("'"))), char!('\''))
-        ),
+fn string<'a>(input: &'a [u8]) -> IResult<&'a [u8], String> {
+    map_res(
+        alt((
+            delimited(char('"'), recognize(opt(is_not("\""))), char('"')),
+            delimited(char('\''), recognize(opt(is_not("'"))), char('\''))
+        )),
         parse_string
-    )
-);
-
-fn parse_string(b: CompleteByteSlice) -> Result<String, Box<dyn std::error::Error>> {
-    let s = String::from_utf8(b.0.to_owned())?;
-    Ok(s)
+    )(input)
 }
 
-named!(boolean<CompleteByteSlice, bool>,
-    alt!(
-        map!(tag_no_case!("true"), |_| true)
-        |
-        map!(tag_no_case!("false"), |_| false)
-    )
-);
+fn parse_string<'a>(b: &'a [u8]) -> Result<String, Box<dyn std::error::Error>> {
+    let s = std::str::from_utf8(b).map_err(|e| e.to_string())?;
+    Ok(s.to_string())
+}
 
-named!(ident<CompleteByteSlice, String>,
-    map_res!(
-        recognize!(
-            tuple!(
-                one_of!("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"),
-                many0!(one_of!("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"))
-            )
+fn boolean<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], bool, E> {
+  alt((
+      map(tag_no_case("false"), |_| false),
+      map(tag_no_case("true"), |_| true)
+  ))(input)
+}
+
+fn ident<'a>(input: &'a [u8]) -> IResult<&'a [u8], String> {
+    map_res(
+        recognize(
+            tuple((
+                one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"),
+                many0(one_of("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"))
+            ))
         ),
         parse_string
-    )
-);
+    )(input)
+}
 
-named!(literal_value<CompleteByteSlice, LiteralValue>,
-    alt!(
-        map!(boolean, LiteralValue::Boolean)
-        |
-        map!(number, |n| match n {
+fn literal_value<'a>(input: &'a [u8]) -> IResult<&'a [u8], LiteralValue> {
+    alt((
+        map(boolean, LiteralValue::Boolean),
+        map(number, |n| match n {
             Number::Float(v) => LiteralValue::Float(v),
             Number::Integer(v) => LiteralValue::Integer(v),
-        })
-        |
-        map!(string, LiteralValue::String)
-        |
-        map!(tag_no_case!("none"), |_| LiteralValue::None)
-    )
-);
+        }),
+        map(string, LiteralValue::String),
+        // map(tag_no_case("none"), LiteralValue::None),
+    ))(input)
+}
 
 // Call
-
 fn split_args<T>(all_args: Vec<(Option<String>, T)>) -> Option<(Vec<T>, Vec<(String, T)>)> {
     let mut args = Vec::new();
     let mut named_args = Vec::new();
@@ -142,7 +153,7 @@ fn parse_call((function, all_args): (String, Vec<(Option<String>, Arg)>)) -> Res
     })
 }
 
-named!(call<CompleteByteSlice, Call>,
+named!(call<&[u8], Call>,
     map_res!(
         do_parse!(
             function: ident >>
@@ -155,39 +166,48 @@ named!(call<CompleteByteSlice, Call>,
     )
 );
 
-named!(arg<CompleteByteSlice, Arg>,
-    alt!(
-        map!(literal_value, Arg::Literal)
-        |
-        map!(expression, Arg::Expression)
+fn arg <'a>(input: &'a [u8]) -> IResult<&'a [u8], Arg> {
+    alt((
+        map(literal_value, Arg::Literal),
+        map(expression, Arg::Expression)
+    ))(input)
+}
+
+named!(call_arg<&[u8], (Option<String>, Arg)>,
+    tuple!(
+        opt!(terminated!(ident, tag!("="))),
+         arg
     )
 );
 
-named!(call_arg<CompleteByteSlice, (Option<String>, Arg)>,
-    tuple!(
-        opt!(terminated!(ident, tag!("="))),
+/*
+fn call_arg<'a>(input: &'a [u8]) -> IResult<&'a [u8],(Option<String>, Arg)> {
+    tuple(
+        opt(terminated(ident, tag("="))),
         arg
-    )
-);
+    )(input)
+}
+
+*/
 
 // path expression
 
-named!(partial_path_element<CompleteByteSlice, String>,
-    map_res!(
-        escaped!(
-            many1!(one_of!(&br##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##[..])),
+fn partial_path_element<'a>(input: &'a [u8]) -> IResult<&'a [u8], String> {
+    map_res(
+        escaped(
+            many1(one_of(&br##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##[..])),
             '\\',
-            one_of!(&br#"(){}[],.'"\|=$"#[..])
+            one_of(&br#"(){}[],.'"\|=$"#[..])
         ),
         parse_string
-    )
-);
+    )(input)
+}
 
-named!(match_enum<CompleteByteSlice, Vec<String>>,
-    delimited!(char!('{'), separated_nonempty_list!(tag!(","), partial_path_element), char!('}'))
-);
+fn match_enum<'a>(input: &'a [u8]) -> IResult<&'a [u8], Vec<String>> {
+    delimited(char('{'), separated_nonempty_list(tag(","), partial_path_element), char('}'))(input)
+}
 
-named!(match_group_range<CompleteByteSlice, BTreeSet<char>>,
+named!(match_group_range<&[u8], BTreeSet<char>>,
     map!(
         do_parse!(
             from_char: none_of!("]") >>
@@ -199,13 +219,13 @@ named!(match_group_range<CompleteByteSlice, BTreeSet<char>>,
     )
 );
 
-named!(match_group_single<CompleteByteSlice, BTreeSet<char>>,
+named!(match_group_single<&[u8], BTreeSet<char>>,
     map!(none_of!("]"), |c| {
         [c].into_iter().cloned().collect()
     })
 );
 
-named!(match_group<CompleteByteSlice, BTreeSet<char>>,
+named!(match_group<&[u8], BTreeSet<char>>,
     map!(
         do_parse!(
             char!('[') >>
@@ -231,7 +251,7 @@ named!(match_group<CompleteByteSlice, BTreeSet<char>>,
     )
 );
 
-named!(path_element<CompleteByteSlice, PathElement>,
+named!(path_element<&[u8], PathElement>,
     alt!(
         map!(match_enum, PathElement::Enum)
         |
@@ -245,14 +265,14 @@ named!(path_element<CompleteByteSlice, PathElement>,
     )
 );
 
-named!(path_word<CompleteByteSlice, PathWord>,
+named!(path_word<&[u8], PathWord>,
     map!(
         many1!(path_element),
         PathWord
     )
 );
 
-named!(path_expression<CompleteByteSlice, PathExpression>,
+named!(path_expression<&[u8], PathExpression>,
     map!(
         separated_nonempty_list!(tag!("."), path_word),
         PathExpression
@@ -260,8 +280,7 @@ named!(path_expression<CompleteByteSlice, PathExpression>,
 );
 
 // template
-
-named!(source<CompleteByteSlice, Source>,
+named!(source<&[u8], Source>,
     alt!(
         map!(call, Source::Call)
         |
@@ -269,12 +288,13 @@ named!(source<CompleteByteSlice, Source>,
     )
 );
 
-named!(template_arg<CompleteByteSlice, (Option<String>, LiteralValue)>,
+named!(template_arg<&[u8], (Option<String>, LiteralValue)>,
     tuple!(
         opt!(terminated!(ident, tag!("="))),
         literal_value
     )
 );
+
 
 fn parse_template(
     (source, all_args): (Source, Option<Vec<(Option<String>, LiteralValue)>>),
@@ -292,7 +312,7 @@ fn parse_template(
     })
 }
 
-named!(template<CompleteByteSlice, Template>,
+named!(template<&[u8], Template>,
     map_res!(
         do_parse!(
             tag!("template") >>
@@ -308,7 +328,7 @@ named!(template<CompleteByteSlice, Template>,
 
 // expression
 
-named!(expression_base<CompleteByteSlice, Expression>,
+named!(expression_base<&[u8], Expression>,
     alt!(
         map!(template, Expression::Template)
         |
@@ -330,7 +350,7 @@ fn parse_expression((base, pipe_calls): (Expression, Vec<Call>)) -> Expression {
     wrapped
 }
 
-named!(expression<CompleteByteSlice, Expression>,
+named!(expression<&[u8], Expression>,
     map!(
         do_parse!(
             base: expression_base >>
@@ -348,7 +368,7 @@ macro_rules! impl_try_from {
 
             fn try_from(input: &[u8]) -> Result<Self, Self::Error> {
                 let (tail, result) =
-                    $parser(CompleteByteSlice(input)).map_err(|e| e.to_string())?;
+                    $parser(input).map_err(|_|"Error".to_string())?;
 
                 if tail.len() == 0 {
                     Ok(result)
@@ -380,7 +400,7 @@ mod tests {
 
     macro_rules! parse {
         ($parser:ident, $input:tt) => {{
-            let (tail, result) = $parser(CompleteByteSlice($input)).unwrap();
+            let (tail, result) = $parser($input).unwrap();
             assert_eq!(tail.len(), 0);
             result
         }};
