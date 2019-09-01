@@ -101,17 +101,20 @@ fn ident<'a>(input: &'a [u8]) -> IResult<&'a [u8], String> {
     )(input)
 }
 
-fn literal_value<'a>(input: &'a [u8]) -> IResult<&'a [u8], LiteralValue> {
-    alt((
-        map(boolean, LiteralValue::Boolean),
-        map(number, |n| match n {
-            Number::Float(v) => LiteralValue::Float(v),
-            Number::Integer(v) => LiteralValue::Integer(v),
-        }),
-        map(string, LiteralValue::String),
-        // map(tag_no_case("none"), LiteralValue::None),
-    ))(input)
-}
+named!(literal_value<&[u8], LiteralValue>,
+    alt!(
+        map!(boolean, LiteralValue::Boolean)
+        |
+        map!(number, |n| match n {
+             Number::Float(v) => LiteralValue::Float(v),
+             Number::Integer(v) => LiteralValue::Integer(v),
+        })
+        |
+        map!(string, LiteralValue::String)
+        |
+        map!(tag_no_case!("none"), |_| LiteralValue::None)
+    )
+);
 
 // Call
 fn split_args<T>(all_args: Vec<(Option<String>, T)>) -> Option<(Vec<T>, Vec<(String, T)>)> {
