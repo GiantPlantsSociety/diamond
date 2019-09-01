@@ -361,7 +361,7 @@ macro_rules! impl_try_from {
 
             fn try_from(input: &[u8]) -> Result<Self, Self::Error> {
                 let (tail, result) =
-                    $parser(input).map_err(|_|"Error".to_string())?;
+                    $parser(input).map_err(|e| format!("{:?}", e))?;
 
                 if tail.len() == 0 {
                     Ok(result)
