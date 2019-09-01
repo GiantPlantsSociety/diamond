@@ -53,7 +53,7 @@ fn number<'a>(input: &'a [u8]) -> IResult<&'a [u8], Number> {
 fn parse_number<'a>(b: &'a [u8]) -> Result<Number, String> {
     let s = std::str::from_utf8(b).map_err(|e| e.to_string())?;
     if s.contains(".") || s.contains("e") || s.contains("E") {
-            let n = s
+        let n = s
             .parse::<f64>()
             .map(Number::Float)
             .map_err(|e| e.to_string())?;
