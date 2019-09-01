@@ -106,8 +106,8 @@ named!(literal_value<&[u8], LiteralValue>,
         map!(boolean, LiteralValue::Boolean)
         |
         map!(number, |n| match n {
-             Number::Float(v) => LiteralValue::Float(v),
-             Number::Integer(v) => LiteralValue::Integer(v),
+            Number::Float(v) => LiteralValue::Float(v),
+            Number::Integer(v) => LiteralValue::Integer(v),
         })
         |
         map!(string, LiteralValue::String)
@@ -179,7 +179,7 @@ fn arg <'a>(input: &'a [u8]) -> IResult<&'a [u8], Arg> {
 named!(call_arg<&[u8], (Option<String>, Arg)>,
     tuple!(
         opt!(terminated!(ident, tag!("="))),
-         arg
+        arg
     )
 );
 
