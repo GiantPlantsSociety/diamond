@@ -19,6 +19,9 @@ use nom::multi::many0;
 use nom::bytes::complete::escaped;
 use nom::multi::many1;
 use nom::multi::separated_nonempty_list;
+use nom::sequence::terminated;
+use nom::sequence::preceded;
+use nom::character::complete::none_of;
 
 // literals
 
@@ -101,22 +104,20 @@ fn ident<'a>(input: &'a [u8]) -> IResult<&'a [u8], String> {
     )(input)
 }
 
-named!(literal_value<&[u8], LiteralValue>,
-    alt!(
-        map!(boolean, LiteralValue::Boolean)
-        |
-        map!(number, |n| match n {
+fn literal_value<'a>(input: &'a [u8]) -> IResult<&'a [u8], LiteralValue> {
+    alt((
+        map(boolean, LiteralValue::Boolean),
+        map(number, |n| match n {
             Number::Float(v) => LiteralValue::Float(v),
             Number::Integer(v) => LiteralValue::Integer(v),
-        })
-        |
-        map!(string, LiteralValue::String)
-        |
-        map!(tag_no_case!("none"), |_| LiteralValue::None)
-    )
-);
+        }),
+        map(string, LiteralValue::String),
+        map(tag_no_case("none"), |_| LiteralValue::None)
+    ))(input)
+}
 
 // Call
+
 fn split_args<T>(all_args: Vec<(Option<String>, T)>) -> Option<(Vec<T>, Vec<(String, T)>)> {
     let mut args = Vec::new();
     let mut named_args = Vec::new();
@@ -169,19 +170,19 @@ named!(call<&[u8], Call>,
     )
 );
 
-fn arg <'a>(input: &'a [u8]) -> IResult<&'a [u8], Arg> {
+fn arg<'a>(input: &'a [u8]) -> IResult<&'a [u8], Arg> {
     alt((
         map(literal_value, Arg::Literal),
         map(expression, Arg::Expression)
     ))(input)
 }
 
-named!(call_arg<&[u8], (Option<String>, Arg)>,
-    tuple!(
-        opt!(terminated!(ident, tag!("="))),
+fn call_arg<'a>(input: &'a [u8]) -> IResult<&'a [u8], (Option<String>, Arg)> {
+    tuple((
+        opt(terminated(ident, tag("="))),
         arg
-    )
-);
+    ))(input)
+}
 
 // path expression
 
@@ -212,11 +213,11 @@ named!(match_group_range<&[u8], BTreeSet<char>>,
     )
 );
 
-named!(match_group_single<&[u8], BTreeSet<char>>,
-    map!(none_of!("]"), |c| {
+fn match_group_single<'a>(input: &'a [u8]) -> IResult<&'a [u8], BTreeSet<char>> {
+    map(none_of("]"), |c| {
         [c].into_iter().cloned().collect()
-    })
-);
+    })(input)
+}
 
 named!(match_group<&[u8], BTreeSet<char>>,
     map!(
@@ -244,50 +245,44 @@ named!(match_group<&[u8], BTreeSet<char>>,
     )
 );
 
-named!(path_element<&[u8], PathElement>,
-    alt!(
-        map!(match_enum, PathElement::Enum)
-        |
-        map!(match_group, PathElement::OneOf)
-        |
-        map!(char!('*'), |_| PathElement::Asterisk)
-        |
-        map!(preceded!(tag!("$"), partial_path_element), PathElement::Variable)
-        |
-        map!(partial_path_element, PathElement::Partial)
-    )
-);
+fn path_element<'a>(input: &'a [u8]) -> IResult<&'a [u8], PathElement> {
+    alt((
+        map(match_enum, PathElement::Enum),
+        map(match_group, PathElement::OneOf),
+        map(char('*'), |_| PathElement::Asterisk),
+        map(preceded(tag("$"), partial_path_element), PathElement::Variable),
+        map(partial_path_element, PathElement::Partial),
+    ))(input)
+}
 
-named!(path_word<&[u8], PathWord>,
-    map!(
-        many1!(path_element),
+fn path_word<'a>(input: &'a [u8]) -> IResult<&'a [u8], PathWord> {
+    map(
+        many1(path_element),
         PathWord
-    )
-);
+    )(input)
+}
 
-named!(path_expression<&[u8], PathExpression>,
-    map!(
-        separated_nonempty_list!(tag!("."), path_word),
+fn path_expression<'a>(input: &'a [u8]) -> IResult<&'a [u8], PathExpression> {
+    map(
+        separated_nonempty_list(tag("."), path_word),
         PathExpression
-    )
-);
+    )(input)
+}
 
 // template
-named!(source<&[u8], Source>,
-    alt!(
-        map!(call, Source::Call)
-        |
-        map!(path_expression, Source::Path)
-    )
-);
+fn source<'a>(input: &'a [u8]) -> IResult<&'a [u8], Source> {
+    alt((
+        map(call, Source::Call),
+        map(path_expression, Source::Path),
+    ))(input)
+}
 
-named!(template_arg<&[u8], (Option<String>, LiteralValue)>,
-    tuple!(
-        opt!(terminated!(ident, tag!("="))),
+fn template_arg<'a>(input: &'a [u8]) -> IResult<&'a [u8], (Option<String>, LiteralValue)> {
+    tuple((
+        opt(terminated(ident, tag("="))),
         literal_value
-    )
-);
-
+    ))(input)
+}
 
 fn parse_template(
     (source, all_args): (Source, Option<Vec<(Option<String>, LiteralValue)>>),
@@ -321,15 +316,13 @@ named!(template<&[u8], Template>,
 
 // expression
 
-named!(expression_base<&[u8], Expression>,
-    alt!(
-        map!(template, Expression::Template)
-        |
-        map!(call, Expression::Call)
-        |
-        map!(path_expression, Expression::Path)
-    )
-);
+fn expression_base<'a>(input: &'a [u8]) -> IResult<&'a [u8], Expression> {
+    alt((
+        map(template, Expression::Template),
+        map(call, Expression::Call),
+        map(path_expression, Expression::Path),
+    ))(input)
+}
 
 fn parse_expression((base, pipe_calls): (Expression, Vec<Call>)) -> Expression {
     fn wrap(base: Expression, mut call: Call) -> Expression {
