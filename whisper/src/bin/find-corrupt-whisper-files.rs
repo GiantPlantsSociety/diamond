@@ -21,7 +21,8 @@ struct Args {
     #[structopt(
         name = "WHISPER_DIR",
         parse(from_os_str),
-        raw(required = "true", min_values = "1")
+        required = true,
+        min_values = 1
     )]
     directories: Vec<PathBuf>,
 }

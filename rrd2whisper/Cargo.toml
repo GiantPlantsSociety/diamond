@@ -7,7 +7,7 @@ license = "GPLv2+"
 
 [dependencies]
 failure = "0.1.1"
-structopt = "0.2"
+structopt = "0.3"
 regex = "1"
 whisper = { path = "../whisper" }
 rrd = { path = "../rrd" }
