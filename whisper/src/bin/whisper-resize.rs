@@ -51,7 +51,8 @@ struct Args {
 1h:7d        1 hour per datapoint, 7 days of retention
 12h:2y       12 hours per datapoint, 2 years of retention
 "#,
-        raw(required = "true", min_values = "1")
+        required = true,
+        min_values = 1
     )]
     retentions: Vec<Retention>,
 }

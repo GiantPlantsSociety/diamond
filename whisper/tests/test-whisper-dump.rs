@@ -152,7 +152,7 @@ fn calling_as_pretty() -> Result<(), Box<dyn Error>> {
     fs::copy(&file_path, &path)?;
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "--pretty", "--time-format", "%c"])
+        .args(&[path.to_str().unwrap(), "--time-format", "%c"])
         .assert()
         .success()
         .stdout(
