@@ -7,12 +7,8 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-dump")]
 struct Args {
-    /// Show human-readable timestamps instead of unix times
-    #[structopt(long = "pretty", requires = "time_format")]
-    pretty: bool,
-
-    /// Time format to use with --pretty; see https://docs.rs/chrono/0.4.6/chrono/format/strftime/index.html
-    #[structopt(long = "time-format", short = "t", requires = "pretty")]
+    /// Time format to show human-readable time instead of unix timestamp; see https://docs.rs/chrono/0.4.6/chrono/format/strftime/index.html
+    #[structopt(long = "time-format", short = "t")]
     time_format: Option<String>,
 
     /// Path to data file
@@ -45,13 +41,13 @@ fn run(args: &Args) -> Result<(), Error> {
 
         println!("Archive {} data:", i);
         for (j, point) in points.iter().enumerate() {
-            match (&args.pretty, &args.time_format) {
-                (true, Some(time_format)) => {
+            match args.time_format {
+                Some(ref time_format) => {
                     let timestr = NaiveDateTime::from_timestamp(i64::from(point.interval), 0)
                         .format(&time_format);
                     println!("{}: {}, {:>10}", j, timestr, &point.value);
                 }
-                (_, _) => {
+                _ => {
                     println!("{}: {}, {:>10}", j, &point.interval, &point.value);
                 }
             }
