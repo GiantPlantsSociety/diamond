@@ -99,8 +99,8 @@ fn run(args: &Args) -> Result<(), Error> {
         println!("Migrating data");
         let mut archive_number = archives.len();
         for archive in archives.iter().rev() {
-            let retention = archive.retention() as u64;
-            let end_time = now - now % (archive.seconds_per_point as u64);
+            let retention = u64::from(archive.retention());
+            let end_time = now - now % u64::from(archive.seconds_per_point);
             let start_time = end_time - retention;
             let data = rrd::fetch(
                 &args.rrd_path,
