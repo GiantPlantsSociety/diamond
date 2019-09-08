@@ -44,7 +44,11 @@ script:
 after_success:
   - |
     if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin:latest sh -c "\
+      docker run --rm --security-opt seccomp=unconfined \
+        -v "${HOME}/.cargo/git:/root/.cargo/git" \
+        -v "${HOME}/.cargo/registry:/root/.cargo/registry" \
+        -v "$PWD:/volume" xd009642/tarpaulin:latest \
+        sh -c "\
         apt update \
         && apt install -y librrd-dev rrdtool \
         && cargo tarpaulin -f -t 5 --out Xml -v"
