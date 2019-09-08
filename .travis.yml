@@ -37,9 +37,9 @@ script:
     opt-level = 0
     debug = true
     CARGO
-  - cargo build --verbose
-  - cargo test --no-fail-fast -- --nocapture
-  - cargo build --benches --verbose
+  - cargo build --all --verbose
+  - cargo test --all --no-fail-fast -- --nocapture
+  - cargo build --all --benches --verbose
 
 after_success:
   - |
