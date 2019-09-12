@@ -45,7 +45,7 @@ impl Value {
         match self {
             Value::Float(x) => Some(*x),
             Value::Long(x) => Some(*x as f64),
-            Value::Int(x) => Some(*x as f64),
+            Value::Int(x) => Some(f64::from(*x)),
             Value::Text(ref x) => x.parse().ok(),
             _ => None,
         }
@@ -134,7 +134,7 @@ pub struct RRA {
 pub struct Info(*mut rrd_info_t);
 
 impl Info {
-    pub fn iter<'a>(&'a self) -> InfoIter<'a> {
+    pub fn iter(&self) -> InfoIter {
         InfoIter(self.0, PhantomData)
     }
 
@@ -255,19 +255,22 @@ fn get_and_clear_error() -> Error {
 pub fn info(filename: &Path, daemon: Option<&Path>, noflush: bool) -> Result<Info, Error> {
     let mut c_args = Vec::<*const c_char>::new();
 
-    c_args.push(CString::new("info").unwrap().as_ptr());
+    let info_str = CString::new("info").unwrap();
+    c_args.push(info_str.as_ptr());
 
     let c_filename = CString::new(filename.to_str().unwrap().as_bytes()).unwrap();
     c_args.push(c_filename.as_ptr());
 
     if let Some(daemon_path) = daemon {
-        c_args.push(CString::new("--daemon").unwrap().as_ptr());
+        let daemon_str = CString::new("--daemon").unwrap();
+        c_args.push(daemon_str.as_ptr());
         let c_daemon_path = CString::new(daemon_path.to_str().unwrap().as_bytes()).unwrap();
         c_args.push(c_daemon_path.as_ptr());
     }
 
     if noflush {
-        c_args.push(CString::new("--noflush").unwrap().as_ptr());
+        let noflush_str = CString::new("--noflush").unwrap();
+        c_args.push(noflush_str.as_ptr());
     }
 
     let info = unsafe { rrd_info(c_args.len() as i32, c_args.as_ptr() as *mut *mut c_char) };
@@ -304,7 +307,7 @@ pub fn fetch(
 
     let mut start = start as c_long;
     let mut end = end as c_long;
-    let mut step = resolution.unwrap_or(1) as c_ulong;
+    let mut step = u64::from(resolution.unwrap_or(1)) as c_ulong;
     let mut ds_cnt = 0;
     let mut ds_namv = ptr::null_mut();
     let mut data = ptr::null_mut();
