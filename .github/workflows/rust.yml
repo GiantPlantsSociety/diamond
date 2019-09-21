@@ -1,0 +1,88 @@
+name: Rust
+
+on: [push]
+
+jobs:
+  build:
+    runs-on:  ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macOS-latest]
+
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Dependencies(linux)
+      run: |
+        sudo apt update
+        sudo apt install -y librrd-dev rrdtool
+      if: matrix.os == 'ubuntu-latest'
+    - name: Dependencies(macosx)
+      run: |
+        brew update
+        brew install rrdtool
+      if: matrix.os == 'macOS-latest'
+    - name: Disable optimisation for bench build
+      run: |
+        cat <<'CARGO' >> Cargo.toml
+        [profile.bench]
+        opt-level = 0
+        debug = true
+        CARGO
+    - name: Build
+      run: |
+        cargo build --all --verbose
+        cargo build --all --benches --verbose
+    - name: Run tests
+      run: cargo test --all --verbose
+      env:
+        RUST_BACKTRACE: 1
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+      env:
+        RUST_BACKTRACE: 1
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y librrd-dev rrdtool
+    - name: Run fmt check
+      run: cargo fmt --all -- --check
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run coverage
+      run: |
+        docker run --security-opt seccomp=unconfined -v "$(pwd):/volume" xd009642/tarpaulin:latest sh -c "\
+          apt update \
+          && apt install -y librrd-dev rrdtool \
+          && cargo tarpaulin --all -f -t 5 --out Xml -v"
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1.0.2
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
