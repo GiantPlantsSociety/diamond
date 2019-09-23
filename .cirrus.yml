@@ -13,8 +13,8 @@ task:
     - . $HOME/.cargo/env
   test_script:
     - . $HOME/.cargo/env
-    - cargo build --verbose
-    - cargo test -- --nocapture
+    - cargo build --all --verbose
+    - cargo test --all -- --nocapture
     - |
       # Disable optimisation for bench build
       cat <<'CARGO' >> Cargo.toml

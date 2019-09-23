@@ -9,3 +9,9 @@ members = [
     "rrd_tests",
     "rrd2whisper",
 ]
+default-members = [
+    "whisper",
+    "whisper_tests",
+    "diamond",
+    "diamond-api",
+]
