@@ -1,6 +1,6 @@
 # Diamond
 
-[![build status](https://travis-ci.com/GiantPlantsSociety/diamond.svg?branch=master)](https://travis-ci.com/GiantPlantsSociety/diamond)
+[![build status](https://github.com/GiantPlantsSociety/diamond/workflows/Rust/badge.svg)](https://github.com/GiantPlantsSociety/diamond/actions)
 [![codecov](https://codecov.io/gh/GiantPlantsSociety/diamond/branch/master/graph/badge.svg)](https://codecov.io/gh/GiantPlantsSociety/diamond)
 
 ##### Setup
