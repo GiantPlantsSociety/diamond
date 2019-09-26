@@ -337,5 +337,4 @@ mod tests {
             assert!(header_str2.contains(word), "should contains {}", word);
         }
     }
-
 }
