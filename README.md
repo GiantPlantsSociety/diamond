@@ -2,6 +2,25 @@
 
 [![build status](https://github.com/GiantPlantsSociety/diamond/workflows/Rust/badge.svg)](https://github.com/GiantPlantsSociety/diamond/actions)
 [![codecov](https://codecov.io/gh/GiantPlantsSociety/diamond/branch/master/graph/badge.svg)](https://codecov.io/gh/GiantPlantsSociety/diamond)
+[![Docker](https://img.shields.io/docker/automated/giantplantssociety/diamond.svg)](https://hub.docker.com/r/giantplantssociety/diamond/)
+
+#### Distribution
+
+##### Docker
+
+Diamond build is deployed to [docker-hub](https://hub.docker.com/r/giantplantssociety/diamond/). It contains diamond-server, diamond-api, diamond-pipe and whisper utilities.
+
+To run diamond-server on any system that has docker:
+
+```
+docker run -it giantplantssociety/diamond
+```
+
+To run diamond-api:
+
+```
+docker run -it giantplantssociety/diamond diamond-api
+```
 
 ##### Setup
 
@@ -12,17 +31,23 @@ Install [rrdtool](https://oss.oetiker.ch/rrdtool/index.en.html):
 
 ##### Build
 
-`cargo build`
+```
+cargo build
+```
 
 ##### Test
 
-`cargo test`
+```
+cargo test
+```
 
 ##### Run
 
 ##### Diamond-api
 
-`./diamond-api -p 8080 -d data -f`
+```
+./diamond-api -p 8080 -d data -f
+```
 
 ```
 USAGE:
