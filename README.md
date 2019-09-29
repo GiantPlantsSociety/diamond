@@ -2,7 +2,7 @@
 
 [![build status](https://github.com/GiantPlantsSociety/diamond/workflows/Rust/badge.svg)](https://github.com/GiantPlantsSociety/diamond/actions)
 [![codecov](https://codecov.io/gh/GiantPlantsSociety/diamond/branch/master/graph/badge.svg)](https://codecov.io/gh/GiantPlantsSociety/diamond)
-[![Docker](https://img.shields.io/docker/automated/giantplantssociety/diamond.svg)](https://hub.docker.com/r/giantplantssociety/diamond/)
+[![Docker](https://img.shields.io/docker/cloud/build/giantplantssociety/diamond.svg)](https://hub.docker.com/r/giantplantssociety/diamond/)
 
 #### Distribution
 
