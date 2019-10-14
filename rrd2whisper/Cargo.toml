@@ -6,7 +6,7 @@ edition = "2018"
 license = "GPLv2+"
 
 [dependencies]
-failure = "0.1.1"
+failure = "0.1.6"
 structopt = "0.3"
 regex = "1"
 whisper = { path = "../whisper" }
