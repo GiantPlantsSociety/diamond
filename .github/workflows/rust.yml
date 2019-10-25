@@ -81,7 +81,7 @@ jobs:
         docker run --security-opt seccomp=unconfined -v "$(pwd):/volume" xd009642/tarpaulin:latest sh -c "\
           apt update \
           && apt install -y librrd-dev rrdtool \
-          && cargo tarpaulin --all -f -t 5 --out Xml -v" || true
+          && cargo tarpaulin --all -f -t 5 --out Xml -v -- --test-threads=1" || true
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1.0.2
       with:
