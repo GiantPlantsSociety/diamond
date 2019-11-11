@@ -54,7 +54,7 @@ fn calling_with_invalid_method() -> Result<(), Box<dyn Error>> {
         .to_path_buf();
 
     let error =
-        "error: Invalid value for '<aggregation-method>': Unsupported aggregation method 'unknown'";
+        "error: Invalid value for '<aggregationMethod>': Unsupported aggregation method 'unknown'";
 
     Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "unknown", "0.1"])
@@ -73,7 +73,7 @@ fn calling_with_invalid_xfactor() -> Result<(), Box<dyn Error>> {
         .path()
         .to_path_buf();
 
-    let error = "error: Invalid value for '<x-files-factor>': invalid float literal";
+    let error = "error: Invalid value for '<xFilesFactor>': invalid float literal";
 
     Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "last", "nan"])
