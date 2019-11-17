@@ -35,7 +35,7 @@ named!(number<CompleteByteSlice, Number>,
 
 fn parse_number(b: CompleteByteSlice) -> Result<Number, String> {
     let s = std::str::from_utf8(b.0).map_err(|e| e.to_string())?;
-    if s.contains(".") || s.contains("e") || s.contains("E") {
+    if s.contains('.') || s.contains('e') || s.contains('E') {
         let n = s
             .parse::<f64>()
             .map(Number::Float)
@@ -195,13 +195,13 @@ named!(match_group_range<CompleteByteSlice, BTreeSet<char>>,
             to_char: none_of!("]") >>
             (from_char as u8, to_char as u8)
         ),
-        |(from_char, to_char)| (from_char..=to_char).into_iter().map(|c| c as char).collect()
+        |(from_char, to_char)| (from_char..=to_char).map(|c| c as char).collect()
     )
 );
 
 named!(match_group_single<CompleteByteSlice, BTreeSet<char>>,
     map!(none_of!("]"), |c| {
-        [c].into_iter().cloned().collect()
+        [c].iter().cloned().collect()
     })
 );
 
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn test_number() {
-        assert_eq!(parse!(number, b"-3.14e-4"), Number::Float(-0.000314));
+        assert_eq!(parse!(number, b"-3.14e-4"), Number::Float(-0.000_314));
         assert_eq!(parse!(number, b"0"), Number::Integer(0));
         assert_eq!(parse!(number, b"124"), Number::Integer(124));
     }

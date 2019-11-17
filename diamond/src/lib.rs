@@ -235,7 +235,7 @@ mod tests {
             metric_result.is_err(),
             "It({}) should not be parsed {:?}",
             s,
-            metric_result.unwrap()
+            metric_result
         );
     }
 
@@ -278,7 +278,7 @@ mod tests {
             metric_result.is_err(),
             "It({}) should not be parsed {:?}",
             s,
-            metric_result.unwrap()
+            metric_result
         );
     }
 
@@ -340,14 +340,14 @@ mod tests {
             x_files_factor: 0.5,
             aggregation_method: AggregationMethod::Average,
         };
-        let now = 1545778348;
+        let now = 1_545_778_348;
         line_update(message, &dir, &config, now)?;
 
         let file = dir.join("this").join("is").join("correct1.wsp");
         assert_eq!(
             WhisperFile::open(&file)?.dump(1)?[0],
             Point {
-                interval: 1545778338,
+                interval: now - 10,
                 value: 124.0
             }
         );
@@ -387,13 +387,13 @@ mod tests {
             x_files_factor: 0.5,
             aggregation_method: AggregationMethod::Average,
         };
-        let now = 1545778348;
+        let now = 1_545_778_348;
         line_update(message, &dir, &config, now)?;
 
         assert_eq!(
             file.dump(1)?[0],
             Point {
-                interval: 1545778338,
+                interval: now - 10,
                 value: 123.0
             }
         );
