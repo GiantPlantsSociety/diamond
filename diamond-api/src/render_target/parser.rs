@@ -1,12 +1,12 @@
 use super::ast::*;
-use nom::character::complete::{char as c, one_of, none_of, digit1};
-use nom::bytes::complete::{tag, tag_no_case, is_not, escaped_transform};
-use nom::multi::{many0, many1, separated_list, separated_nonempty_list, fold_many1};
-use nom::sequence::{tuple, delimited, preceded, terminated};
-use nom::combinator::{opt, recognize, complete, map, map_res};
 use nom::branch::alt;
-use nom::{IResult, Err};
-use nom::error::{ParseError, VerboseError, convert_error};
+use nom::bytes::complete::{escaped_transform, is_not, tag, tag_no_case};
+use nom::character::complete::{char as c, digit1, none_of, one_of};
+use nom::combinator::{complete, map, map_res, opt, recognize};
+use nom::error::{convert_error, ParseError, VerboseError};
+use nom::multi::{fold_many1, many0, many1, separated_list, separated_nonempty_list};
+use nom::sequence::{delimited, preceded, terminated, tuple};
+use nom::{Err, IResult};
 use std::collections::BTreeSet;
 
 // literals
@@ -19,19 +19,13 @@ pub enum Number {
 
 fn literal_value(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
     let number = map_res(
-        recognize(
-            tuple((
-                opt(c('-')),
-                digit1,
-                opt(tuple((c('.'), digit1))),
-                opt(tuple((
-                    one_of("eE"),
-                    opt(c('-')),
-                    digit1
-                )))
-            ))
-        ),
-        parse_number
+        recognize(tuple((
+            opt(c('-')),
+            digit1,
+            opt(tuple((c('.'), digit1))),
+            opt(tuple((one_of("eE"), opt(c('-')), digit1))),
+        ))),
+        parse_number,
     );
 
     let string = map(
@@ -39,7 +33,7 @@ fn literal_value(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>>
             delimited(c('"'), recognize(opt(is_not("\""))), c('"')),
             delimited(c('\''), recognize(opt(is_not("'"))), c('\'')),
         )),
-        |s: &str| s.to_owned()
+        |s: &str| s.to_owned(),
     );
 
     let boolean = alt((
@@ -62,13 +56,13 @@ fn literal_value(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>>
 
 fn ident(input: &str) -> IResult<&str, String, VerboseError<&str>> {
     map(
-        recognize(
-            tuple((
-                one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"),
-                many0(one_of("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")),
-            ))
-        ),
-        |s: &str| s.to_owned()
+        recognize(tuple((
+            one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"),
+            many0(one_of(
+                "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
+            )),
+        ))),
+        |s: &str| s.to_owned(),
     )(input)
 }
 
@@ -77,18 +71,10 @@ fn call(input: &str) -> IResult<&str, Call, VerboseError<&str>> {
         map(literal_value, Arg::Literal),
         map(expression, Arg::Expression),
     ));
-    let call_arg = tuple((
-        opt(terminated(ident, c('='))),
-        arg,
-    ));
+    let call_arg = tuple((opt(terminated(ident, c('='))), arg));
     let call = map_res(
-        tuple((
-            &ident,
-            c('('),
-            separated_list(c(','), call_arg),
-            c(')'),
-        )),
-        |(function, _, all_args, _)| parse_call(function, all_args)
+        tuple((&ident, c('('), separated_list(c(','), call_arg), c(')'))),
+        |(function, _, all_args, _)| parse_call(function, all_args),
     );
     call(input)
 }
@@ -152,9 +138,11 @@ fn parse_call(function: String, all_args: Vec<(Option<String>, Arg)>) -> Result<
 
 fn partial_path_element(input: &str) -> IResult<&str, String, VerboseError<&str>> {
     escaped_transform(
-        recognize(many1(one_of(r##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##))),
+        recognize(many1(one_of(
+            r##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##,
+        ))),
         '\\',
-        one_of(r#"(){}[],.'"\|=$"#)
+        one_of(r#"(){}[],.'"\|=$"#),
     )(input)
 }
 
@@ -162,28 +150,22 @@ fn path_element_enum(input: &str) -> IResult<&str, Vec<String>, VerboseError<&st
     delimited(
         c('{'),
         separated_nonempty_list(tag(","), partial_path_element),
-        c('}')
+        c('}'),
     )(input)
 }
 
 fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<&str>> {
     let match_group_range = map(
-        tuple((
-            none_of("]"),
-            c('-'),
-            none_of("]"),
-        )),
+        tuple((none_of("]"), c('-'), none_of("]"))),
         |(from_char, _, to_char)| {
-            ((from_char as u8)..=(to_char as u8)).into_iter().map(|c| c as char).collect()
-        }
+            ((from_char as u8)..=(to_char as u8))
+                .into_iter()
+                .map(|c| c as char)
+                .collect()
+        },
     );
 
-    let match_group_single = map(
-        none_of("]"),
-        |c| {
-            [c].into_iter().cloned().collect()
-        }
-    );
+    let match_group_single = map(none_of("]"), |c| [c].into_iter().cloned().collect());
 
     let match_group = map(
         tuple((
@@ -195,7 +177,7 @@ fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError
                 |mut acc: BTreeSet<char>, chars: BTreeSet<char>| {
                     acc.extend(chars);
                     acc
-                }
+                },
             ),
             opt(c('-')),
             c(']'),
@@ -205,7 +187,7 @@ fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError
                 chars.insert('-');
             }
             chars
-        }
+        },
     );
 
     match_group(input)
@@ -216,23 +198,20 @@ fn path_word(input: &str) -> IResult<&str, PathWord, VerboseError<&str>> {
         map(path_element_enum, PathElement::Enum),
         map(path_element_group, PathElement::OneOf),
         map(c('*'), |_| PathElement::Asterisk),
-        map(preceded(c('$'), partial_path_element), PathElement::Variable),
+        map(
+            preceded(c('$'), partial_path_element),
+            PathElement::Variable,
+        ),
         map(partial_path_element, PathElement::Partial),
     ));
 
-    let path_word = map(
-        many1(path_element),
-        PathWord
-    );
+    let path_word = map(many1(path_element), PathWord);
 
     path_word(input)
 }
 
 fn path_expression(input: &str) -> IResult<&str, PathExpression, VerboseError<&str>> {
-    let path_expression = map(
-        separated_nonempty_list(c('.'), path_word),
-        PathExpression
-    );
+    let path_expression = map(separated_nonempty_list(c('.'), path_word), PathExpression);
 
     path_expression(input)
 }
@@ -240,15 +219,9 @@ fn path_expression(input: &str) -> IResult<&str, PathExpression, VerboseError<&s
 // template
 
 fn template(input: &str) -> IResult<&str, Template, VerboseError<&str>> {
-    let source = alt((
-        map(call, Source::Call),
-        map(path_expression, Source::Path),
-    ));
+    let source = alt((map(call, Source::Call), map(path_expression, Source::Path)));
 
-    let template_arg = tuple((
-        opt(terminated(ident, c('='))),
-        literal_value
-    ));
+    let template_arg = tuple((opt(terminated(ident, c('='))), literal_value));
 
     fn parse_template(
         source: Source,
@@ -272,10 +245,13 @@ fn template(input: &str) -> IResult<&str, Template, VerboseError<&str>> {
             tag("template"),
             tag("("),
             source,
-            opt(preceded(tag(","), separated_nonempty_list(tag(","), template_arg))),
+            opt(preceded(
+                tag(","),
+                separated_nonempty_list(tag(","), template_arg),
+            )),
             tag(")"),
         )),
-        |(_, _, source, all_args, _)| parse_template(source, all_args)
+        |(_, _, source, all_args, _)| parse_template(source, all_args),
     );
 
     template(input)
@@ -303,11 +279,8 @@ fn expression(input: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     }
 
     let expression = map(
-        tuple((
-            expression_base,
-            many0(preceded(tag("|"), call)),
-        )),
-        |(base, pipe_calls)| parse_expression(base, pipe_calls)
+        tuple((expression_base, many0(preceded(tag("|"), call)))),
+        |(base, pipe_calls)| parse_expression(base, pipe_calls),
     );
 
     expression(input)
@@ -319,14 +292,11 @@ macro_rules! impl_try_from {
             type Error = String;
 
             fn try_from(input: &str) -> Result<Self, Self::Error> {
-                let (tail, result) =
-                    $parser(input).map_err(|e| {
-                        match e {
-                            Err::Error(e) => format!("ERROR {}", convert_error(input, e)),
-                            Err::Failure(e) => format!("FAILURE {}", convert_error(input, e)),
-                            Err::Incomplete(_) => "Input is incomplete".to_owned(),
-                        }
-                    })?;
+                let (tail, result) = $parser(input).map_err(|e| match e {
+                    Err::Error(e) => format!("ERROR {}", convert_error(input, e)),
+                    Err::Failure(e) => format!("FAILURE {}", convert_error(input, e)),
+                    Err::Incomplete(_) => "Input is incomplete".to_owned(),
+                })?;
 
                 if tail.len() == 0 {
                     Ok(result)
@@ -370,50 +340,83 @@ mod tests {
 
     #[test]
     fn test_literal() {
-        assert_eq!("-3.14e-4".parse::<LiteralValue>().unwrap(), LiteralValue::Float(-0.000314));
+        assert_eq!(
+            "-3.14e-4".parse::<LiteralValue>().unwrap(),
+            LiteralValue::Float(-0.000314)
+        );
         assert_eq!(parse!(literal_value, "0"), LiteralValue::Integer(0));
         assert_eq!(parse!(literal_value, "124"), LiteralValue::Integer(124));
-        assert_eq!(parse!(literal_value, r#""""#), LiteralValue::String(String::new()));
-        assert_eq!(parse!(literal_value, r#"''"#), LiteralValue::String(String::new()));
-        assert_eq!(parse!(literal_value, r#""hello""#), LiteralValue::String(String::from("hello")));
-        assert_eq!(parse!(literal_value, r#"'hello'"#), LiteralValue::String(String::from("hello")));
+        assert_eq!(
+            parse!(literal_value, r#""""#),
+            LiteralValue::String(String::new())
+        );
+        assert_eq!(
+            parse!(literal_value, r#"''"#),
+            LiteralValue::String(String::new())
+        );
+        assert_eq!(
+            parse!(literal_value, r#""hello""#),
+            LiteralValue::String(String::from("hello"))
+        );
+        assert_eq!(
+            parse!(literal_value, r#"'hello'"#),
+            LiteralValue::String(String::from("hello"))
+        );
     }
 
     #[test]
     fn test_call() {
-        assert_eq!("sin()".parse::<Call>().unwrap(), Call {
-            function: "sin".to_owned(),
-            args: vec![],
-            named_args: vec![],
-        });
-        assert_eq!("log(2,32.4)".parse::<Call>().unwrap(), Call {
-            function: "log".to_owned(),
-            args: vec![
-                Arg::Literal(LiteralValue::Integer(2)),
-                Arg::Literal(LiteralValue::Float(32.4)),
-            ],
-            named_args: vec![],
-        });
-        assert_eq!(r#"A(1,false,x=2,y="hello")"#.parse::<Call>().unwrap(), Call {
-            function: "A".to_owned(),
-            args: vec![
-                Arg::Literal(LiteralValue::Integer(1)),
-                Arg::Literal(LiteralValue::Boolean(false)),
-            ],
-            named_args: vec![
-                ("x".to_owned(), Arg::Literal(LiteralValue::Integer(2))),
-                ("y".to_owned(), Arg::Literal(LiteralValue::String(String::from("hello")))),
-            ],
-        });
-        assert_eq!(r#"B(x=2,y="hello",z=None)"#.parse::<Call>().unwrap(), Call {
-            function: "B".to_owned(),
-            args: vec![],
-            named_args: vec![
-                ("x".to_owned(), Arg::Literal(LiteralValue::Integer(2))),
-                ("y".to_owned(), Arg::Literal(LiteralValue::String(String::from("hello")))),
-                ("z".to_owned(), Arg::Literal(LiteralValue::None)),
-            ],
-        });
+        assert_eq!(
+            "sin()".parse::<Call>().unwrap(),
+            Call {
+                function: "sin".to_owned(),
+                args: vec![],
+                named_args: vec![],
+            }
+        );
+        assert_eq!(
+            "log(2,32.4)".parse::<Call>().unwrap(),
+            Call {
+                function: "log".to_owned(),
+                args: vec![
+                    Arg::Literal(LiteralValue::Integer(2)),
+                    Arg::Literal(LiteralValue::Float(32.4)),
+                ],
+                named_args: vec![],
+            }
+        );
+        assert_eq!(
+            r#"A(1,false,x=2,y="hello")"#.parse::<Call>().unwrap(),
+            Call {
+                function: "A".to_owned(),
+                args: vec![
+                    Arg::Literal(LiteralValue::Integer(1)),
+                    Arg::Literal(LiteralValue::Boolean(false)),
+                ],
+                named_args: vec![
+                    ("x".to_owned(), Arg::Literal(LiteralValue::Integer(2))),
+                    (
+                        "y".to_owned(),
+                        Arg::Literal(LiteralValue::String(String::from("hello")))
+                    ),
+                ],
+            }
+        );
+        assert_eq!(
+            r#"B(x=2,y="hello",z=None)"#.parse::<Call>().unwrap(),
+            Call {
+                function: "B".to_owned(),
+                args: vec![],
+                named_args: vec![
+                    ("x".to_owned(), Arg::Literal(LiteralValue::Integer(2))),
+                    (
+                        "y".to_owned(),
+                        Arg::Literal(LiteralValue::String(String::from("hello")))
+                    ),
+                    ("z".to_owned(), Arg::Literal(LiteralValue::None)),
+                ],
+            }
+        );
     }
 
     #[test]
@@ -458,16 +461,15 @@ mod tests {
 
     #[test]
     fn test_partial_path_element() {
-        assert_eq!(
-            parse!(partial_path_element, "a").to_string().as_str(),
-            "a"
-        );
+        assert_eq!(parse!(partial_path_element, "a").to_string().as_str(), "a");
         assert_eq!(
             parse!(partial_path_element, "abc").to_string().as_str(),
             "abc"
         );
         assert_eq!(
-            parse!(partial_path_element, "abc\\[de\\]f123").to_string().as_str(),
+            parse!(partial_path_element, "abc\\[de\\]f123")
+                .to_string()
+                .as_str(),
             "abc[de]f123"
         );
     }
@@ -486,8 +488,14 @@ mod tests {
 
     #[test]
     fn test_path_word() {
-        assert_eq!("a".parse::<PathWord>().unwrap(), PathWord(vec![PathElement::Partial("a".to_string())]));
-        assert_eq!("abc".parse::<PathWord>().unwrap(), PathWord(vec![PathElement::Partial("abc".to_string())]));
+        assert_eq!(
+            "a".parse::<PathWord>().unwrap(),
+            PathWord(vec![PathElement::Partial("a".to_string())])
+        );
+        assert_eq!(
+            "abc".parse::<PathWord>().unwrap(),
+            PathWord(vec![PathElement::Partial("abc".to_string())])
+        );
     }
 
     #[test]
@@ -561,12 +569,9 @@ mod tests {
             "emea.events.clicks{2018,2019}"
         );
         assert_eq!(
-            parse!(
-                path_expression,
-                r"emea.events\[\]\{\}.clicks{2018,2019}.05"
-            )
-            .to_string()
-            .as_str(),
+            parse!(path_expression, r"emea.events\[\]\{\}.clicks{2018,2019}.05")
+                .to_string()
+                .as_str(),
             "emea.events\\[\\]\\{\\}.clicks{2018,2019}.05"
         );
     }
