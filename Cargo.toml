@@ -1,17 +1,17 @@
 [workspace]
 members = [
     "whisper",
-    "whisper_tests",
-    "diamond",
-    "diamond-api",
-    "rrd-sys",
-    "rrd",
-    "rrd_tests",
-    "rrd2whisper",
+#    "whisper_tests",
+#    "diamond",
+#    "diamond-api",
+#    "rrd-sys",
+#    "rrd",
+#    "rrd_tests",
+#    "rrd2whisper",
 ]
 default-members = [
     "whisper",
-    "whisper_tests",
-    "diamond",
-    "diamond-api",
+#    "whisper_tests",
+#    "diamond",
+#    "diamond-api",
 ]

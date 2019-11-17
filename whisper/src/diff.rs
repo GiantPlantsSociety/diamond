@@ -154,15 +154,15 @@ impl fmt::Display for DiffSummaryHeader {
 }
 
 /** Compare two whisper databases. Each file must have the same archive configuration */
-pub fn diff(
+pub async fn diff(
     path1: &Path,
     path2: &Path,
     ignore_empty: bool,
     mut until_time: u32,
     now: u32,
-) -> Result<Vec<DiffArchive>, io::Error> {
-    let mut file1 = WhisperFile::open(path1)?;
-    let mut file2 = WhisperFile::open(path2)?;
+) -> io::Result<Vec<DiffArchive>> {
+    let mut file1 = WhisperFile::open(path1).await?;
+    let mut file2 = WhisperFile::open(path2).await?;
 
     if file1.info().archives != file2.info().archives {
         return Err(io::Error::new(
@@ -180,8 +180,12 @@ pub fn diff(
         let start_time = now - archive.retention();
         let interval = Interval::new(start_time, until_time).unwrap();
 
-        let data1 = file1.fetch(archive.seconds_per_point, interval, now)?;
-        let data2 = file2.fetch(archive.seconds_per_point, interval, now)?;
+        let data1 = file1
+            .fetch(archive.seconds_per_point, interval, now)
+            .await?;
+        let data2 = file2
+            .fetch(archive.seconds_per_point, interval, now)
+            .await?;
 
         let start = u32::min(data1.from_interval, data2.from_interval);
         let end = u32::max(data1.until_interval, data2.until_interval);

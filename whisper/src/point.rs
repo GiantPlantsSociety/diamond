@@ -1,7 +1,8 @@
 use crate::error::ParseError;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io;
+use async_std::io::{self, Read, Seek, Write};
 use std::str::FromStr;
+
+use crate::utils::{AsyncReadBytesExt, AsyncWriteBytesExt};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Point {
@@ -17,15 +18,15 @@ impl Point {
         }
     }
 
-    pub fn read<R: io::Read>(read: &mut R) -> Result<Self, io::Error> {
-        let interval = read.read_u32::<BigEndian>()?;
-        let value = read.read_f64::<BigEndian>()?;
+    pub async fn read<R: Read + Seek + Unpin + Send>(read: &mut R) -> io::Result<Self> {
+        let interval = read.aread_u32().await?;
+        let value = read.aread_f64().await?;
         Ok(Self { interval, value })
     }
 
-    pub fn write<W: io::Write>(&self, write: &mut W) -> Result<(), io::Error> {
-        write.write_u32::<BigEndian>(self.interval)?;
-        write.write_f64::<BigEndian>(self.value)?;
+    pub async fn write<W: Write + Unpin + Send>(&self, write: &mut W) -> io::Result<()> {
+        write.awrite_u32(self.interval).await?;
+        write.awrite_f64(self.value).await?;
         Ok(())
     }
 }

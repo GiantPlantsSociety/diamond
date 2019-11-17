@@ -1,3 +1,4 @@
+use async_std::task;
 use failure::Error;
 use std::fs::remove_file;
 use std::path::{Path, PathBuf};
@@ -31,14 +32,14 @@ fn is_whisper_file(path: &Path) -> bool {
     path.extension() == Some(std::ffi::OsStr::new("wsp"))
 }
 
-fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error> {
+async fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error> {
     for entry in WalkDir::new(dir).min_depth(1) {
         match entry {
             Ok(ref entry) if verbose && entry.file_type().is_dir() => {
                 println!("Scanning {}...", entry.path().canonicalize()?.display())
             }
             Ok(ref entry) if is_whisper_file(entry.path()) => {
-                delete_corrupt_file(&entry.path(), delete_corrupt)?
+                delete_corrupt_file(&entry.path(), delete_corrupt).await?
             }
             Err(e) => eprintln!("{}", e),
             _ => {}
@@ -48,8 +49,8 @@ fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error
     Ok(())
 }
 
-fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<(), Error> {
-    match whisper::WhisperFile::open(file) {
+async fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<(), Error> {
+    match whisper::WhisperFile::open(file).await {
         Ok(whisper_file) => {
             let x: u32 = whisper_file.info().archives.iter().map(|a| a.points).sum();
             println!("{}: {} points", file.canonicalize()?.display(), x);
@@ -69,7 +70,7 @@ fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<(), Error> {
     Ok(())
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     for dir in &args.directories {
         if !dir.is_dir() {
             eprintln!("{} is not a directory or not exist!", dir.display());
@@ -80,7 +81,7 @@ fn run(args: &Args) -> Result<(), Error> {
             println!("Scanning {}...", dir.canonicalize()?.display());
         }
 
-        walk_dir(dir, args.delete_corrupt, args.verbose)?;
+        walk_dir(dir, args.delete_corrupt, args.verbose).await?;
     }
 
     Ok(())
@@ -88,7 +89,7 @@ fn run(args: &Args) -> Result<(), Error> {
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

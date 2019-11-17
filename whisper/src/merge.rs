@@ -8,13 +8,13 @@ use std::path::Path;
  * the same archive configuration. time_from and time_to can optionally be
  * specified for the merge.
  */
-pub fn merge(
+pub async fn merge(
     path_src: &Path,
     path_dst: &Path,
     time_from: u32,
     time_to: u32,
     now: u32,
-) -> Result<(), io::Error> {
+) -> io::Result<()> {
     // if now is None:
     //     now = int(time.time())
 
@@ -28,8 +28,8 @@ pub fn merge(
     // else:
     //     fromTime = 0
 
-    let mut file_src = WhisperFile::open(path_src)?;
-    let mut file_dst = WhisperFile::open(path_dst)?;
+    let mut file_src = WhisperFile::open(path_src).await?;
+    let mut file_dst = WhisperFile::open(path_dst).await?;
 
     if file_src.info().archives != file_dst.info().archives {
         return Err(io::Error::new(
@@ -58,11 +58,12 @@ pub fn merge(
         let from = u32::max(time_from, now - archive.retention());
         let interval = Interval::new(from, time_to).unwrap();
 
-        let (_adjusted_interval, points) =
-            file_src.fetch_points(archive.seconds_per_point, interval, now)?;
+        let (_adjusted_interval, points) = file_src
+            .fetch_points(archive.seconds_per_point, interval, now)
+            .await?;
 
         if let Some(ref points) = points {
-            file_dst.update_many(points, now)?;
+            file_dst.update_many(points, now).await?;
         }
     }
     Ok(())

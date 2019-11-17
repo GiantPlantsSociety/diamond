@@ -1,3 +1,4 @@
+use async_std::task;
 use failure::Error;
 use std::path::PathBuf;
 use std::process::exit;
@@ -22,15 +23,15 @@ struct Args {
     dst: PathBuf,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
-    fill(&args.src, &args.dst, now, now)?;
+    fill(&args.src, &args.dst, now, now).await?;
     Ok(())
 }
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

@@ -1,3 +1,4 @@
+use async_std::task;
 use failure::Error;
 use humansize::{file_size_opts as options, FileSize};
 use std::fs;
@@ -95,7 +96,7 @@ fn estimate_info(retentions: &[Retention]) {
     }
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     if args.estimate {
         estimate_info(&args.retentions);
     } else {
@@ -112,7 +113,8 @@ fn run(args: &Args) -> Result<(), Error> {
             .x_files_factor(args.x_files_factor)
             .aggregation_method(args.aggregation_method)
             .sparse(args.sparse)
-            .build(&args.path)?;
+            .build(&args.path)
+            .await?;
 
         let size = args.path.metadata()?.len();
         println!("Created: {} ({} bytes)", &args.path.to_str().unwrap(), size);
@@ -123,7 +125,7 @@ fn run(args: &Args) -> Result<(), Error> {
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

@@ -1,3 +1,4 @@
+use async_std::task;
 use failure::format_err;
 use failure::Error;
 use std::path::PathBuf;
@@ -26,7 +27,7 @@ struct Args {
     until: Option<u32>,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     for filename in &[&args.from_path, &args.to_path] {
         if !filename.is_file() {
             return Err(format_err!(
@@ -40,14 +41,14 @@ fn run(args: &Args) -> Result<(), Error> {
     let from = args.from.unwrap_or(0);
     let until = args.until.unwrap_or(now);
 
-    merge(&args.from_path, &args.to_path, from, until, now)?;
+    merge(&args.from_path, &args.to_path, from, until, now).await?;
 
     Ok(())
 }
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

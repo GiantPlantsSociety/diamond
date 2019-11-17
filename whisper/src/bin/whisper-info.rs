@@ -1,3 +1,4 @@
+use async_std::task;
 use failure::{format_err, Error};
 use serde_json::json;
 use std::path::PathBuf;
@@ -59,8 +60,8 @@ fn format_info(meta: &whisper::WhisperMetadata, json: bool) -> Result<(), Error>
     Ok(())
 }
 
-fn run(args: &Args) -> Result<(), Error> {
-    let file = whisper::WhisperFile::open(&args.path)?;
+async fn run(args: &Args) -> Result<(), Error> {
+    let file = whisper::WhisperFile::open(&args.path).await?;
     let meta = file.info();
 
     match &args.field {
@@ -77,7 +78,7 @@ fn run(args: &Args) -> Result<(), Error> {
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

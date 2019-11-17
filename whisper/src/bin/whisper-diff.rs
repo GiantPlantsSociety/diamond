@@ -1,3 +1,4 @@
+use async_std::task;
 use failure::{format_err, Error};
 use std::path::PathBuf;
 use std::process::exit;
@@ -90,7 +91,7 @@ fn print_summary(
     Ok(())
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     for filename in &[&args.path_a, &args.path_b] {
         if !filename.is_file() {
             return Err(format_err!("[ERROR] File {:#?} does not exist!", filename));
@@ -100,7 +101,7 @@ fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let until = args.until.unwrap_or(now);
 
-    let diff_raw = diff::diff(&args.path_a, &args.path_b, args.ignore_empty, until, now)?;
+    let diff_raw = diff::diff(&args.path_a, &args.path_b, args.ignore_empty, until, now).await?;
 
     if args.summary {
         let short_diff: Vec<DiffArchiveShort> =
@@ -125,7 +126,7 @@ fn run(args: &Args) -> Result<(), Error> {
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

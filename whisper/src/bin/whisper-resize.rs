@@ -1,5 +1,6 @@
 use failure::Error;
 
+use async_std::task;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -57,7 +58,7 @@ struct Args {
     retentions: Vec<Retention>,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let path = &args.path;
 
@@ -65,7 +66,7 @@ fn run(args: &Args) -> Result<(), Error> {
         return Err(error::Error::FileNotExist(path.to_path_buf()).into());
     }
 
-    let whisper_file = whisper::WhisperFile::open(path)?;
+    let whisper_file = whisper::WhisperFile::open(path).await?;
     let meta = whisper_file.info();
 
     let x_files_factor = args.x_files_factor.unwrap_or(meta.x_files_factor);
@@ -82,14 +83,15 @@ fn run(args: &Args) -> Result<(), Error> {
         args.aggregate,
         args.nobackup,
         now,
-    )?;
+    )
+    .await?;
 
     Ok(())
 }
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

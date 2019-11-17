@@ -1,3 +1,4 @@
+use async_std::task;
 use failure::Error;
 use std::path::PathBuf;
 use std::process::exit;
@@ -18,12 +19,10 @@ struct Args {
     x_files_factor: f32,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
-    let mut file = whisper::WhisperFile::open(&args.path)?;
-
+async fn run(args: &Args) -> Result<(), Error> {
+    let mut file = whisper::WhisperFile::open(&args.path).await?;
     let old_x_files_factor = file.info().x_files_factor;
-
-    file.set_x_files_factor(args.x_files_factor)?;
+    file.set_x_files_factor(args.x_files_factor).await?;
 
     println!(
         "Updated xFilesFactor: {} ({} -> {})",
@@ -37,7 +36,7 @@ fn run(args: &Args) -> Result<(), Error> {
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

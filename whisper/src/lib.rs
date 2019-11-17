@@ -1,9 +1,9 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use async_std::fs;
+use async_std::io::{self, Read, Seek, Write};
+use async_std::path::Path;
+use async_std::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::fs;
-use std::io::{self, Read, Seek, Write};
-use std::path::Path;
 
 /*
 # This module is an implementation of the Whisper database API
@@ -48,11 +48,13 @@ pub mod merge;
 pub mod point;
 pub mod resize;
 pub mod retention;
+mod utils;
 
 use crate::aggregation::*;
 use crate::archive_info::*;
 use crate::interval::*;
 use crate::point::*;
+use crate::utils::{AsyncReadBytesExt, AsyncWriteBytesExt};
 
 pub use crate::builder::WhisperBuilder;
 
@@ -69,13 +71,13 @@ pub struct WhisperMetadata {
 }
 
 impl WhisperMetadata {
-    pub fn read<R: Read + Seek>(fh: &mut R) -> Result<Self, io::Error> {
-        fh.seek(io::SeekFrom::Start(0))?;
+    pub async fn read<R: Read + Seek + Unpin + Send>(fh: &mut R) -> io::Result<Self> {
+        fh.seek(io::SeekFrom::Start(0)).await?;
 
-        let aggregation_type = fh.read_u32::<BigEndian>()?;
-        let max_retention = fh.read_u32::<BigEndian>()?;
-        let x_files_factor = fh.read_f32::<BigEndian>()?;
-        let archive_count = fh.read_u32::<BigEndian>()?;
+        let aggregation_type = fh.aread_u32().await?;
+        let max_retention = fh.aread_u32().await?;
+        let x_files_factor = fh.aread_f32().await?;
+        let archive_count = fh.aread_u32().await?;
 
         let aggregation_method =
             AggregationMethod::from_type(aggregation_type).ok_or_else(|| {
@@ -94,7 +96,7 @@ impl WhisperMetadata {
 
         let mut archives = Vec::with_capacity(archive_count as usize);
         for _ in 0..archive_count {
-            let archive_info = ArchiveInfo::read(fh)?;
+            let archive_info = ArchiveInfo::read(fh).await?;
             archives.push(archive_info);
         }
 
@@ -119,18 +121,18 @@ impl WhisperMetadata {
                 .sum::<usize>()
     }
 
-    fn write_metadata<W: Write>(&self, w: &mut W) -> Result<(), io::Error> {
-        w.write_u32::<BigEndian>(self.aggregation_method.to_type())?;
-        w.write_u32::<BigEndian>(self.max_retention)?;
-        w.write_f32::<BigEndian>(self.x_files_factor)?;
-        w.write_u32::<BigEndian>(self.archives.len() as u32)?;
+    async fn write_metadata<W: Write + Unpin + Send>(&self, w: &mut W) -> io::Result<()> {
+        w.awrite_u32(self.aggregation_method.to_type()).await?;
+        w.awrite_u32(self.max_retention).await?;
+        w.awrite_f32(self.x_files_factor).await?;
+        w.awrite_u32(self.archives.len() as u32).await?;
         Ok(())
     }
 
-    fn write<W: Write>(&self, w: &mut W) -> Result<(), io::Error> {
-        self.write_metadata(w)?;
+    async fn write<W: Write + Unpin + Send>(&self, w: &mut W) -> io::Result<()> {
+        self.write_metadata(w).await?;
         for archive in &self.archives {
-            archive.write(w)?;
+            archive.write(w).await?;
         }
         Ok(())
     }
@@ -142,37 +144,40 @@ pub struct WhisperFile {
 }
 
 impl WhisperFile {
-    fn create<P: AsRef<Path>>(
+    async fn create<P: AsRef<Path>>(
         header: &WhisperMetadata,
         path: P,
         sparse: bool,
-    ) -> Result<Self, io::Error> {
+    ) -> io::Result<Self> {
         let mut metainfo_bytes = Vec::<u8>::new();
-        header.write(&mut metainfo_bytes)?;
+        header.write(&mut metainfo_bytes).await?;
 
         let mut fh = fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create_new(true)
-            .open(path)?;
+            .open(path)
+            .await?;
 
         // if LOCK {
         //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
         // }
 
-        fh.write_all(&metainfo_bytes)?;
+        fh.write_all(&metainfo_bytes).await?;
         if sparse {
-            fh.seek(io::SeekFrom::Start(header.file_size() as u64 - 1))?;
-            fh.write_all(&[0u8])?;
+            fh.seek(io::SeekFrom::Start(header.file_size() as u64 - 1))
+                .await?;
+            fh.write_all(&[0u8]).await?;
         } else {
             fallocate::fallocate(
                 &mut fh,
                 header.header_size(),
                 header.file_size() - header.header_size(),
-            )?;
+            )
+            .await?;
         }
 
-        fh.sync_all()?;
+        fh.sync_all().await?;
 
         Ok(Self {
             metadata: header.clone(),
@@ -180,9 +185,13 @@ impl WhisperFile {
         })
     }
 
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
-        let mut file = fs::OpenOptions::new().read(true).write(true).open(path)?;
-        let metadata = WhisperMetadata::read(&mut file)?;
+    pub async fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let mut file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path)
+            .await?;
+        let metadata = WhisperMetadata::read(&mut file).await?;
         Ok(Self { metadata, file })
     }
 
@@ -190,7 +199,7 @@ impl WhisperFile {
         &self.metadata
     }
 
-    pub fn set_x_files_factor(&mut self, x_files_factor: f32) -> Result<(), io::Error> {
+    pub async fn set_x_files_factor(&mut self, x_files_factor: f32) -> io::Result<()> {
         if x_files_factor < 0.0 || x_files_factor > 1.0 {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
@@ -201,36 +210,36 @@ impl WhisperFile {
         // if LOCK:
         //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
 
-        self.file.seek(io::SeekFrom::Start(0))?;
+        self.file.seek(io::SeekFrom::Start(0)).await?;
         self.metadata.x_files_factor = x_files_factor; // TODO: transactional update
-        self.metadata.write_metadata(&mut self.file)?;
-        self.file.sync_data()?;
+        self.metadata.write_metadata(&mut self.file).await?;
+        self.file.sync_data().await?;
 
         Ok(())
     }
 
-    pub fn set_aggregation_method(
+    pub async fn set_aggregation_method(
         &mut self,
         aggregation_method: AggregationMethod,
     ) -> Result<(), io::Error> {
         // if LOCK:
         //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
 
-        self.file.seek(io::SeekFrom::Start(0))?;
+        self.file.seek(io::SeekFrom::Start(0)).await?;
         self.metadata.aggregation_method = aggregation_method; // TODO: transactional update
-        self.metadata.write_metadata(&mut self.file)?;
-        self.file.sync_data()?;
+        self.metadata.write_metadata(&mut self.file).await?;
+        self.file.sync_data().await?;
 
         Ok(())
     }
 
-    pub fn update(&mut self, point: &Point, now: u32) -> Result<(), io::Error> {
+    pub async fn update(&mut self, point: &Point, now: u32) -> io::Result<()> {
         // if LOCK:
         //     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-        file_update(&mut self.file, &self.metadata, point, now)
+        file_update(&mut self.file, &self.metadata, point, now).await
     }
 
-    pub fn update_many(&mut self, points: &[Point], now: u32) -> Result<(), io::Error> {
+    pub async fn update_many(&mut self, points: &[Point], now: u32) -> io::Result<()> {
         if points.is_empty() {
             return Ok(());
         }
@@ -243,7 +252,7 @@ impl WhisperFile {
 
         let mut points_vec = points.to_vec();
         points_vec.sort_by_key(|p| std::u32::MAX - p.interval); // Order points by timestamp, newest first
-        file_update_many(&mut self.file, &self.metadata, &points_vec, now)
+        file_update_many(&mut self.file, &self.metadata, &points_vec, now).await
     }
 
     fn find_archive(&self, seconds_per_point: u32) -> Result<ArchiveInfo, io::Error> {
@@ -269,12 +278,12 @@ impl WhisperFile {
             .next()
     }
 
-    pub fn fetch_points(
+    pub async fn fetch_points(
         &mut self,
         seconds_per_point: u32,
         interval: Interval,
         now: u32,
-    ) -> Result<(Interval, Option<Vec<Point>>), io::Error> {
+    ) -> io::Result<(Interval, Option<Vec<Point>>)> {
         let archive = self.find_archive(seconds_per_point)?;
         let available = Interval::past(now, self.metadata.max_retention);
 
@@ -290,39 +299,41 @@ impl WhisperFile {
         let adjusted_interval = adjust_interval(interval, archive.seconds_per_point)
             .map_err(|s| io::Error::new(io::ErrorKind::Other, s))?;
 
-        let points = archive_fetch_interval(&mut self.file, &archive, adjusted_interval)?;
+        let points = archive_fetch_interval(&mut self.file, &archive, adjusted_interval).await?;
 
         Ok((adjusted_interval, points))
     }
 
-    pub fn fetch_auto_points(
+    pub async fn fetch_auto_points(
         &mut self,
         interval: Interval,
         now: u32,
-    ) -> Result<ArchiveData, io::Error> {
+    ) -> io::Result<ArchiveData> {
         let seconds_per_point = self
             .suggest_archive(interval, now)
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "No data in selected timerange"))?;
 
-        let (adjusted_interval, points) = self.fetch_points(seconds_per_point, interval, now)?;
+        let (adjusted_interval, points) =
+            self.fetch_points(seconds_per_point, interval, now).await?;
         let data = points_to_data(&points, adjusted_interval, seconds_per_point);
         Ok(data)
     }
 
-    pub fn fetch(
+    pub async fn fetch(
         &mut self,
         seconds_per_point: u32,
         interval: Interval,
         now: u32,
-    ) -> Result<ArchiveData, io::Error> {
-        let (adjusted_interval, points) = self.fetch_points(seconds_per_point, interval, now)?;
+    ) -> io::Result<ArchiveData> {
+        let (adjusted_interval, points) =
+            self.fetch_points(seconds_per_point, interval, now).await?;
         let data = points_to_data(&points, adjusted_interval, seconds_per_point);
         Ok(data)
     }
 
-    pub fn dump(&mut self, seconds_per_point: u32) -> Result<Vec<Point>, io::Error> {
+    pub async fn dump(&mut self, seconds_per_point: u32) -> io::Result<Vec<Point>> {
         let archive = self.find_archive(seconds_per_point)?;
-        read_archive(&mut self.file, &archive, 0, archive.points)
+        read_archive(&mut self.file, &archive, 0, archive.points).await
     }
 }
 
@@ -344,12 +355,12 @@ fn instant_offset(archive: &ArchiveInfo, base_interval: u32, instant: u32) -> u3
     }
 }
 
-fn read_archive<R: Read + Seek>(
+async fn read_archive<R: Read + Seek + Unpin + Send>(
     fh: &mut R,
     archive: &ArchiveInfo,
     from_index: u32,
     until_index: u32,
-) -> Result<Vec<Point>, io::Error> {
+) -> io::Result<Vec<Point>> {
     let from_index = from_index % archive.points;
     let until_index = until_index % archive.points;
 
@@ -359,46 +370,47 @@ fn read_archive<R: Read + Seek>(
     let point_size = 12;
     let from_offset = archive.offset + from_index * point_size;
 
-    fh.seek(io::SeekFrom::Start(from_offset.into()))?;
+    fh.seek(io::SeekFrom::Start(from_offset.into())).await?;
     if from_index < until_index {
         // If we don't wrap around the archive
         for _i in from_index..until_index {
-            series.push(Point::read(fh)?);
+            series.push(Point::read(fh).await?);
         }
     } else {
         // We do wrap around the archive, so we need two reads
         for _i in from_index..archive.points {
-            series.push(Point::read(fh)?);
+            series.push(Point::read(fh).await?);
         }
-        fh.seek(io::SeekFrom::Start(archive.offset.into()))?;
+        fh.seek(io::SeekFrom::Start(archive.offset.into())).await?;
         for _i in 0..until_index {
-            series.push(Point::read(fh)?);
+            series.push(Point::read(fh).await?);
         }
     }
 
     Ok(series)
 }
 
-fn write_archive_point<F: Read + Write + Seek>(
+async fn write_archive_point<F: Read + Write + Seek + Unpin + Send>(
     fh: &mut F,
     archive: &ArchiveInfo,
     point: &Point,
-) -> Result<(), io::Error> {
-    let base = archive.read_base(fh)?;
+) -> io::Result<()> {
+    let base = archive.read_base(fh).await?;
     let index = instant_offset(archive, base.interval, point.interval);
     fh.seek(io::SeekFrom::Start(
         (archive.offset + index * POINT_SIZE as u32).into(),
-    ))?;
-    point.write(fh)?;
+    ))
+    .await?;
+    point.write(fh).await?;
     Ok(())
 }
 
-fn write_archive<F: Write + Seek>(
+async fn write_archive<F: Write + Seek + Unpin + Send>(
     fh: &mut F,
     archive: &ArchiveInfo,
     points: &[Point],
     base_interval: u32,
-) -> Result<(), io::Error> {
+) -> io::Result<()> {
     let point_size = 12;
 
     let first_interval = points[0].interval;
@@ -412,20 +424,22 @@ fn write_archive<F: Write + Seek>(
 
         fh.seek(io::SeekFrom::Start(
             (archive.offset + offset * point_size).into(),
-        ))?;
+        ))
+        .await?;
         for point in tail {
-            point.write(fh)?;
+            point.write(fh).await?;
         }
-        fh.seek(io::SeekFrom::Start(archive.offset.into()))?;
+        fh.seek(io::SeekFrom::Start(archive.offset.into())).await?;
         for point in head {
-            point.write(fh)?;
+            point.write(fh).await?;
         }
     } else {
         fh.seek(io::SeekFrom::Start(
             (archive.offset + offset * point_size).into(),
-        ))?;
+        ))
+        .await?;
         for point in points {
-            point.write(fh)?;
+            point.write(fh).await?;
         }
     }
 
@@ -444,17 +458,17 @@ fn points_to_values(points: &[Point], start: u32, step: u32) -> Vec<Option<f64>>
     values
 }
 
-fn __propagate<F: Read + Write + Seek>(
+async fn __propagate<F: Read + Write + Seek + Unpin + Send>(
     fh: &mut F,
     header: &WhisperMetadata,
     timestamp: u32,
     higher: &ArchiveInfo,
     lower: &ArchiveInfo,
-) -> Result<bool, io::Error> {
+) -> io::Result<bool> {
     let lower_interval_start = timestamp - (timestamp % lower.seconds_per_point);
 
-    fh.seek(io::SeekFrom::Start(higher.offset.into()))?;
-    let higher_base = Point::read(fh)?;
+    fh.seek(io::SeekFrom::Start(higher.offset.into())).await?;
+    let higher_base = Point::read(fh).await?;
 
     let higher_first_index = instant_offset(higher, higher_base.interval, lower_interval_start);
 
@@ -463,7 +477,7 @@ fn __propagate<F: Read + Write + Seek>(
         (higher_first_index + higher_points) % higher.points
     };
 
-    let series = read_archive(fh, higher, higher_first_index, higher_last_index)?;
+    let series = read_archive(fh, higher, higher_first_index, higher_last_index).await?;
 
     // And finally we construct a list of values
     let neighbor_values = points_to_values(&series, lower_interval_start, higher.seconds_per_point);
@@ -487,7 +501,7 @@ fn __propagate<F: Read + Write + Seek>(
             value: aggregate_value,
         };
 
-        write_archive_point(fh, lower, &my_point)?;
+        write_archive_point(fh, lower, &my_point).await?;
 
         Ok(true)
     } else {
@@ -495,12 +509,12 @@ fn __propagate<F: Read + Write + Seek>(
     }
 }
 
-fn file_update(
+async fn file_update(
     fh: &mut fs::File,
     header: &WhisperMetadata,
     point: &Point,
     now: u32,
-) -> Result<(), io::Error> {
+) -> io::Result<()> {
     let timestamp = point.interval;
 
     if now >= timestamp + header.max_retention || now < timestamp {
@@ -531,13 +545,13 @@ fn file_update(
         value: point.value,
     };
 
-    write_archive_point(fh, archive, &adjusted_point)?;
+    write_archive_point(fh, archive, &adjusted_point).await?;
 
     // Now we propagate the update to lower-precision archives
     for pair in header.archives[archive_index..].windows(2) {
         let higher = &pair[0];
         let lower = &pair[1];
-        if !__propagate(fh, &header, interval, higher, lower)? {
+        if !__propagate(fh, &header, interval, higher, lower).await? {
             break;
         }
     }
@@ -545,12 +559,12 @@ fn file_update(
     Ok(())
 }
 
-fn file_update_many(
+async fn file_update_many(
     fh: &mut fs::File,
     header: &WhisperMetadata,
     points: &[Point],
     now: u32,
-) -> Result<(), io::Error> {
+) -> io::Result<()> {
     let mut archive_index = 0;
     let mut current_points = vec![];
 
@@ -560,7 +574,7 @@ fn file_update_many(
             if !current_points.is_empty() {
                 // Commit all the points we've found that it can fit
                 current_points.reverse(); // Put points in chronological order
-                __archive_update_many(fh, &header, archive_index, &current_points)?;
+                __archive_update_many(fh, &header, archive_index, &current_points).await?;
                 current_points.clear();
             }
             archive_index += 1;
@@ -579,7 +593,7 @@ fn file_update_many(
     // Don't forget to commit after we've checked all the archives
     if archive_index < header.archives.len() && !current_points.is_empty() {
         current_points.reverse();
-        __archive_update_many(fh, &header, archive_index, &current_points)?;
+        __archive_update_many(fh, &header, archive_index, &current_points).await?;
     }
 
     Ok(())
@@ -619,7 +633,7 @@ fn pack_points(points: &[Point], step: u32) -> Vec<Vec<Point>> {
 /**
  * It's expected that points are sorted in chronological order
  */
-fn __archive_update_many<F: Read + Write + Seek>(
+async fn __archive_update_many<F: Read + Write + Seek + Unpin + Send>(
     fh: &mut F,
     header: &WhisperMetadata,
     archive_index: usize,
@@ -635,7 +649,7 @@ fn __archive_update_many<F: Read + Write + Seek>(
     let chunks: Vec<Vec<Point>> = pack_points(&aligned_points, archive.seconds_per_point);
 
     // Read base point and determine where our writes will start
-    let base = archive.read_base(fh)?;
+    let base = archive.read_base(fh).await?;
 
     let base_interval = if base.interval == 0 {
         // This file's first update
@@ -646,7 +660,7 @@ fn __archive_update_many<F: Read + Write + Seek>(
 
     // Write all of our packed strings in locations determined by the baseInterval
     for chunk in chunks {
-        write_archive(fh, archive, &chunk, base_interval)?;
+        write_archive(fh, archive, &chunk, base_interval).await?;
     }
 
     // Now we propagate the updates to lower-precision archives
@@ -660,7 +674,7 @@ fn __archive_update_many<F: Read + Write + Seek>(
             .collect();
         let mut propagate_further = false;
         for interval in unique_lower_intervals {
-            if __propagate(fh, header, interval, higher, lower)? {
+            if __propagate(fh, header, interval, higher, lower).await? {
                 propagate_further = true;
             }
         }
@@ -720,18 +734,18 @@ fn adjust_interval(interval: Interval, step: u32) -> Result<Interval, String> {
     }
 }
 
-fn archive_fetch_interval<R: Read + Seek>(
+async fn archive_fetch_interval<R: Read + Seek + Unpin + Send>(
     fh: &mut R,
     archive: &ArchiveInfo,
     interval: Interval,
 ) -> Result<Option<Vec<Point>>, io::Error> {
-    let base = archive.read_base(fh)?;
+    let base = archive.read_base(fh).await?;
     if base.interval == 0 {
         Ok(None)
     } else {
         let from_index = instant_offset(archive, base.interval, interval.from());
         let until_index = instant_offset(archive, base.interval, interval.until());
-        let points = read_archive(fh, &archive, from_index, until_index)?;
+        let points = read_archive(fh, &archive, from_index, until_index).await?;
         Ok(Some(points))
     }
 }

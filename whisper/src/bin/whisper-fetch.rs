@@ -1,3 +1,4 @@
+use async_std::task;
 use chrono::prelude::NaiveDateTime;
 use failure::{err_msg, format_err, Error};
 use std::path::PathBuf;
@@ -56,13 +57,13 @@ fn is_any(_value: &Option<f64>) -> bool {
     true
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let from = args.from.unwrap_or(now - 86400);
     let until = args.until.unwrap_or(now);
 
     let interval = Interval::new(from, until).map_err(err_msg)?;
-    let mut file = WhisperFile::open(&args.path)?;
+    let mut file = WhisperFile::open(&args.path).await?;
 
     let seconds_per_point = file
         .suggest_archive(interval, now)
@@ -77,7 +78,8 @@ fn run(args: &Args) -> Result<(), Error> {
     };
 
     let archive = file
-        .fetch(seconds_per_point, interval, now)?
+        .fetch(seconds_per_point, interval, now)
+        .await?
         .filter_out(&filter);
 
     if args.json {
@@ -111,7 +113,7 @@ fn run(args: &Args) -> Result<(), Error> {
 
 fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = task::block_on(run(&args)) {
         eprintln!("{}", err);
         exit(1);
     }

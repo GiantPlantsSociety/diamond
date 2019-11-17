@@ -3,17 +3,17 @@ use crate::interval::Interval;
 use std::io;
 use std::path::Path;
 
-fn fill_interval(
+async fn fill_interval(
     src: &Path,
     dst: &Path,
     tstart: u32,
     tsuntil: u32,
     now: u32,
-) -> Result<(), io::Error> {
+) -> io::Result<()> {
     let mut tstop = tsuntil;
 
-    let mut file_src = WhisperFile::open(src)?;
-    let mut file_dst = WhisperFile::open(dst)?;
+    let mut file_src = WhisperFile::open(src).await?;
+    let mut file_dst = WhisperFile::open(dst).await?;
 
     let mut archives = file_src.info().archives.clone();
     archives.sort_by_key(|a| a.retention());
@@ -40,8 +40,9 @@ fn fill_interval(
 
         let interval = Interval::new(from_time, until_time).unwrap();
 
-        let (_adjusted_interval, points) =
-            file_src.fetch_points(archive.seconds_per_point, interval, now)?;
+        let (_adjusted_interval, points) = file_src
+            .fetch_points(archive.seconds_per_point, interval, now)
+            .await?;
 
         if let Some(ref points) = points {
             // filter zero points
@@ -55,7 +56,7 @@ fn fill_interval(
             points_to_write.sort_by_key(|point| point.interval);
             points_to_write.reverse();
 
-            file_dst.update_many(&points_to_write, now)?;
+            file_dst.update_many(&points_to_write, now).await?;
         }
 
         tstop = from_time;
@@ -68,9 +69,9 @@ fn fill_interval(
     Ok(())
 }
 
-pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error> {
+pub async fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> io::Result<()> {
     let mut start_from = from;
-    let mut file_dst = WhisperFile::open(dst)?;
+    let mut file_dst = WhisperFile::open(dst).await?;
 
     let mut archives = file_dst.info().archives.clone();
     archives.sort_by_key(|a| a.retention());
@@ -83,7 +84,9 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
         }
 
         let interval = Interval::new(from_time, start_from).unwrap();
-        let data_dst = file_dst.fetch(archive.seconds_per_point, interval, now)?;
+        let data_dst = file_dst
+            .fetch(archive.seconds_per_point, interval, now)
+            .await?;
 
         let mut start = data_dst.from_interval;
         let end = data_dst.until_interval;
@@ -97,11 +100,11 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
             } else if v.is_some() && gapstart.is_some() {
                 let gapstart_unwrap = gapstart.unwrap();
                 if (start - gapstart_unwrap) > archive.seconds_per_point {
-                    fill_interval(src, dst, gapstart_unwrap, start, now)?;
+                    fill_interval(src, dst, gapstart_unwrap, start, now).await?;
                 }
                 gapstart = None;
             } else if gapstart.is_some() && (start == (end - step)) {
-                fill_interval(src, dst, gapstart.unwrap(), start, now)?;
+                fill_interval(src, dst, gapstart.unwrap(), start, now).await?;
             }
             start += step;
         }
