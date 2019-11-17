@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn render_handler_json_ok_full() {
-        let t = 1564432988;
+        let t = 1_564_432_988;
         let ctx = Context {
             args: Args {
                 path: PathBuf::new(),
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn render_handler_csv_ok_full() {
-        let t = 1564432988;
+        let t = 1_564_432_988;
         let ctx = Context {
             args: Args {
                 path: PathBuf::new(),

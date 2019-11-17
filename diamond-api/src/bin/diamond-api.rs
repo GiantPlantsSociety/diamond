@@ -41,7 +41,7 @@ fn run(args: Args) -> io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .configure(app_config(ctx.clone()))
-            .default_service(web::route().to(|| HttpResponse::NotFound()))
+            .default_service(web::route().to(HttpResponse::NotFound))
     })
     .bind(listen)?
     .run()?;
