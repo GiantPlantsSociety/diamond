@@ -2,8 +2,10 @@ use super::ast::*;
 use nom::branch::alt;
 use nom::bytes::complete::{escaped_transform, is_not, tag, tag_no_case};
 use nom::character::complete::{char as c, digit1, none_of, one_of};
-use nom::combinator::{complete, map, map_res, opt, recognize};
-use nom::error::{convert_error, ParseError, VerboseError};
+use nom::combinator::{map, map_res, opt, recognize};
+//use nom::error::ErrorKind;
+//use nom::error::ParseError;
+use nom::error::{convert_error, VerboseError};
 use nom::multi::{fold_many1, many0, many1, separated_list, separated_nonempty_list};
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::{Err, IResult};
@@ -55,32 +57,43 @@ fn literal_value(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>>
 }
 
 fn ident(input: &str) -> IResult<&str, String, VerboseError<&str>> {
-    map(
-        recognize(tuple((
-            one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"),
-            many0(one_of(
-                "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
-            )),
-        ))),
-        |s: &str| s.to_owned(),
-    )(input)
+    let (input, word) = recognize(tuple((
+        one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"),
+        many0(one_of(
+            "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
+        )),
+    )))(input)?;
+
+    Ok((input, word.to_owned()))
+}
+
+fn call_arg(input: &str) -> IResult<&str, (Option<String>, Arg), VerboseError<&str>> {
+    tuple((opt(terminated(ident, c('='))), arg))(input)
+}
+
+fn arg(input: &str) -> IResult<&str, Arg, VerboseError<&str>> {
+    alt((
+        map(literal_value, Arg::Literal),
+        map(expression, Arg::Expression),
+    ))(input)
+}
+
+fn call_args(
+    input: &str,
+) -> IResult<&str, (String, Vec<(Option<String>, Arg)>), VerboseError<&str>> {
+    let (input, function) = ident(input)?;
+    let (input, _) = c('(')(input)?;
+    let (input, all_args) = separated_list(c(','), call_arg)(input)?;
+    let (input, _) = c(')')(input)?;
+
+    Ok((input, (function, all_args)))
 }
 
 fn call(input: &str) -> IResult<&str, Call, VerboseError<&str>> {
-    let arg = alt((
-        map(literal_value, Arg::Literal),
-        map(expression, Arg::Expression),
-    ));
-    let call_arg = tuple((opt(terminated(ident, c('='))), arg));
-    let call = map_res(
-        tuple((&ident, c('('), separated_list(c(','), call_arg), c(')'))),
-        |(function, _, all_args, _)| parse_call(function, all_args),
-    );
-    call(input)
+    map_res(call_args, parse_call)(input)
 }
 
-fn parse_number(b: CompleteByteSlice) -> Result<Number, String> {
-    let s = std::str::from_utf8(b.0).map_err(|e| e.to_string())?;
+fn parse_number(s: &str) -> Result<Number, String> {
     if s.contains('.') || s.contains('e') || s.contains('E') {
         let n = s
             .parse::<f64>()
@@ -121,7 +134,9 @@ fn split_args<T>(all_args: Vec<(Option<String>, T)>) -> Option<(Vec<T>, Vec<(Str
     Some((args, named_args))
 }
 
-fn parse_call(function: String, all_args: Vec<(Option<String>, Arg)>) -> Result<Call, String> {
+fn parse_call(argv: (String, Vec<(Option<String>, Arg)>)) -> Result<Call, String> {
+    let (function, all_args) = argv;
+
     let (args, named_args) = split_args(all_args).ok_or_else(|| {
         format!(
             "Bad call of {}: positional argument after named one.",
@@ -155,47 +170,49 @@ fn path_element_enum(input: &str) -> IResult<&str, Vec<String>, VerboseError<&st
     )(input)
 }
 
-fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<&str>> {
-    let match_group_range = map(
-        tuple((none_of("]"), c('-'), none_of("]"))),
-        |(from_char, _, to_char)| {
-            ((from_char as u8)..=(to_char as u8))
-                .into_iter()
-                .map(|c| c as char)
-                .collect()
-        },
-    );
+fn match_group_range(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<&str>> {
+    let (input, from_char) = none_of("]")(input)?;
+    let (input, _) = c('-')(input)?;
+    let (input, to_char) = none_of("]")(input)?;
 
-    let match_group_single = map(none_of("]"), |c| [c].into_iter().cloned().collect());
+    let range = ((from_char as u8)..=(to_char as u8))
+        .map(|c| c as char)
+        .collect();
 
-    let match_group = map(
-        tuple((
-            c('['),
-            opt(c('-')),
-            fold_many1(
-                alt((match_group_range, match_group_single)),
-                BTreeSet::new(),
-                |mut acc: BTreeSet<char>, chars: BTreeSet<char>| {
-                    acc.extend(chars);
-                    acc
-                },
-            ),
-            opt(c('-')),
-            c(']'),
-        )),
-        |(_, start_dash, mut chars, end_dash, _)| {
-            if start_dash.is_some() || end_dash.is_some() {
-                chars.insert('-');
-            }
-            chars
-        },
-    );
-
-    match_group(input)
+    Ok((input, range))
 }
 
-fn path_word(input: &str) -> IResult<&str, PathWord, VerboseError<&str>> {
-    let path_element = alt((
+fn match_group_single(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<&str>> {
+    let (input, single) = none_of("]")(input)?;
+    let group_single = [single].iter().cloned().collect();
+    Ok((input, group_single))
+}
+
+fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<&str>> {
+    let (input, _) = c('[')(input)?;
+    let (input, start_dash) = opt(c('-'))(input)?;
+
+    let (input, mut chars) = fold_many1(
+        alt((match_group_range, match_group_single)),
+        BTreeSet::new(),
+        |mut acc: BTreeSet<char>, chars: BTreeSet<char>| {
+            acc.extend(chars);
+            acc
+        },
+    )(input)?;
+
+    let (input, end_dash) = opt(c('-'))(input)?;
+    let (input, _) = c(']')(input)?;
+
+    if start_dash.is_some() || end_dash.is_some() {
+        chars.insert('-');
+    }
+
+    Ok((input, chars))
+}
+
+fn path_element(input: &str) -> IResult<&str, PathElement, VerboseError<&str>> {
+    alt((
         map(path_element_enum, PathElement::Enum),
         map(path_element_group, PathElement::OneOf),
         map(c('*'), |_| PathElement::Asterisk),
@@ -204,69 +221,72 @@ fn path_word(input: &str) -> IResult<&str, PathWord, VerboseError<&str>> {
             PathElement::Variable,
         ),
         map(partial_path_element, PathElement::Partial),
-    ));
+    ))(input)
+}
 
-    let path_word = map(many1(path_element), PathWord);
-
-    path_word(input)
+fn path_word(input: &str) -> IResult<&str, PathWord, VerboseError<&str>> {
+    let (input, path_word) = many1(path_element)(input)?;
+    Ok((input, PathWord(path_word)))
 }
 
 fn path_expression(input: &str) -> IResult<&str, PathExpression, VerboseError<&str>> {
-    let path_expression = map(separated_nonempty_list(c('.'), path_word), PathExpression);
-
-    path_expression(input)
+    let (input, path) = separated_nonempty_list(c('.'), path_word)(input)?;
+    Ok((input, PathExpression(path)))
 }
 
 // template
+fn source(input: &str) -> IResult<&str, Source, VerboseError<&str>> {
+    alt((map(call, Source::Call), map(path_expression, Source::Path)))(input)
+}
+
+fn template_arg(input: &str) -> IResult<&str, (Option<String>, LiteralValue), VerboseError<&str>> {
+    let (input, arg) = opt(terminated(ident, c('=')))(input)?;
+    let (input, value) = literal_value(input)?;
+    Ok((input, (arg, value)))
+}
+
+fn parse_template(
+    source: Source,
+    all_args: Option<Vec<(Option<String>, LiteralValue)>>,
+) -> Result<Template, String> {
+    let (args, named_args) = split_args(all_args.unwrap_or_default()).ok_or_else(|| {
+        format!(
+            "Bad call of template {:?}: positional argument after named one.",
+            source
+        )
+    })?;
+    Ok(Template {
+        source,
+        args,
+        named_args,
+    })
+}
+
+fn template_internal(
+    input: &str,
+) -> IResult<&str, (Source, Option<Vec<(Option<String>, LiteralValue)>>), VerboseError<&str>> {
+    let (input, _) = tag("template")(input)?;
+    let (input, _) = tag("(")(input)?;
+    let (input, source) = source(input)?;
+
+    let (input, all_args) = opt(preceded(
+        tag(","),
+        separated_nonempty_list(tag(","), template_arg),
+    ))(input)?;
+    let (input, _) = tag(")")(input)?;
+
+    Ok((input, (source, all_args)))
+}
 
 fn template(input: &str) -> IResult<&str, Template, VerboseError<&str>> {
-    let source = alt((map(call, Source::Call), map(path_expression, Source::Path)));
-
-    let template_arg = tuple((opt(terminated(ident, c('='))), literal_value));
-
-    fn parse_template(
-        source: Source,
-        all_args: Option<Vec<(Option<String>, LiteralValue)>>,
-    ) -> Result<Template, String> {
-        let (args, named_args) = split_args(all_args.unwrap_or_default()).ok_or_else(|| {
-            format!(
-                "Bad call of template {:?}: positional argument after named one.",
-                source
-            )
-        })?;
-        Ok(Template {
-            source,
-            args,
-            named_args,
-        })
-    }
-
-    let template = map_res(
-        tuple((
-            tag("template"),
-            tag("("),
-            source,
-            opt(preceded(
-                tag(","),
-                separated_nonempty_list(tag(","), template_arg),
-            )),
-            tag(")"),
-        )),
-        |(_, _, source, all_args, _)| parse_template(source, all_args),
-    );
-
-    template(input)
+    map_res(template_internal, |(source, all_args)| {
+        parse_template(source, all_args)
+    })(input)
 }
 
 // expression
 
 fn expression(input: &str) -> IResult<&str, Expression, VerboseError<&str>> {
-    let expression_base = alt((
-        map(template, Expression::Template),
-        map(call, Expression::Call),
-        map(path_expression, Expression::Path),
-    ));
-
     fn parse_expression(base: Expression, pipe_calls: Vec<Call>) -> Expression {
         fn wrap(base: Expression, mut call: Call) -> Expression {
             call.args.insert(0, Arg::Expression(base));
@@ -279,12 +299,15 @@ fn expression(input: &str) -> IResult<&str, Expression, VerboseError<&str>> {
         wrapped
     }
 
-    let expression = map(
-        tuple((expression_base, many0(preceded(tag("|"), call)))),
-        |(base, pipe_calls)| parse_expression(base, pipe_calls),
-    );
+    let (input, base) = alt((
+        map(template, Expression::Template),
+        map(call, Expression::Call),
+        map(path_expression, Expression::Path),
+    ))(input)?;
 
-    expression(input)
+    let (input, pipe_calls) = many0(preceded(tag("|"), call))(input)?;
+    let expression = parse_expression(base, pipe_calls);
+    Ok((input, expression))
 }
 
 macro_rules! impl_try_from {
@@ -350,7 +373,7 @@ mod tests {
     fn test_literal() {
         assert_eq!(
             "-3.14e-4".parse::<LiteralValue>().unwrap(),
-            LiteralValue::Float(-0.000314)
+            LiteralValue::Float(-0.000_314)
         );
         assert_eq!(parse!(literal_value, "0"), LiteralValue::Integer(0));
         assert_eq!(parse!(literal_value, "124"), LiteralValue::Integer(124));
