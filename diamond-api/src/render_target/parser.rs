@@ -1,10 +1,10 @@
 use super::ast::*;
+use super::helpers::*;
 use nom::branch::alt;
-use nom::bytes::complete::{escaped_transform, is_not, tag, tag_no_case};
+use nom::bytes::complete::{is_not, tag, tag_no_case};
 use nom::character::complete::{char as c, digit1, none_of, one_of};
 use nom::combinator::{map, map_res, opt, recognize};
-//use nom::error::ErrorKind;
-//use nom::error::ParseError;
+
 use nom::error::{convert_error, VerboseError};
 use nom::multi::{fold_many1, many0, many1, separated_list, separated_nonempty_list};
 use nom::sequence::{delimited, preceded, terminated, tuple};
@@ -19,8 +19,8 @@ pub enum Number {
     Float(f64),
 }
 
-fn literal_value(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
-    let number = map_res(
+fn literal_number(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+    let (input, number) = map_res(
         recognize(tuple((
             opt(c('-')),
             digit1,
@@ -28,32 +28,44 @@ fn literal_value(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>>
             opt(tuple((one_of("eE"), opt(c('-')), digit1))),
         ))),
         parse_number,
-    );
+    )(input)?;
 
-    let string = map(
-        alt((
-            delimited(c('"'), recognize(opt(is_not("\""))), c('"')),
-            delimited(c('\''), recognize(opt(is_not("'"))), c('\'')),
-        )),
-        |s: &str| s.to_owned(),
-    );
+    match number {
+        Number::Float(v) => Ok((input, LiteralValue::Float(v))),
+        Number::Integer(v) => Ok((input, LiteralValue::Integer(v))),
+    }
+}
 
-    let boolean = alt((
+fn literal_string(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+    let (input, string) = alt((
+        delimited(c('"'), recognize(opt(is_not("\""))), c('"')),
+        delimited(c('\''), recognize(opt(is_not("'"))), c('\'')),
+    ))(input)?;
+
+    Ok((input, LiteralValue::String(string.to_owned())))
+}
+
+fn literal_boolean(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+    let (input, boolean) = alt((
         map(tag_no_case("true"), |_| true),
         map(tag_no_case("false"), |_| false),
-    ));
+    ))(input)?;
 
-    let literal_value = alt((
-        map(boolean, LiteralValue::Boolean),
-        map(number, |n| match n {
-            Number::Float(v) => LiteralValue::Float(v),
-            Number::Integer(v) => LiteralValue::Integer(v),
-        }),
-        map(string, LiteralValue::String),
-        map(tag_no_case("none"), |_| LiteralValue::None),
-    ));
+    Ok((input, LiteralValue::Boolean(boolean)))
+}
 
-    literal_value(input)
+fn literal_none(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+    let (input, _) = tag_no_case("none")(input)?;
+    Ok((input, LiteralValue::None))
+}
+
+fn literal_value(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+    alt((
+        literal_boolean,
+        literal_number,
+        literal_string,
+        literal_none,
+    ))(input)
 }
 
 fn ident(input: &str) -> IResult<&str, String, VerboseError<&str>> {
@@ -151,15 +163,19 @@ fn parse_call(argv: (String, Vec<(Option<String>, Arg)>)) -> Result<Call, String
 }
 
 // Path Expression
+fn partial_path_element_simple(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+    recognize(many1(one_of(
+        r##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##,
+    )))(input)
+}
 
 fn partial_path_element(input: &str) -> IResult<&str, String, VerboseError<&str>> {
-    escaped_transform(
-        recognize(many1(one_of(
-            r##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##,
-        ))),
+    parser_escaped_transform(
+        partial_path_element_simple,
         '\\',
         one_of(r#"(){}[],.'"\|=$"#),
-    )(input)
+        input,
+    )
 }
 
 fn path_element_enum(input: &str) -> IResult<&str, Vec<String>, VerboseError<&str>> {
@@ -285,20 +301,19 @@ fn template(input: &str) -> IResult<&str, Template, VerboseError<&str>> {
 }
 
 // expression
+fn parse_expression(base: Expression, pipe_calls: Vec<Call>) -> Expression {
+    fn wrap(base: Expression, mut call: Call) -> Expression {
+        call.args.insert(0, Arg::Expression(base));
+        Expression::Call(call)
+    }
+    let mut wrapped = base;
+    for call in pipe_calls {
+        wrapped = wrap(wrapped, call);
+    }
+    wrapped
+}
 
 fn expression(input: &str) -> IResult<&str, Expression, VerboseError<&str>> {
-    fn parse_expression(base: Expression, pipe_calls: Vec<Call>) -> Expression {
-        fn wrap(base: Expression, mut call: Call) -> Expression {
-            call.args.insert(0, Arg::Expression(base));
-            Expression::Call(call)
-        }
-        let mut wrapped = base;
-        for call in pipe_calls {
-            wrapped = wrap(wrapped, call);
-        }
-        wrapped
-    }
-
     let (input, base) = alt((
         map(template, Expression::Template),
         map(call, Expression::Call),
@@ -484,6 +499,11 @@ mod tests {
     }
 
     #[test]
+    fn test_partial_path_element_simple() {
+        assert!(partial_path_element_simple("").is_err())
+    }
+
+    #[test]
     fn test_partial_path_element() {
         assert_eq!(parse!(partial_path_element, "a").to_string().as_str(), "a");
         assert_eq!(
@@ -496,6 +516,8 @@ mod tests {
                 .as_str(),
             "abc[de]f123"
         );
+
+        assert!(partial_path_element("").is_err());
     }
 
     #[test]
@@ -511,13 +533,24 @@ mod tests {
     }
 
     #[test]
+    fn test_path_word_element() {
+        let (_, element) = path_element("a").unwrap();
+        assert_eq!(element, PathElement::Partial("a".to_string()));
+
+        let (_, element) = path_element("abc").unwrap();
+        assert_eq!(element, PathElement::Partial("abc".to_string()));
+
+        assert!(path_element("").is_err());
+    }
+
+    #[test]
     fn test_path_word() {
+        let (_, word) = path_word("a").unwrap();
+        assert_eq!(word, PathWord(vec![PathElement::Partial("a".to_string())]));
+
+        let (_, word) = path_word("abc").unwrap();
         assert_eq!(
-            "a".parse::<PathWord>().unwrap(),
-            PathWord(vec![PathElement::Partial("a".to_string())])
-        );
-        assert_eq!(
-            "abc".parse::<PathWord>().unwrap(),
+            word,
             PathWord(vec![PathElement::Partial("abc".to_string())])
         );
     }
@@ -596,7 +629,7 @@ mod tests {
             parse!(path_expression, r"emea.events\[\]\{\}.clicks{2018,2019}.05")
                 .to_string()
                 .as_str(),
-            "emea.events\\[\\]\\{\\}.clicks{2018,2019}.05"
+            "emea.events[]{}.clicks{2018,2019}.05"
         );
     }
 
