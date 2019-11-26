@@ -23,4 +23,4 @@ nom = "4"
 chrono = "0.4"
 
 [dev-dependencies]
-bytes = "0.4"
+bytes = "0.5"
