@@ -50,14 +50,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tcp_server = async move {
         let mut incoming = tcp_listener.incoming();
         while let Some(sock) = incoming.next().await {
-            let mut framed_sock = Framed::new(sock.unwrap(), LinesCodec::new());
-            let conf = config_tcp.clone();
-
-            while let Some(line) = framed_sock.next().await {
-                match line {
-                    Ok(line) => update_silently(&line, &conf),
-                    Err(e) => eprintln!("accept error = {:?}", e),
+            match sock {
+                Ok(sock) => {
+                    let mut framed_sock = Framed::new(sock, LinesCodec::new());
+                    while let Some(line) = framed_sock.next().await {
+                        match line {
+                            Ok(line) => update_silently(&line, &config_tcp),
+                            Err(e) => eprintln!("tcp receive error = {:?}", e),
+                        }
+                    }
                 }
+                Err(e) => eprintln!("tcp accept error = {:?}", e),
             }
         }
     };
@@ -67,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         while let Some(line) = incoming.next().await {
             match line {
                 Ok((line, _)) => update_silently(&line, &config_udp),
-                Err(e) => eprintln!("accept error = {:?}", e),
+                Err(e) => eprintln!("udp receive error = {:?}", e),
             }
         }
     };
