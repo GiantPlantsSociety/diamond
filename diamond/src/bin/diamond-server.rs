@@ -1,14 +1,16 @@
 use diamond::settings::Settings;
 use diamond::update_silently;
-use failure::Error;
+use futures::join;
+use futures::stream::StreamExt;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tokio::codec::Framed;
-use tokio::codec::LinesCodec;
-use tokio::net::{TcpListener, UdpFramed, UdpSocket};
-use tokio::prelude::*;
+use tokio::net::{TcpListener, UdpSocket};
+use tokio_util::codec::Framed;
+use tokio_util::codec::LinesCodec;
+use tokio_util::udp::UdpFramed;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "diamond-server")]
@@ -22,7 +24,10 @@ struct Args {
     generate: bool,
 }
 
-fn run(args: Args) -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::from_args();
+
     if args.generate {
         Settings::generate(args.config.unwrap())?;
         exit(1);
@@ -30,57 +35,44 @@ fn run(args: Args) -> Result<(), Error> {
 
     let settings = Settings::new(args.config)?;
 
-    let tcp_addr = format!("{0}:{1}", &settings.tcp.host, settings.tcp.port).parse()?;
-    let udp_addr = format!("{0}:{1}", &settings.udp.host, settings.udp.port).parse()?;
+    let tcp_addr: SocketAddr = format!("{0}:{1}", &settings.tcp.host, settings.tcp.port).parse()?;
+    let udp_addr: SocketAddr = format!("{0}:{1}", &settings.udp.host, settings.udp.port).parse()?;
 
-    let tcp_listener = TcpListener::bind(&tcp_addr)?;
-    let udp_listener = UdpSocket::bind(&udp_addr)?;
+    let mut tcp_listener = TcpListener::bind(&tcp_addr).await?;
+    println!("server running on tcp {}", tcp_addr);
+
+    let udp_listener = UdpSocket::bind(&udp_addr).await?;
+    println!("server running on udp {}", udp_addr);
 
     let config_tcp = Arc::new(settings);
     let config_udp = config_tcp.clone();
 
-    let tcp_server = tcp_listener
-        .incoming()
-        .for_each(move |sock| {
-            let framed_sock = Framed::new(sock, LinesCodec::new());
+    let tcp_server = async move {
+        let mut incoming = tcp_listener.incoming();
+        while let Some(sock) = incoming.next().await {
+            let mut framed_sock = Framed::new(sock.unwrap(), LinesCodec::new());
             let conf = config_tcp.clone();
 
-            framed_sock.for_each(move |line| {
-                update_silently(&line, &conf);
-                Ok(())
-            })
-        })
-        .map_err(|err| {
-            eprintln!("accept error = {:?}", err);
-        });
+            while let Some(line) = framed_sock.next().await {
+                match line {
+                    Ok(line) => update_silently(&line, &conf),
+                    Err(e) => eprintln!("accept error = {:?}", e),
+                }
+            }
+        }
+    };
 
-    println!("server running on tcp {}", tcp_addr);
+    let udp_server = async move {
+        let mut incoming = UdpFramed::new(udp_listener, LinesCodec::new());
+        while let Some(line) = incoming.next().await {
+            match line {
+                Ok((line, _)) => update_silently(&line, &config_udp),
+                Err(e) => eprintln!("accept error = {:?}", e),
+            }
+        }
+    };
 
-    let udp_server = UdpFramed::new(udp_listener, LinesCodec::new())
-        .for_each(move |(line, _)| {
-            update_silently(&line, &config_udp);
-            Ok(())
-        })
-        .map_err(|err| {
-            eprintln!("accept error = {:?}", err);
-        });
-
-    println!("server running on udp {}", udp_addr);
-
-    tokio::run({
-        tcp_server
-            .join(udp_server)
-            .map(|_| ())
-            .map_err(|e| println!("error = {:?}", e))
-    });
+    join!(udp_server, tcp_server);
 
     Ok(())
-}
-
-fn main() {
-    let args = Args::from_args();
-    if let Err(err) = run(args) {
-        eprintln!("{}", err);
-        exit(1);
-    }
 }
