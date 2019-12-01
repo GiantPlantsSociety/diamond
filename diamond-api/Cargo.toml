@@ -19,7 +19,7 @@ glob = "0.3"
 env_logger = "0.7"
 futures = "0.1"
 whisper = { path = "../whisper" }
-nom = "5"
+nom = { git = "https://github.com/AnderEnder/nom", branch = "escaped-fix" }
 chrono = "0.4"
 
 [dev-dependencies]

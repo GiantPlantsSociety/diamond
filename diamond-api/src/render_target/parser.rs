@@ -1,7 +1,6 @@
 use super::ast::*;
-use super::helpers::*;
 use nom::branch::alt;
-use nom::bytes::complete::{is_not, tag, tag_no_case};
+use nom::bytes::complete::{escaped_transform, is_not, tag, tag_no_case};
 use nom::character::complete::{char as c, digit1, none_of, one_of};
 use nom::combinator::{map, map_res, opt, recognize};
 
@@ -170,12 +169,11 @@ fn partial_path_element_simple(input: &str) -> IResult<&str, &str, VerboseError<
 }
 
 fn partial_path_element(input: &str) -> IResult<&str, String, VerboseError<&str>> {
-    parser_escaped_transform(
+    escaped_transform(
         partial_path_element_simple,
         '\\',
         one_of(r#"(){}[],.'"\|=$"#),
-        input,
-    )
+    )(input)
 }
 
 fn path_element_enum(input: &str) -> IResult<&str, Vec<String>, VerboseError<&str>> {
