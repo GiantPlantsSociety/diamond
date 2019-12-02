@@ -4,7 +4,7 @@ use nom::bytes::complete::{escaped_transform, is_not, tag, tag_no_case};
 use nom::character::complete::{char as c, digit1, none_of, one_of};
 use nom::combinator::{map, map_res, opt, recognize};
 
-use nom::error::{convert_error, VerboseError};
+use nom::error::{convert_error, VerboseError, VerboseErrorKind};
 use nom::multi::{fold_many1, many0, many1, separated_list, separated_nonempty_list};
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::{Err, IResult};
@@ -162,18 +162,24 @@ fn parse_call(argv: (String, Vec<(Option<String>, Arg)>)) -> Result<Call, String
 }
 
 // Path Expression
-fn partial_path_element_simple(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
-    recognize(many1(one_of(
-        r##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##,
-    )))(input)
-}
-
 fn partial_path_element(input: &str) -> IResult<&str, String, VerboseError<&str>> {
-    escaped_transform(
-        partial_path_element_simple,
+    let (inp, out) = escaped_transform(
+        one_of(
+            r##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##,
+        ),
         '\\',
         one_of(r#"(){}[],.'"\|=$"#),
-    )(input)
+    )(input)?;
+    if !out.is_empty() {
+        Ok((inp, out))
+    } else {
+        Err(Err::Error(VerboseError {
+            errors: vec![(
+                inp,
+                VerboseErrorKind::Context("Path element cannot be empty"),
+            )],
+        }))
+    }
 }
 
 fn path_element_enum(input: &str) -> IResult<&str, Vec<String>, VerboseError<&str>> {
@@ -504,11 +510,6 @@ mod tests {
     }
 
     #[test]
-    fn test_partial_path_element_simple() {
-        assert!(partial_path_element_simple("").is_err())
-    }
-
-    #[test]
     fn test_partial_path_element() {
         assert_eq!(parse!(partial_path_element, "a").to_string().as_str(), "a");
         assert_eq!(
@@ -562,6 +563,7 @@ mod tests {
 
     #[test]
     fn test_path_expression() {
+        assert!("a..b".parse::<PathExpression>().is_err());
         assert_eq!(
             "a.b.c".parse::<PathExpression>().unwrap(),
             PathExpression(vec![
