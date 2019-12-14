@@ -15,6 +15,7 @@ fn cmp_f64_abs(a: &f64, b: &f64) -> cmp::Ordering {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum AggregationMethod {
     Average,
     Sum,
