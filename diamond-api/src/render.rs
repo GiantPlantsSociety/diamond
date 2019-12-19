@@ -273,22 +273,16 @@ mod tests {
             .to_string();
         let status = response.status();
 
-        let body: Vec<bytes::Bytes> = response
+        let body = response
             .take_body()
-            .into_body::<bytes::Bytes>()
-            .collect()
+            .into_body::<Vec<u8>>()
+            .concat2()
             .wait()
             .unwrap();
-        let mut buf: Vec<u8> = Vec::with_capacity(1024);
-        body.iter().for_each(|bs| {
-            let mut v = bs[..].to_vec();
-            buf.append(&mut v);
-        });
-
         (
             status,
             content_type,
-            String::from_utf8(buf[..].to_vec()).unwrap(),
+            String::from_utf8(body.to_vec()).unwrap(),
         )
     }
 
