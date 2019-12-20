@@ -602,8 +602,7 @@ mod tests {
             ],
         }])?;
 
-        let rs =
-            r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#;
+        let rs = r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#;
 
         assert_eq!(rd, rs);
         Ok(())
@@ -626,7 +625,9 @@ mod tests {
         }]
         .to_vec();
 
-        let rs: Vec<RenderResponseEntry> = serde_json::from_str(r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#)?;
+        let rs: Vec<RenderResponseEntry> = serde_json::from_str(
+            r#"[{"target":"entries","datapoints":[[1.0,1311836008],[2.0,1311836009],[3.0,1311836010],[5.0,1311836011],[6.0,1311836012],[null,1311836013]]}]"#,
+        )?;
 
         assert_eq!(rd, rs);
         Ok(())
