@@ -21,6 +21,3 @@ futures = "0.1"
 whisper = { path = "../whisper" }
 nom = "5"
 chrono = "0.4"
-
-[dev-dependencies]
-bytes = "0.4"
