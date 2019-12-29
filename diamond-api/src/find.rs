@@ -1,7 +1,7 @@
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Form, Json, Query};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
-use futures::future::{err, result, Future};
+use futures::future::{FutureExt, LocalBoxFuture};
 use glob::Pattern;
 use serde::*;
 use std::convert::From;
@@ -85,20 +85,29 @@ pub struct FindQuery {
 
 impl FromRequest for FindQuery {
     type Error = Error;
-    type Future = Box<dyn Future<Item = Self, Error = Error>>;
+    type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
-            "application/x-www-form-urlencoded" => {
-                Box::new(Form::<FindQuery>::from_request(req, payload).map(|x| x.into_inner()))
-            }
-            "application/json" => {
-                Box::new(Json::<FindQuery>::from_request(req, payload).map(|x| x.into_inner()))
-            }
-            _ => Box::new(result(
-                Query::<FindQuery>::from_request(req, payload).map(|x| x.into_inner()),
-            )),
+            "application/x-www-form-urlencoded" => Form::<FindQuery>::from_request(req, payload)
+                .map(|r| match r {
+                    Ok(v) => Ok(v.into_inner()),
+                    Err(e) => Err(e.into()),
+                })
+                .boxed_local(),
+            "application/json" => Json::<FindQuery>::from_request(req, payload)
+                .map(|r| match r {
+                    Ok(v) => Ok(v.into_inner()),
+                    Err(e) => Err(e.into()),
+                })
+                .boxed_local(),
+            _ => Query::<FindQuery>::from_request(req, payload)
+                .map(|r| match r {
+                    Ok(v) => Ok(v.into_inner()),
+                    Err(e) => Err(e.into()),
+                })
+                .boxed_local(),
         }
     }
 }
@@ -218,10 +227,7 @@ fn walk_tree(
     Ok(metrics)
 }
 
-pub fn find_handler(
-    ctx: Data<Context>,
-    query: FindQuery,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+pub async fn find_handler(ctx: Data<Context>, query: FindQuery) -> Result<HttpResponse, Error> {
     match FindPath::from(&query) {
         Ok(path) => match walk_tree(&ctx.args.path, &path.path, &path.pattern) {
             Ok(metrics) => {
@@ -230,15 +236,15 @@ pub fn find_handler(
                         .iter()
                         .map(|x| JsonTreeLeaf::from(x.to_owned()))
                         .collect();
-                    result(Ok(HttpResponse::Ok().json(metrics_json)))
+                    Ok(HttpResponse::Ok().json(metrics_json))
                 } else {
                     let metrics_completer = MetricResponse { metrics };
-                    result(Ok(HttpResponse::Ok().json(metrics_completer)))
+                    Ok(HttpResponse::Ok().json(metrics_completer))
                 }
             }
-            Err(e) => err(e),
+            Err(e) => Err(e),
         },
-        Err(e) => err(ErrorInternalServerError(e)),
+        Err(e) => Err(ErrorInternalServerError(e)),
     }
 }
 
@@ -248,7 +254,7 @@ mod tests {
     use tempfile;
 
     use super::*;
-    use actix_web::test::{block_on, TestRequest};
+    use actix_web::test::TestRequest;
     use std::fs::create_dir;
     use std::fs::File;
     use std::path::{Path, PathBuf};
@@ -467,8 +473,8 @@ mod tests {
         assert_eq!(mleaf2, leaf2);
     }
 
-    #[test]
-    fn find_request_parse_url() -> Result<(), actix_web::error::Error> {
+    #[actix_rt::test]
+    async fn find_request_parse_url() -> Result<(), actix_web::error::Error> {
         let r =
             TestRequest::with_uri("/find?query=123&format=treejson&wildcards=1&from=0&until=10")
                 .to_srv_request();
@@ -483,12 +489,12 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(block_on(FindQuery::from_request(&req, &mut pl))?, params);
+        assert_eq!(FindQuery::from_request(&req, &mut pl).await?, params);
         Ok(())
     }
 
-    #[test]
-    fn find_request_parse_form() -> Result<(), actix_web::error::Error> {
+    #[actix_rt::test]
+    async fn find_request_parse_form() -> Result<(), actix_web::error::Error> {
         let r = TestRequest::with_uri("/find")
             .header("content-type", "application/x-www-form-urlencoded")
             .set_payload("query=123&format=treejson&wildcards=1&from=0&until=10")
@@ -504,12 +510,12 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(block_on(FindQuery::from_request(&req, &mut pl))?, params);
+        assert_eq!(FindQuery::from_request(&req, &mut pl).await?, params);
         Ok(())
     }
 
-    #[test]
-    fn find_request_parse_json() -> Result<(), actix_web::error::Error> {
+    #[actix_rt::test]
+    async fn find_request_parse_json() -> Result<(), actix_web::error::Error> {
         let r = TestRequest::with_uri("/render")
             .header("content-type", "application/json")
             .set_payload(
@@ -527,7 +533,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(block_on(FindQuery::from_request(&req, &mut pl))?, params);
+        assert_eq!(FindQuery::from_request(&req, &mut pl).await?, params);
         Ok(())
     }
 }

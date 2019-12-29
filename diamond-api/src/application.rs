@@ -20,8 +20,8 @@ pub fn app_config(ctx: Context) -> impl Fn(&mut ServiceConfig) {
     move |config: &mut ServiceConfig| {
         config
             .data(ctx.clone())
-            .service(resource("/render").to_async(render_handler))
-            .service(resource("/metrics/find").to_async(find_handler))
-            .service(resource("/metrics").to_async(find_handler));
+            .service(resource("/render").to(render_handler))
+            .service(resource("/metrics/find").to(find_handler))
+            .service(resource("/metrics").to(find_handler));
     }
 }

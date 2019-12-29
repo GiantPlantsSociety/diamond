@@ -5,7 +5,7 @@ use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Json};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse};
 use failure::err_msg;
-use futures::future::{err, result, Future};
+use futures::future::{ready, FutureExt, LocalBoxFuture};
 use serde::*;
 use std::iter::successors;
 use std::path::{Path, PathBuf};
@@ -52,21 +52,24 @@ impl FromStr for RenderQuery {
 
 impl FromRequest for RenderQuery {
     type Error = Error;
-    type Future = Box<dyn Future<Item = Self, Error = Error>>;
+    type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
     type Config = ();
 
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
-            "application/x-www-form-urlencoded" => Box::new(
-                String::from_request(req, payload)
-                    .and_then(|x| result(x.parse().map_err(ErrorInternalServerError))),
-            ),
-            "application/json" => {
-                Box::new(Json::<RenderQuery>::from_request(req, payload).map(|x| x.into_inner()))
-            }
-            _ => Box::new(result(
-                req.query_string().parse().map_err(ErrorInternalServerError),
-            )),
+            "application/x-www-form-urlencoded" => String::from_request(req, payload)
+                .map(|r| match r {
+                    Ok(v) => v.parse().map_err(ErrorInternalServerError),
+                    Err(e) => Err(e),
+                })
+                .boxed_local(),
+            "application/json" => Json::<RenderQuery>::from_request(req, payload)
+                .map(|r| match r {
+                    Ok(v) => Ok(v.into_inner()),
+                    Err(e) => Err(e.into()),
+                })
+                .boxed_local(),
+            _ => ready(req.query_string().parse().map_err(ErrorInternalServerError)).boxed_local(),
         }
     }
 }
@@ -176,10 +179,10 @@ pub struct RenderResponse {
     entries: Vec<Option<RenderResponseEntry>>,
 }
 
-pub fn render_handler(
+pub async fn render_handler(
     ctx: Data<Context>,
     query: RenderQuery,
-) -> impl Future<Item = HttpResponse, Error = failure::Error> {
+) -> Result<HttpResponse, failure::Error> {
     match Interval::new(query.from, query.until).map_err(err_msg) {
         Ok(interval) => {
             let response: Result<Vec<RenderResponseEntry>, ResponseError> = query
@@ -195,11 +198,11 @@ pub fn render_handler(
                 .collect();
 
             match response {
-                Ok(response) => result(Ok(format_response(response, query.format))),
-                Err(e) => err(e.into()),
+                Ok(response) => Ok(format_response(response, query.format)),
+                Err(e) => Err(e.into()),
             }
         }
-        Err(e) => err(e),
+        Err(e) => Err(e),
     }
 }
 
@@ -255,13 +258,12 @@ mod tests {
     use crate::opts::Args;
     use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use actix_web::http::StatusCode;
-    use actix_web::test::{block_on, TestRequest};
+    use actix_web::test::TestRequest;
     use failure::Error;
-    use futures::stream::Stream;
+    use futures::stream::StreamExt;
 
-    fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String, String) {
-        let f = render_handler(Data::new(ctx), query);
-        let mut response: HttpResponse = f.wait().ok().unwrap();
+    async fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String, String) {
+        let mut response: HttpResponse = render_handler(Data::new(ctx), query).await.ok().unwrap();
         let content_type: String = response
             .head()
             .headers()
@@ -276,18 +278,14 @@ mod tests {
         let body = response
             .take_body()
             .into_body::<Vec<u8>>()
-            .concat2()
-            .wait()
-            .unwrap();
-        (
-            status,
-            content_type,
-            String::from_utf8(body.to_vec()).unwrap(),
-        )
+            .map(|x| x.unwrap().to_vec())
+            .concat()
+            .await;
+        (status, content_type, String::from_utf8(body).unwrap())
     }
 
-    #[test]
-    fn render_handler_unsupported() {
+    #[actix_rt::test]
+    async fn render_handler_unsupported() {
         let formats: Vec<RenderFormat> = vec![
             RenderFormat::Png,
             RenderFormat::Raw,
@@ -311,15 +309,15 @@ mod tests {
                 from: 0,
                 until: 0,
             };
-            let (status, ct, response) = render_response(ctx, query);
+            let (status, ct, response) = render_response(ctx, query).await;
             assert_eq!(status, StatusCode::BAD_REQUEST);
             assert_eq!(ct, "text/plain");
             assert_eq!(response, format!("Format '{}' not supported", format));
         }
     }
 
-    #[test]
-    fn render_handler_json_ok_empty() {
+    #[actix_rt::test]
+    async fn render_handler_json_ok_empty() {
         let ctx = Context {
             args: Args {
                 path: PathBuf::new(),
@@ -334,14 +332,14 @@ mod tests {
             from: 0,
             until: 0,
         };
-        let (status, ct, response) = render_response(ctx, query);
+        let (status, ct, response) = render_response(ctx, query).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(ct, "application/json");
         assert_eq!(response, "[]");
     }
 
-    #[test]
-    fn render_handler_json_ok_full() {
+    #[actix_rt::test]
+    async fn render_handler_json_ok_full() {
         let t = 1_564_432_988;
         let ctx = Context {
             args: Args {
@@ -362,17 +360,17 @@ mod tests {
             from: 0,
             until: 0,
         };
-        let (status, ct, response) = render_response(ctx, query);
+        let (status, ct, response) = render_response(ctx, query).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(ct, "application/json");
         assert_eq!(
-            response,
-            "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,1564432988],[null,1564432998],[2.0,1564433088],[3.0,1564433988]]}]"
-        )
+                response,
+                "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,1564432988],[null,1564432998],[2.0,1564433088],[3.0,1564433988]]}]"
+            )
     }
 
-    #[test]
-    fn render_handler_csv_ok_empty() {
+    #[actix_rt::test]
+    async fn render_handler_csv_ok_empty() {
         let ctx = Context {
             args: Args {
                 path: PathBuf::new(),
@@ -387,14 +385,14 @@ mod tests {
             from: 0,
             until: 0,
         };
-        let (status, ct, response) = render_response(ctx, query);
+        let (status, ct, response) = render_response(ctx, query).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(ct, "text/csv");
         assert_eq!(response, "\n")
     }
 
-    #[test]
-    fn render_handler_csv_ok_full() {
+    #[actix_rt::test]
+    async fn render_handler_csv_ok_full() {
         let t = 1_564_432_988;
         let ctx = Context {
             args: Args {
@@ -415,13 +413,13 @@ mod tests {
             from: 0,
             until: 0,
         };
-        let (status, ct, response) = render_response(ctx, query);
+        let (status, ct, response) = render_response(ctx, query).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(ct, "text/csv");
         assert_eq!(
-            response,
-            "i.am.a.metric,2019-07-29 20:43:08,1.1\ni.am.a.metric,2019-07-29 20:44:08,2.2\ni.am.a.metric,2019-07-29 21:43:08,\ni.am.a.metric,2019-07-30 20:43:08,3.3\n"
-        )
+                response,
+                "i.am.a.metric,2019-07-29 20:43:08,1.1\ni.am.a.metric,2019-07-29 20:44:08,2.2\ni.am.a.metric,2019-07-29 21:43:08,\ni.am.a.metric,2019-07-30 20:43:08,3.3\n"
+            )
     }
 
     #[test]
@@ -646,8 +644,8 @@ mod tests {
         assert_eq!("".parse::<RenderFormat>(), Err(ParseError::RenderFormat));
     }
 
-    #[test]
-    fn render_request_parse_url() -> Result<(), actix_web::error::Error> {
+    #[actix_rt::test]
+    async fn render_request_parse_url() -> Result<(), actix_web::error::Error> {
         let req = TestRequest::with_uri("/render?target=app.numUsers&format=json&from=0&until=10")
             .to_http_request();
 
@@ -658,12 +656,12 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(block_on(RenderQuery::extract(&req))?, params);
+        assert_eq!(RenderQuery::extract(&req).await?, params);
         Ok(())
     }
 
-    #[test]
-    fn render_request_parse_form() -> Result<(), actix_web::error::Error> {
+    #[actix_rt::test]
+    async fn render_request_parse_form() -> Result<(), actix_web::error::Error> {
         let s = "target=app.numUsers&format=json&from=0&until=10";
 
         let (req, mut payload) =
@@ -679,14 +677,14 @@ mod tests {
             until: 10,
         };
 
-        let res = block_on(RenderQuery::from_request(&req, &mut payload))?;
+        let res = RenderQuery::from_request(&req, &mut payload).await?;
 
         assert_eq!(res, params);
         Ok(())
     }
 
-    #[test]
-    fn render_request_parse_json() -> Result<(), actix_web::error::Error> {
+    #[actix_rt::test]
+    async fn render_request_parse_json() -> Result<(), actix_web::error::Error> {
         let s = r#"{ "target":["app.numUsers"],"format":"json","from":"0","until":"10"}"#;
 
         let (req, mut pl) = TestRequest::with_uri("/render")
@@ -703,7 +701,7 @@ mod tests {
             until: 10,
         };
 
-        assert_eq!(block_on(RenderQuery::from_request(&req, &mut pl))?, params);
+        assert_eq!(RenderQuery::from_request(&req, &mut pl).await?, params);
         Ok(())
     }
 }

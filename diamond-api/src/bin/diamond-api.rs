@@ -44,7 +44,7 @@ fn run(args: Args) -> io::Result<()> {
             .default_service(web::route().to(HttpResponse::NotFound))
     })
     .bind(listen)?
-    .run()?;
+    .run();
 
     Ok(())
 }
