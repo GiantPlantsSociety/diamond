@@ -1,3 +1,4 @@
+use actix_rt::System;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use diamond_api::application::{app_config, Context, Walker};
@@ -37,6 +38,8 @@ fn run(args: Args) -> io::Result<()> {
         args,
     };
 
+    let sys = System::new("diamond-api");
+
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -44,9 +47,9 @@ fn run(args: Args) -> io::Result<()> {
             .default_service(web::route().to(HttpResponse::NotFound))
     })
     .bind(listen)?
-    .run()?;
+    .run();
 
-    Ok(())
+    sys.run()
 }
 
 fn main() {
