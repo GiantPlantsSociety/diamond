@@ -23,8 +23,6 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
     - name: Dependencies(macosx)
       run: |
-        brew update
-        brew link --overwrite python
         brew install rrdtool
       if: matrix.os == 'macOS-latest'
     - name: Disable optimisation for bench build
