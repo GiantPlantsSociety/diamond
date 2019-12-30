@@ -91,22 +91,13 @@ impl FromRequest for FindQuery {
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
             "application/x-www-form-urlencoded" => Form::<FindQuery>::from_request(req, payload)
-                .map(|r| match r {
-                    Ok(v) => Ok(v.into_inner()),
-                    Err(e) => Err(e.into()),
-                })
+                .map(|r| Ok(r?.into_inner()))
                 .boxed_local(),
             "application/json" => Json::<FindQuery>::from_request(req, payload)
-                .map(|r| match r {
-                    Ok(v) => Ok(v.into_inner()),
-                    Err(e) => Err(e.into()),
-                })
+                .map(|r| Ok(r?.into_inner()))
                 .boxed_local(),
             _ => Query::<FindQuery>::from_request(req, payload)
-                .map(|r| match r {
-                    Ok(v) => Ok(v.into_inner()),
-                    Err(e) => Err(e.into()),
-                })
+                .map(|r| Ok(r?.into_inner()))
                 .boxed_local(),
         }
     }
@@ -228,24 +219,20 @@ fn walk_tree(
 }
 
 pub async fn find_handler(ctx: Data<Context>, query: FindQuery) -> Result<HttpResponse, Error> {
-    match FindPath::from(&query) {
-        Ok(path) => match walk_tree(&ctx.args.path, &path.path, &path.pattern) {
-            Ok(metrics) => {
-                if query.format == FindFormat::TreeJson {
-                    let metrics_json: Vec<JsonTreeLeaf> = metrics
-                        .iter()
-                        .map(|x| JsonTreeLeaf::from(x.to_owned()))
-                        .collect();
-                    Ok(HttpResponse::Ok().json(metrics_json))
-                } else {
-                    let metrics_completer = MetricResponse { metrics };
-                    Ok(HttpResponse::Ok().json(metrics_completer))
-                }
-            }
-            Err(e) => Err(e),
-        },
-        Err(e) => Err(ErrorInternalServerError(e)),
-    }
+    let path = FindPath::from(&query).map_err(ErrorInternalServerError)?;
+
+    walk_tree(&ctx.args.path, &path.path, &path.pattern).map(|metrics| {
+        if query.format == FindFormat::TreeJson {
+            let metrics_json: Vec<JsonTreeLeaf> = metrics
+                .iter()
+                .map(|x| JsonTreeLeaf::from(x.to_owned()))
+                .collect();
+            HttpResponse::Ok().json(metrics_json)
+        } else {
+            let metrics_completer = MetricResponse { metrics };
+            HttpResponse::Ok().json(metrics_completer)
+        }
+    })
 }
 
 #[cfg(test)]

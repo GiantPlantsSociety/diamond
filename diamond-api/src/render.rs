@@ -58,16 +58,14 @@ impl FromRequest for RenderQuery {
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
             "application/x-www-form-urlencoded" => String::from_request(req, payload)
-                .map(|r| match r {
-                    Ok(v) => v.parse().map_err(ErrorInternalServerError),
-                    Err(e) => Err(e),
+                .map(|r| {
+                    Ok(r?
+                        .parse::<RenderQuery>()
+                        .map_err(ErrorInternalServerError)?)
                 })
                 .boxed_local(),
             "application/json" => Json::<RenderQuery>::from_request(req, payload)
-                .map(|r| match r {
-                    Ok(v) => Ok(v.into_inner()),
-                    Err(e) => Err(e.into()),
-                })
+                .map(|r| Ok(r?.into_inner()))
                 .boxed_local(),
             _ => ready(req.query_string().parse().map_err(ErrorInternalServerError)).boxed_local(),
         }
@@ -183,27 +181,22 @@ pub async fn render_handler(
     ctx: Data<Context>,
     query: RenderQuery,
 ) -> Result<HttpResponse, failure::Error> {
-    match Interval::new(query.from, query.until).map_err(err_msg) {
-        Ok(interval) => {
-            let response: Result<Vec<RenderResponseEntry>, ResponseError> = query
-                .target
-                .into_iter()
-                .map(|metric| {
-                    let w = walker(ctx.walker.clone());
-                    w(&metric, interval).map(|points| RenderResponseEntry {
-                        datapoints: points,
-                        target: metric,
-                    })
-                })
-                .collect();
+    let interval = Interval::new(query.from, query.until).map_err(err_msg)?;
+    let format = query.format;
 
-            match response {
-                Ok(response) => Ok(format_response(response, query.format)),
-                Err(e) => Err(e.into()),
-            }
-        }
-        Err(e) => Err(e),
-    }
+    let response: Result<Vec<RenderResponseEntry>, ResponseError> = query
+        .target
+        .into_iter()
+        .map(|metric| {
+            let w = walker(ctx.walker.clone());
+            w(&metric, interval).map(|points| RenderResponseEntry {
+                datapoints: points,
+                target: metric,
+            })
+        })
+        .collect();
+
+    Ok(response.map(|r| format_response(r, format))?)
 }
 
 // TODO: Extract code BELOW to response_format_csv module
