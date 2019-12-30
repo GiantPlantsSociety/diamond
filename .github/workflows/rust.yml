@@ -24,7 +24,6 @@ jobs:
     - name: Dependencies(macosx)
       run: |
         brew update
-        brew install python
         brew link --overwrite python
         brew install rrdtool
       if: matrix.os == 'macOS-latest'
