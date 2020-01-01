@@ -29,9 +29,9 @@ impl Dump for Vec<u8> {
     }
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_update_snapshot() -> Result<(), Error> {
+async fn test_update_snapshot() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "update_snapshot");
 
@@ -41,7 +41,8 @@ fn test_update_snapshot() -> Result<(), Error> {
                 seconds_per_point: 1,
                 points: 10,
             })
-            .build(path.clone())?;
+            .build(path.clone())
+            .await?;
     }
 
     let header = Vec::new()
@@ -81,14 +82,15 @@ fn test_update_snapshot() -> Result<(), Error> {
     );
 
     {
-        let mut file = WhisperFile::open(&path)?;
+        let mut file = WhisperFile::open(&path).await?;
         file.update_many(
             &[Point {
                 interval: 0x5b171b00,
                 value: 123.0,
             }],
             0x5b171b04,
-        )?;
+        )
+        .await?;
     }
 
     assert_eq!(
@@ -118,14 +120,15 @@ fn test_update_snapshot() -> Result<(), Error> {
     );
 
     {
-        let mut file = WhisperFile::open(&path)?;
+        let mut file = WhisperFile::open(&path).await?;
         file.update_many(
             &[Point {
                 interval: 0x5b171b01,
                 value: 123.0,
             }],
             0x5b171b04,
-        )?;
+        )
+        .await?;
     }
 
     assert_eq!(
@@ -155,7 +158,7 @@ fn test_update_snapshot() -> Result<(), Error> {
     );
 
     {
-        let mut file = WhisperFile::open(&path)?;
+        let mut file = WhisperFile::open(&path).await?;
         file.update_many(
             &[
                 Point {
@@ -168,7 +171,8 @@ fn test_update_snapshot() -> Result<(), Error> {
                 },
             ],
             0x5b171b04,
-        )?;
+        )
+        .await?;
     }
 
     assert_eq!(
@@ -200,9 +204,9 @@ fn test_update_snapshot() -> Result<(), Error> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
+async fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "update_and_aggregate_snapshot");
 
@@ -216,7 +220,8 @@ fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
                 seconds_per_point: 2,
                 points: 10,
             })
-            .build(path.clone())?;
+            .build(path.clone())
+            .await?;
     }
 
     let header = Vec::new()
@@ -272,14 +277,15 @@ fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
     );
 
     {
-        let mut file = WhisperFile::open(&path)?;
+        let mut file = WhisperFile::open(&path).await?;
         file.update_many(
             &[Point {
                 interval: 0x5b171b00,
                 value: 123.0,
             }],
             0x5b171b04,
-        )?;
+        )
+        .await?;
     }
 
     assert_eq!(
@@ -321,14 +327,15 @@ fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
     );
 
     {
-        let mut file = WhisperFile::open(&path)?;
+        let mut file = WhisperFile::open(&path).await?;
         file.update_many(
             &[Point {
                 interval: 0x5b171b01,
                 value: 23.0,
             }],
             0x5b171b04,
-        )?;
+        )
+        .await?;
     }
 
     assert_eq!(
@@ -370,7 +377,7 @@ fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
     );
 
     {
-        let mut file = WhisperFile::open(&path)?;
+        let mut file = WhisperFile::open(&path).await?;
         file.update_many(
             &[
                 Point {
@@ -383,7 +390,8 @@ fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
                 },
             ],
             0x5b171b04,
-        )?;
+        )
+        .await?;
     }
 
     assert_eq!(

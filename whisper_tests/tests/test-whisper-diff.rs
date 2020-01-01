@@ -5,9 +5,9 @@ use whisper::retention::*;
 use whisper::*;
 use whisper_tests::*;
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_diff_simple_filtered() -> Result<(), Error> {
+async fn test_diff_simple_filtered() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "diff1_1");
@@ -32,7 +32,8 @@ fn test_diff_simple_filtered() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
     let _file2 = create_and_update_points(
         &path2,
@@ -55,9 +56,10 @@ fn test_diff_simple_filtered() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
-    let diff_points = whisper::diff::diff(&path1, &path2, true, now, now)?;
+    let diff_points = whisper::diff::diff(&path1, &path2, true, now, now).await?;
 
     assert_eq!(diff_points[0].points, 1, "there should be 1 point");
     assert_eq!(diff_points[0].total, 1, "there should be total 1");
@@ -74,9 +76,9 @@ fn test_diff_simple_filtered() -> Result<(), Error> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_diff_simple_unfiltered() -> Result<(), Error> {
+async fn test_diff_simple_unfiltered() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "diff2_1");
@@ -105,7 +107,8 @@ fn test_diff_simple_unfiltered() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
     let _file2 = create_and_update_points(
         &path2,
@@ -132,9 +135,10 @@ fn test_diff_simple_unfiltered() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
-    let diff_points = whisper::diff::diff(&path1, &path2, false, now, now)?;
+    let diff_points = whisper::diff::diff(&path1, &path2, false, now, now).await?;
 
     assert_eq!(
         diff_points[0].points, 6,
@@ -186,9 +190,9 @@ fn test_diff_simple_unfiltered() -> Result<(), Error> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_diff_error() -> Result<(), Error> {
+async fn test_diff_error() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "diff1_1");
@@ -201,16 +205,18 @@ fn test_diff_error() -> Result<(), Error> {
             seconds_per_point: 60,
             points: 10,
         })
-        .build(&path1)?;
+        .build(&path1)
+        .await?;
 
     let _file2 = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
             points: 11,
         })
-        .build(&path2)?;
+        .build(&path2)
+        .await?;
 
-    let diff_result = whisper::diff::diff(&path1, &path2, false, now, now);
+    let diff_result = whisper::diff::diff(&path1, &path2, false, now, now).await;
 
     assert!(diff_result.is_err());
 

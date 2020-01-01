@@ -1,7 +1,9 @@
 use crate::point::Point;
 use crate::POINT_SIZE;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io;
+use std::io::SeekFrom;
+use tokio::io::{
+    self, AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWrite, AsyncWriteExt,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ArchiveInfo {
@@ -19,10 +21,10 @@ impl ArchiveInfo {
         self.points as usize * POINT_SIZE
     }
 
-    pub fn read<R: io::Read>(read: &mut R) -> Result<Self, io::Error> {
-        let offset = read.read_u32::<BigEndian>()?;
-        let seconds_per_point = read.read_u32::<BigEndian>()?;
-        let points = read.read_u32::<BigEndian>()?;
+    pub async fn read<R: AsyncRead + Unpin>(read: &mut R) -> Result<Self, io::Error> {
+        let offset = read.read_u32().await?;
+        let seconds_per_point = read.read_u32().await?;
+        let points = read.read_u32().await?;
         Ok(Self {
             offset,
             seconds_per_point,
@@ -30,16 +32,18 @@ impl ArchiveInfo {
         })
     }
 
-    pub fn write<W: io::Write>(&self, write: &mut W) -> Result<(), io::Error> {
-        write.write_u32::<BigEndian>(self.offset)?;
-        write.write_u32::<BigEndian>(self.seconds_per_point)?;
-        write.write_u32::<BigEndian>(self.points)?;
-        Ok(())
+    pub async fn write<W: AsyncWrite + Unpin>(&self, write: &mut W) -> Result<(), io::Error> {
+        write.write_u32(self.offset).await?;
+        write.write_u32(self.seconds_per_point).await?;
+        write.write_u32(self.points).await
     }
 
-    pub fn read_base<R: io::Read + io::Seek>(&self, r: &mut R) -> Result<Point, io::Error> {
-        r.seek(io::SeekFrom::Start(self.offset.into()))?;
-        let base = Point::read(r)?;
+    pub async fn read_base<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &self,
+        r: &mut R,
+    ) -> Result<Point, io::Error> {
+        r.seek(SeekFrom::Start(self.offset.into())).await?;
+        let base = Point::read(r).await?;
         Ok(base)
     }
 }

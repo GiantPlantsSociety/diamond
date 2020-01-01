@@ -13,9 +13,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
-fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), Error> {
-    let mut file_src = WhisperFile::open(path_src)?;
-    let mut file_dst = WhisperFile::open(path_dst)?;
+async fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), Error> {
+    let mut file_src = WhisperFile::open(path_src).await?;
+    let mut file_dst = WhisperFile::open(path_dst).await?;
 
     let meta = file_src.info().clone();
     let mut until = now;
@@ -24,8 +24,9 @@ fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), E
         let interval =
             Interval::new(0, until).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        let (adjusted_interval, data) =
-            file_src.fetch_points(archive.seconds_per_point, interval, now)?;
+        let (adjusted_interval, data) = file_src
+            .fetch_points(archive.seconds_per_point, interval, now)
+            .await?;
 
         if let Some(ref data) = data {
             let mut points_to_write: Vec<Point> = data
@@ -52,16 +53,16 @@ fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), E
             println!("timepoints_to_update: {}", values);
 
             until = points_to_write.get(0).map(|x| x.interval).unwrap_or(now);
-            file_dst.update_many(&points_to_write, now)?;
+            file_dst.update_many(&points_to_write, now).await?;
         }
     }
 
     Ok(())
 }
 
-fn migrate_nonaggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), Error> {
-    let mut file_src = WhisperFile::open(path_src)?;
-    let mut file_dst = WhisperFile::open(path_dst)?;
+async fn migrate_nonaggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), Error> {
+    let mut file_src = WhisperFile::open(path_src).await?;
+    let mut file_dst = WhisperFile::open(path_dst).await?;
 
     let interval = Interval::new(0, now).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
@@ -70,8 +71,9 @@ fn migrate_nonaggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<()
     archives.sort_by_key(|archive| archive.retention());
 
     for archive in &archives {
-        let (_adjusted_interval, data) =
-            file_src.fetch_points(archive.seconds_per_point, interval, now)?;
+        let (_adjusted_interval, data) = file_src
+            .fetch_points(archive.seconds_per_point, interval, now)
+            .await?;
 
         if let Some(ref data) = data {
             let mut points_to_write: Vec<Point> = data
@@ -81,14 +83,14 @@ fn migrate_nonaggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<()
                 .collect();
 
             points_to_write.sort_by_key(|point| point.interval);
-            file_dst.update_many(&points_to_write, now)?;
+            file_dst.update_many(&points_to_write, now).await?;
         }
     }
 
     Ok(())
 }
 
-fn migrate_points(
+async fn migrate_points(
     path_src: &Path,
     path_dst: &Path,
     aggregate: bool,
@@ -100,17 +102,17 @@ fn migrate_points(
 
     if aggregate {
         println!("Migrating data with aggregation...");
-        migrate_aggregate(path_src, path_dst, now)?;
+        migrate_aggregate(path_src, path_dst, now).await?;
     } else {
         println!("Migrating data without aggregation...");
-        migrate_nonaggregate(path_src, path_dst, now)?;
+        migrate_nonaggregate(path_src, path_dst, now).await?;
     }
 
     Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn resize(
+pub async fn resize(
     path_src: &Path,
     path_new: Option<&Path>,
     retentions: &[Retention],
@@ -142,12 +144,13 @@ pub fn resize(
         .add_retentions(retentions)
         .x_files_factor(x_files_factor)
         .aggregation_method(aggregation_method)
-        .build(&path_dst)?;
+        .build(&path_dst)
+        .await?;
 
     let size = path_dst.metadata()?.len();
     println!("Created: {} ({} bytes)", path_dst.display(), size);
 
-    migrate_points(path_src, &path_dst, aggregate, now)?;
+    migrate_points(path_src, &path_dst, aggregate, now).await?;
 
     if path_new.is_some() {
         return Ok(());

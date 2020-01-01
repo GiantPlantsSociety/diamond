@@ -1,5 +1,6 @@
 use bencher::Bencher;
 use bencher::{benchmark_group, benchmark_main};
+use futures::executor;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::builder::{BuilderError, WhisperBuilder};
@@ -12,7 +13,7 @@ use whisper_tests::*;
 const SECONDS_AGO: u32 = 3500;
 const VALUE_STEP: f64 = 0.2;
 
-fn create_file(path: &Path) -> Result<WhisperFile, BuilderError> {
+async fn create_file(path: &Path) -> Result<WhisperFile, BuilderError> {
     WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 1,
@@ -28,6 +29,7 @@ fn create_file(path: &Path) -> Result<WhisperFile, BuilderError> {
         })
         .x_files_factor(0.1)
         .build(path)
+        .await
 }
 
 fn current_time() -> u32 {
@@ -41,7 +43,7 @@ fn test_create(bench: &mut Bencher) {
     let i = &mut index;
     bench.iter(|| {
         let path = get_file_path(&temp_dir, "whisper_create");
-        create_file(&path).expect("creating");
+        executor::block_on(create_file(&path)).expect("creating");
         *i += 1;
     });
 }
@@ -49,7 +51,7 @@ fn test_create(bench: &mut Bencher) {
 fn test_update(bench: &mut Bencher) {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "whisper_update");
-    let mut file = create_file(&path).expect("Create file for update");
+    let mut file = executor::block_on(create_file(&path)).expect("Create file for update");
 
     let mut current_value = 0.5;
     let i = &mut current_value;
@@ -57,13 +59,13 @@ fn test_update(bench: &mut Bencher) {
 
     bench.iter(|| {
         for j in 0..SECONDS_AGO {
-            file.update(
+            executor::block_on(file.update(
                 &Point {
                     interval: now - SECONDS_AGO + j,
                     value: *i,
                 },
                 now,
-            )
+            ))
             .expect("update");
             *i += VALUE_STEP;
         }
@@ -73,19 +75,19 @@ fn test_update(bench: &mut Bencher) {
 fn test_fetch(bench: &mut Bencher) {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "whisper_fetch");
-    let mut file = create_file(&path).expect("Create file for fetching");
+    let mut file = executor::block_on(create_file(&path)).expect("Create file for fetching");
 
     let mut current_value = 0.5;
     let now = current_time();
 
     for j in 0..SECONDS_AGO {
-        file.update(
+        executor::block_on(file.update(
             &Point {
                 interval: now - SECONDS_AGO + j,
                 value: current_value,
             },
             now,
-        )
+        ))
         .expect("update");
         current_value += VALUE_STEP;
     }
@@ -95,14 +97,14 @@ fn test_fetch(bench: &mut Bencher) {
     let interval = Interval::new(from_time, until_time).expect("interval");
     bench.iter(|| {
         let seconds_per_point = file.suggest_archive(interval, now).expect("Archive");
-        file.fetch(seconds_per_point, interval, now).expect("fetch");
+        executor::block_on(file.fetch(seconds_per_point, interval, now)).expect("fetch");
     });
 }
 
 fn test_update_fetch(bench: &mut Bencher) {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "whisper_update");
-    let mut file = create_file(&path).expect("Create file for update");
+    let mut file = executor::block_on(create_file(&path)).expect("Create file for update");
 
     let mut current_value = 0.5;
     let i = &mut current_value;
@@ -113,18 +115,18 @@ fn test_update_fetch(bench: &mut Bencher) {
     let interval = Interval::new(from_time, until_time).expect("interval");
     bench.iter(|| {
         for j in 0..SECONDS_AGO {
-            file.update(
+            executor::block_on(file.update(
                 &Point {
                     interval: now - SECONDS_AGO + j,
                     value: *i,
                 },
                 now,
-            )
+            ))
             .expect("update");
             *i += VALUE_STEP;
         }
         let seconds_per_point = file.suggest_archive(interval, now).expect("Archive");
-        file.fetch(seconds_per_point, interval, now).expect("fetch");
+        executor::block_on(file.fetch(seconds_per_point, interval, now)).expect("fetch");
     });
 }
 

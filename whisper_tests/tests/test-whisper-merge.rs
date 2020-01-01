@@ -6,9 +6,9 @@ use whisper::point::*;
 use whisper::retention::*;
 use whisper_tests::*;
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_merge_update() -> Result<(), Error> {
+async fn test_merge_update() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_1");
@@ -16,11 +16,11 @@ fn test_merge_update() -> Result<(), Error> {
 
     let now = 1528240800;
 
-    let mut _file1 = create_and_update_many(&path1, &[now - 60, now - 180, now - 300], now)?;
-    let mut file2 = create_and_update_many(&path2, &[now - 120, now - 360, now - 480], now)?;
+    let mut _file1 = create_and_update_many(&path1, &[now - 60, now - 180, now - 300], now).await?;
+    let mut file2 = create_and_update_many(&path2, &[now - 120, now - 360, now - 480], now).await?;
 
-    whisper::merge::merge(&path1, &path2, 0, now, now)?;
-    let points = file2.dump(60)?;
+    whisper::merge::merge(&path1, &path2, 0, now, now).await?;
+    let points = file2.dump(60).await?;
 
     for delta in &[60, 180, 300] {
         assert!(
@@ -41,9 +41,9 @@ fn test_merge_update() -> Result<(), Error> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_merge_update_many() -> Result<(), Error> {
+async fn test_merge_update_many() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_3");
@@ -51,11 +51,11 @@ fn test_merge_update_many() -> Result<(), Error> {
 
     let now = 1528240800;
 
-    let mut _file1 = create_and_update_many(&path1, &[now - 60, now - 180, now - 300], now)?;
-    let mut file2 = create_and_update_many(&path2, &[now - 120, now - 360, now - 480], now)?;
+    let mut _file1 = create_and_update_many(&path1, &[now - 60, now - 180, now - 300], now).await?;
+    let mut file2 = create_and_update_many(&path2, &[now - 120, now - 360, now - 480], now).await?;
 
-    whisper::merge::merge(&path1, &path2, 0, now, now)?;
-    let points = file2.dump(60)?;
+    whisper::merge::merge(&path1, &path2, 0, now, now).await?;
+    let points = file2.dump(60).await?;
 
     for delta in &[60, 180, 300] {
         assert!(
@@ -76,9 +76,9 @@ fn test_merge_update_many() -> Result<(), Error> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_merge_errors() -> Result<(), builder::BuilderError> {
+async fn test_merge_errors() -> Result<(), builder::BuilderError> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_7");
@@ -92,31 +92,40 @@ fn test_merge_errors() -> Result<(), builder::BuilderError> {
             seconds_per_point: 60,
             points: 11,
         })
-        .build(&path1)?;
+        .build(&path1)
+        .await?;
 
     let _file2 = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
             points: 12,
         })
-        .build(&path2)?;
+        .build(&path2)
+        .await?;
 
     let _file3 = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
             points: 11,
         })
-        .build(&path3)?;
+        .build(&path3)
+        .await?;
 
-    assert!(whisper::merge::merge(&path1, &path2, 0, now, now).is_err());
-    assert!(whisper::merge::merge(&path1, &path3, now - 10, now - 20, now).is_err());
+    assert!(whisper::merge::merge(&path1, &path2, 0, now, now)
+        .await
+        .is_err());
+    assert!(
+        whisper::merge::merge(&path1, &path3, now - 10, now - 20, now)
+            .await
+            .is_err()
+    );
 
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_merge_overwrite() -> Result<(), Error> {
+async fn test_merge_overwrite() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -141,7 +150,8 @@ fn test_merge_overwrite() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
     let mut file2 = create_and_update_points(
         &path2,
@@ -164,10 +174,11 @@ fn test_merge_overwrite() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
-    whisper::merge::merge(&path1, &path2, 0, now, now)?;
-    let points = file2.dump(60)?;
+    whisper::merge::merge(&path1, &path2, 0, now, now).await?;
+    let points = file2.dump(60).await?;
 
     for delta in &[60, 180, 300] {
         assert!(
@@ -196,9 +207,9 @@ fn test_merge_overwrite() -> Result<(), Error> {
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_fill_overlap() -> Result<(), Error> {
+async fn test_fill_overlap() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -223,7 +234,8 @@ fn test_fill_overlap() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
     let mut file2 = create_and_update_points(
         &path2,
@@ -246,10 +258,11 @@ fn test_fill_overlap() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
-    whisper::fill::fill(&path1, &path2, now, now)?;
-    let points = file2.dump(60)?;
+    whisper::fill::fill(&path1, &path2, now, now).await?;
+    let points = file2.dump(60).await?;
 
     for delta in &[180] {
         assert!(

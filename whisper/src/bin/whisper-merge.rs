@@ -26,7 +26,7 @@ struct Args {
     until: Option<u32>,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     for filename in &[&args.from_path, &args.to_path] {
         if !filename.is_file() {
             return Err(format_err!(
@@ -40,14 +40,15 @@ fn run(args: &Args) -> Result<(), Error> {
     let from = args.from.unwrap_or(0);
     let until = args.until.unwrap_or(now);
 
-    merge(&args.from_path, &args.to_path, from, until, now)?;
+    merge(&args.from_path, &args.to_path, from, until, now).await?;
 
     Ok(())
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = run(&args).await {
         eprintln!("{}", err);
         exit(1);
     }

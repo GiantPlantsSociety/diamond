@@ -18,18 +18,19 @@ struct Args {
     points: Vec<Point>,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+async fn run(args: &Args) -> Result<(), Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
-    let mut file = WhisperFile::open(&args.path)?;
-    file.update_many(&args.points, now)?;
+    let mut file = WhisperFile::open(&args.path).await?;
+    file.update_many(&args.points, now).await?;
 
     Ok(())
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::from_args();
-    if let Err(err) = run(&args) {
+    if let Err(err) = run(&args).await {
         eprintln!("{}", err);
         exit(1);
     }

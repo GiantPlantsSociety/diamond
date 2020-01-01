@@ -4,9 +4,9 @@ use whisper::retention::*;
 use whisper::*;
 use whisper_tests::*;
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn issue8_many() -> Result<(), Error> {
+async fn issue8_many() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue8");
 
@@ -15,7 +15,8 @@ fn issue8_many() -> Result<(), Error> {
             seconds_per_point: 60,
             points: 10,
         })
-        .build(path)?;
+        .build(path)
+        .await?;
 
     file.update_many(
         &[Point {
@@ -23,17 +24,18 @@ fn issue8_many() -> Result<(), Error> {
             value: 123.0,
         }],
         1528240900,
-    )?;
+    )
+    .await?;
 
-    let points = file.dump(60)?;
+    let points = file.dump(60).await?;
     assert_eq!(points[0].interval, 1528240800);
 
     Ok(())
 }
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn issue8_single() -> Result<(), Error> {
+async fn issue8_single() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue8");
 
@@ -42,7 +44,8 @@ fn issue8_single() -> Result<(), Error> {
             seconds_per_point: 60,
             points: 10,
         })
-        .build(path)?;
+        .build(path)
+        .await?;
 
     file.update(
         &Point {
@@ -50,9 +53,10 @@ fn issue8_single() -> Result<(), Error> {
             value: 123.0,
         },
         1528240900,
-    )?;
+    )
+    .await?;
 
-    let points = file.dump(60)?;
+    let points = file.dump(60).await?;
     assert_eq!(points[0].interval, 1528240800);
 
     Ok(())

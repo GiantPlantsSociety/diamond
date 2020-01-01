@@ -3,8 +3,8 @@ use whisper::retention::*;
 use whisper::*;
 use whisper_tests::*;
 
-#[test]
-fn issue22_original() -> Result<(), failure::Error> {
+#[tokio::test]
+async fn issue22_original() -> Result<(), failure::Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22");
 
@@ -13,7 +13,8 @@ fn issue22_original() -> Result<(), failure::Error> {
             seconds_per_point: 1,
             points: 10,
         })
-        .build(path)?;
+        .build(path)
+        .await?;
 
     let now = 1000;
 
@@ -23,16 +24,19 @@ fn issue22_original() -> Result<(), failure::Error> {
             value: 100.0,
         },
         now,
-    )?;
+    )
+    .await?;
+
     file.update(
         &Point {
             interval: now - 2,
             value: 200.0,
         },
         now,
-    )?;
+    )
+    .await?;
 
-    let points = file.dump(1)?;
+    let points = file.dump(1).await?;
 
     assert_eq!(points[0].interval, now - 1);
     assert_eq!(points[9].interval, now - 2);
@@ -40,8 +44,8 @@ fn issue22_original() -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[test]
-fn issue22_many_archives() -> Result<(), failure::Error> {
+#[tokio::test]
+async fn issue22_many_archives() -> Result<(), failure::Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22_many");
 
@@ -54,7 +58,8 @@ fn issue22_many_archives() -> Result<(), failure::Error> {
             seconds_per_point: 4,
             points: 10,
         })
-        .build(path)?;
+        .build(path)
+        .await?;
 
     let now = 1000;
 
@@ -66,10 +71,11 @@ fn issue22_many_archives() -> Result<(), failure::Error> {
                 value: f64::from(delta) * 100.0,
             },
             now,
-        )?
+        )
+        .await?
     }
 
-    let points = file.dump(2)?;
+    let points = file.dump(2).await?;
 
     for delta in &[2, 4, 6, 8, 10, 12, 14, 16] {
         assert!(
@@ -83,7 +89,7 @@ fn issue22_many_archives() -> Result<(), failure::Error> {
         );
     }
 
-    let points2 = file.dump(4)?;
+    let points2 = file.dump(4).await?;
 
     for delta in &[4, 8, 12, 16] {
         assert!(
@@ -100,8 +106,8 @@ fn issue22_many_archives() -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[test]
-fn issue22_many_archives_once() -> Result<(), failure::Error> {
+#[tokio::test]
+async fn issue22_many_archives_once() -> Result<(), failure::Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22_many");
 
@@ -114,7 +120,8 @@ fn issue22_many_archives_once() -> Result<(), failure::Error> {
             seconds_per_point: 4,
             points: 10,
         })
-        .build(path)?;
+        .build(path)
+        .await?;
 
     let now = 1000;
 
@@ -154,9 +161,10 @@ fn issue22_many_archives_once() -> Result<(), failure::Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
-    let points = file.dump(2)?;
+    let points = file.dump(2).await?;
 
     for delta in &[2, 4, 6, 8, 10, 12, 14, 16] {
         assert!(
@@ -170,7 +178,7 @@ fn issue22_many_archives_once() -> Result<(), failure::Error> {
         );
     }
 
-    let points2 = file.dump(4)?;
+    let points2 = file.dump(4).await?;
 
     for delta in &[4, 8, 12, 16] {
         assert!(
@@ -187,8 +195,8 @@ fn issue22_many_archives_once() -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[test]
-fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
+#[tokio::test]
+async fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22_many");
 
@@ -201,7 +209,8 @@ fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
             seconds_per_point: 4,
             points: 10,
         })
-        .build(path)?;
+        .build(path)
+        .await?;
 
     let now = 1000;
 
@@ -212,10 +221,11 @@ fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
                 value: f64::from(delta) * 100.0,
             },
             now,
-        )?
+        )
+        .await?
     }
 
-    let points = file.dump(2)?;
+    let points = file.dump(2).await?;
 
     for delta in &[2, 4, 6, 8, 10, 12, 14, 16] {
         assert!(
@@ -229,7 +239,7 @@ fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
         );
     }
 
-    let points2 = file.dump(4)?;
+    let points2 = file.dump(4).await?;
 
     for delta in &[4, 8, 12, 16] {
         assert!(
@@ -246,8 +256,8 @@ fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
     Ok(())
 }
 
-#[test]
-fn issue22_many_archives_once_shuffle() -> Result<(), failure::Error> {
+#[tokio::test]
+async fn issue22_many_archives_once_shuffle() -> Result<(), failure::Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22_many");
 
@@ -260,7 +270,8 @@ fn issue22_many_archives_once_shuffle() -> Result<(), failure::Error> {
             seconds_per_point: 4,
             points: 10,
         })
-        .build(path)?;
+        .build(path)
+        .await?;
 
     let now = 1000;
 
@@ -298,10 +309,10 @@ fn issue22_many_archives_once_shuffle() -> Result<(), failure::Error> {
             value: 1400.0,
         },
     ] {
-        file.update(point, now)?
+        file.update(point, now).await?
     }
 
-    let points = file.dump(2)?;
+    let points = file.dump(2).await?;
 
     for delta in &[2, 4, 6, 8, 10, 12, 14, 16] {
         assert!(
@@ -315,7 +326,7 @@ fn issue22_many_archives_once_shuffle() -> Result<(), failure::Error> {
         );
     }
 
-    let points2 = file.dump(4)?;
+    let points2 = file.dump(4).await?;
 
     for delta in &[4, 8, 12, 16] {
         assert!(

@@ -7,8 +7,8 @@ use whisper::retention::Retention;
 use whisper::ArchiveData;
 use whisper_tests::*;
 
-#[test]
-fn whisper_suggest_archive() -> Result<(), Error> {
+#[tokio::test]
+async fn whisper_suggest_archive() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "suggest");
 
@@ -27,7 +27,8 @@ fn whisper_suggest_archive() -> Result<(), Error> {
             seconds_per_point: 600,
             points: 10,
         })
-        .build(path)?;
+        .build(path)
+        .await?;
 
     let points: Vec<Point> = [
         now - 60,
@@ -46,7 +47,7 @@ fn whisper_suggest_archive() -> Result<(), Error> {
     })
     .collect();
 
-    file.update_many(&points, now)?;
+    file.update_many(&points, now).await?;
 
     assert_eq!(
         file.suggest_archive(Interval::new(now - 600, now - 60).map_err(err_msg)?, now),
@@ -74,8 +75,8 @@ fn whisper_suggest_archive() -> Result<(), Error> {
     Ok(())
 }
 
-#[test]
-fn whisper_fetch_auto_points() -> Result<(), Error> {
+#[tokio::test]
+async fn whisper_fetch_auto_points() -> Result<(), Error> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "fetch_auto_points");
 
@@ -102,7 +103,8 @@ fn whisper_fetch_auto_points() -> Result<(), Error> {
             },
         ],
         now,
-    )?;
+    )
+    .await?;
 
     let interval = Interval::new(now - 540, now - 60).map_err(err_msg)?;
 
@@ -122,10 +124,10 @@ fn whisper_fetch_auto_points() -> Result<(), Error> {
         ],
     };
 
-    assert_eq!(file.fetch_auto_points(interval, now)?, data);
+    assert_eq!(file.fetch_auto_points(interval, now).await?, data);
 
     let interval2 = Interval::new(now - 3000, now - 900).map_err(err_msg)?;
-    assert!(file.fetch_auto_points(interval2, now).is_err());
+    assert!(file.fetch_auto_points(interval2, now).await.is_err());
 
     Ok(())
 }

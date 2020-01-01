@@ -6,9 +6,9 @@ use whisper::retention::*;
 use whisper::*;
 use whisper_tests::*;
 
-#[test]
+#[tokio::test]
 #[allow(clippy::unreadable_literal)]
-fn test_resize_simple_long() -> Result<(), Box<dyn Error>> {
+async fn test_resize_simple_long() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "resize_1");
@@ -39,11 +39,12 @@ fn test_resize_simple_long() -> Result<(), Box<dyn Error>> {
         false,
         true,
         now,
-    )?;
+    )
+    .await?;
 
-    let mut file2 = WhisperFile::open(&path2)?;
+    let mut file2 = WhisperFile::open(&path2).await?;
 
-    let points = file2.dump(60)?;
+    let points = file2.dump(60).await?;
 
     for delta in 1..10 {
         assert!(
@@ -65,8 +66,8 @@ fn test_resize_simple_long() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[test]
-fn test_resize_simple_short() -> Result<(), Box<dyn Error>> {
+#[tokio::test]
+async fn test_resize_simple_short() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "resize_3");
@@ -97,11 +98,12 @@ fn test_resize_simple_short() -> Result<(), Box<dyn Error>> {
         false,
         true,
         now,
-    )?;
+    )
+    .await?;
 
-    let mut file2 = WhisperFile::open(&path2)?;
+    let mut file2 = WhisperFile::open(&path2).await?;
 
-    let points = file2.dump(60)?;
+    let points = file2.dump(60).await?;
 
     assert_eq!(points.len(), 5, "Should be 5 points");
 
@@ -120,8 +122,8 @@ fn test_resize_simple_short() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[test]
-fn test_resize_extend_short() -> Result<(), Box<dyn Error>> {
+#[tokio::test]
+async fn test_resize_extend_short() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "resize_3");
@@ -158,11 +160,12 @@ fn test_resize_extend_short() -> Result<(), Box<dyn Error>> {
         false,
         true,
         now,
-    )?;
+    )
+    .await?;
 
-    let mut file2 = WhisperFile::open(&path2)?;
+    let mut file2 = WhisperFile::open(&path2).await?;
 
-    let points = file2.dump(60)?;
+    let points = file2.dump(60).await?;
 
     assert_eq!(points.len(), 5, "Should be 5 points");
 
@@ -181,8 +184,8 @@ fn test_resize_extend_short() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[test]
-fn test_resize_aggr_simple_long() -> Result<(), Box<dyn Error>> {
+#[tokio::test]
+async fn test_resize_aggr_simple_long() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "resize_1");
@@ -213,11 +216,12 @@ fn test_resize_aggr_simple_long() -> Result<(), Box<dyn Error>> {
         true,
         true,
         now,
-    )?;
+    )
+    .await?;
 
-    let mut file2 = WhisperFile::open(&path2)?;
+    let mut file2 = WhisperFile::open(&path2).await?;
 
-    let points = file2.dump(60)?;
+    let points = file2.dump(60).await?;
 
     for delta in 1..10 {
         assert!(
@@ -239,8 +243,8 @@ fn test_resize_aggr_simple_long() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[test]
-fn test_resize_aggr_simple_short() -> Result<(), Box<dyn Error>> {
+#[tokio::test]
+async fn test_resize_aggr_simple_short() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "resize_7");
@@ -271,11 +275,12 @@ fn test_resize_aggr_simple_short() -> Result<(), Box<dyn Error>> {
         true,
         true,
         now,
-    )?;
+    )
+    .await?;
 
-    let mut file2 = WhisperFile::open(&path2)?;
+    let mut file2 = WhisperFile::open(&path2).await?;
 
-    let points = file2.dump(60)?;
+    let points = file2.dump(60).await?;
 
     assert_eq!(points.len(), 5, "Should be 5 points");
 
