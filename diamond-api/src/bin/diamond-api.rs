@@ -1,8 +1,10 @@
 use actix_rt::System;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpResponse, HttpServer};
-use diamond_api::application::{app_config, Context, Walker};
+use diamond_api::application::app_config;
+use diamond_api::context::Context;
 use diamond_api::opts::Args;
+use diamond_api::storage::WalkerPath;
 use env_logger;
 use std::fs::create_dir;
 use std::io;
@@ -34,7 +36,7 @@ fn run(args: Args) -> io::Result<()> {
     let listen = format!("127.0.0.1:{}", &args.port);
 
     let ctx = Context {
-        walker: Walker::File(args.path.clone()),
+        walker: WalkerPath(args.path.clone()),
         args,
     };
 

@@ -5,24 +5,16 @@ use futures::future::{FutureExt, LocalBoxFuture};
 use glob::Pattern;
 use serde::*;
 use std::convert::From;
-use std::ffi::OsStr;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use crate::application::Context;
+use crate::context::Context;
 use crate::error::ParseError;
 use crate::parse::de_time_parse;
+use crate::storage::{MetricResponseLeaf, Walker};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MetricResponse {
     metrics: Vec<MetricResponseLeaf>,
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
-struct MetricResponseLeaf {
-    name: String,
-    path: String,
-    is_leaf: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -137,174 +129,35 @@ impl FindPath {
     }
 }
 
-fn create_leaf(name: &str, dir: &str, is_leaf: bool) -> MetricResponseLeaf {
-    let path = if !dir.is_empty() {
-        format!("{}.{}", dir, name)
-    } else {
-        name.to_owned()
-    };
-
-    MetricResponseLeaf {
-        name: name.to_owned(),
-        path,
-        is_leaf,
-    }
-}
-
-#[inline]
-fn walk_tree(
-    dir: &Path,
-    subdir: &Path,
-    pattern: &Pattern,
-) -> Result<Vec<MetricResponseLeaf>, Error> {
-    let full_path = dir.canonicalize()?.join(&subdir);
-    let dir_metric = subdir
-        .components()
-        .filter_map(|x| x.as_os_str().to_str())
-        .collect::<Vec<&str>>()
-        .concat();
-
-    let mut metrics: Vec<MetricResponseLeaf> = fs::read_dir(&full_path)?
-        .filter_map(|entry| {
-            let (local_path, local_file_type) = match entry {
-                Ok(rentry) => (
-                    rentry
-                        .path()
-                        .strip_prefix(&full_path)
-                        .map(std::borrow::ToOwned::to_owned),
-                    rentry.file_type(),
-                ),
-                _ => return None,
-            };
-
-            match (&local_path, &local_file_type) {
-                (Ok(path), Ok(file_type)) if pattern.matches_path(&path) && file_type.is_dir() => {
-                    let name = match path.file_name() {
-                        Some(file_name) => {
-                            if let Some(file_name_str) = file_name.to_str() {
-                                file_name_str.to_owned()
-                            } else {
-                                return None;
-                            }
-                        }
-                        _ => return None,
-                    };
-                    Some(create_leaf(&name, &dir_metric, false))
-                }
-                (Ok(path), Ok(file_type))
-                    if pattern.matches_path(&path)
-                        && file_type.is_file()
-                        && path.extension() == Some(OsStr::new("wsp")) =>
-                {
-                    let name = match path.file_stem() {
-                        Some(file_name) => {
-                            if let Some(file_name_str) = file_name.to_str() {
-                                file_name_str.to_owned()
-                            } else {
-                                return None;
-                            }
-                        }
-                        _ => return None,
-                    };
-
-                    Some(create_leaf(&name, &dir_metric, true))
-                }
-                _ => None,
-            }
-        })
-        .collect();
-
-    metrics.sort_by_key(|k| k.name.clone());
-    Ok(metrics)
-}
-
-pub async fn find_handler(ctx: Data<Context>, query: FindQuery) -> Result<HttpResponse, Error> {
+pub async fn find_handler<T: Walker>(
+    ctx: Data<Context<T>>,
+    query: FindQuery,
+) -> Result<HttpResponse, Error> {
     let path = FindPath::from(&query).map_err(ErrorInternalServerError)?;
 
-    walk_tree(&ctx.args.path, &path.path, &path.pattern).map(|metrics| {
-        if query.format == FindFormat::TreeJson {
-            let metrics_json: Vec<JsonTreeLeaf> = metrics
-                .iter()
-                .map(|x| JsonTreeLeaf::from(x.to_owned()))
-                .collect();
-            HttpResponse::Ok().json(metrics_json)
-        } else {
-            let metrics_completer = MetricResponse { metrics };
-            HttpResponse::Ok().json(metrics_completer)
-        }
-    })
+    ctx.walker
+        .walk_tree(&path.path, &path.pattern)
+        .map(|metrics| {
+            if query.format == FindFormat::TreeJson {
+                let metrics_json: Vec<JsonTreeLeaf> = metrics
+                    .iter()
+                    .map(|x| JsonTreeLeaf::from(x.to_owned()))
+                    .collect();
+                HttpResponse::Ok().json(metrics_json)
+            } else {
+                let metrics_completer = MetricResponse { metrics };
+                HttpResponse::Ok().json(metrics_completer)
+            }
+        })
 }
 
 #[cfg(test)]
 mod tests {
+    use actix_web::test::TestRequest;
     use serde_urlencoded;
-    use tempfile;
+    use std::path::PathBuf;
 
     use super::*;
-    use actix_web::test::TestRequest;
-    use std::fs::create_dir;
-    use std::fs::File;
-    use std::path::{Path, PathBuf};
-
-    fn get_temp_dir() -> tempfile::TempDir {
-        tempfile::Builder::new()
-            .prefix("diamond-api")
-            .tempdir()
-            .expect("Temp dir created")
-    }
-
-    #[test]
-    fn walk_tree_verify() -> Result<(), Error> {
-        let dir = get_temp_dir();
-        let path = dir.path();
-        let path1 = path.join(Path::new("foo"));
-        let path2 = path.join(Path::new("bar"));
-        let path3 = path.join(Path::new("foobar.wsp"));
-        let path4 = path1.join(Path::new("bar.wsp"));
-
-        create_dir(&path1)?;
-        create_dir(&path2)?;
-        let _file1 = File::create(&path3).unwrap();
-        let _file2 = File::create(&path4).unwrap();
-
-        let metric = walk_tree(&path, &Path::new(""), &Pattern::new("*").unwrap())?;
-
-        let mut metric_cmp = vec![
-            MetricResponseLeaf {
-                name: "foo".into(),
-                path: "foo".into(),
-                is_leaf: false,
-            },
-            MetricResponseLeaf {
-                name: "bar".into(),
-                path: "bar".into(),
-                is_leaf: false,
-            },
-            MetricResponseLeaf {
-                name: "foobar".into(),
-                path: "foobar".into(),
-                is_leaf: true,
-            },
-        ];
-
-        metric_cmp.sort_by_key(|k| k.name.clone());
-
-        assert_eq!(metric, metric_cmp);
-
-        let metric2 = walk_tree(&path, &Path::new("foo"), &Pattern::new("*").unwrap())?;
-
-        let mut metric_cmp2 = vec![MetricResponseLeaf {
-            name: "bar".into(),
-            path: "foo.bar".into(),
-            is_leaf: true,
-        }];
-
-        metric_cmp2.sort_by_key(|k| k.name.clone());
-
-        assert_eq!(metric2, metric_cmp2);
-
-        Ok(())
-    }
 
     #[test]
     fn url_serialize() -> Result<(), failure::Error> {
