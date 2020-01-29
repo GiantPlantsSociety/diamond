@@ -132,7 +132,7 @@ impl FindPath {
 pub async fn find_handler<T: Walker>(
     ctx: Data<Context<T>>,
     query: FindQuery,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse> {
     let path = FindPath::from(&query).map_err(ErrorInternalServerError)?;
 
     ctx.walker
@@ -140,7 +140,7 @@ pub async fn find_handler<T: Walker>(
         .map(|metrics| {
             if query.format == FindFormat::TreeJson {
                 let metrics_json: Vec<JsonTreeLeaf> =
-                    metrics.into_iter().map(|x| JsonTreeLeaf::from(x)).collect();
+                    metrics.into_iter().map(JsonTreeLeaf::from).collect();
                 HttpResponse::Ok().json(metrics_json)
             } else {
                 let metrics_completer = MetricResponse { metrics };
@@ -152,7 +152,6 @@ pub async fn find_handler<T: Walker>(
 #[cfg(test)]
 mod tests {
     use actix_web::test::TestRequest;
-    use serde_urlencoded;
     use std::path::PathBuf;
 
     use super::*;

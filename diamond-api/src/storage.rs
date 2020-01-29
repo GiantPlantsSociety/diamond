@@ -21,6 +21,21 @@ pub struct MetricResponseLeaf {
     pub is_leaf: bool,
 }
 
+impl MetricResponseLeaf {
+    fn new(name: &str, dir: &str, is_leaf: bool) -> Self {
+        let path = if !dir.is_empty() {
+            format!("{}.{}", dir, name)
+        } else {
+            name.to_owned()
+        };
+        MetricResponseLeaf {
+            name: name.to_owned(),
+            path,
+            is_leaf,
+        }
+    }
+}
+
 pub trait Walker {
     fn walk(&self, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>, ResponseError>;
     fn walk_tree(&self, subdir: &Path, pattern: &Pattern)
@@ -59,57 +74,30 @@ impl Walker for WalkerPath {
         let dir_metric = subdir
             .components()
             .filter_map(|x| x.as_os_str().to_str())
-            .collect::<Vec<&str>>()
-            .concat();
+            .fold(String::new(), |acc, x| acc + x);
 
         let mut metrics: Vec<MetricResponseLeaf> = fs::read_dir(&full_path)?
             .filter_map(|entry| {
-                let (local_path, local_file_type) = match entry {
-                    Ok(rentry) => (
-                        rentry
-                            .path()
-                            .strip_prefix(&full_path)
-                            .map(std::borrow::ToOwned::to_owned),
-                        rentry.file_type(),
-                    ),
-                    _ => return None,
-                };
+                let rentry = entry.ok()?;
+                let path = rentry
+                    .path()
+                    .strip_prefix(&full_path)
+                    .map(std::borrow::ToOwned::to_owned)
+                    .ok()?;
+                let file_type = rentry.file_type().ok()?;
 
-                match (&local_path, &local_file_type) {
-                    (Ok(path), Ok(file_type))
-                        if pattern.matches_path(&path) && file_type.is_dir() =>
-                    {
-                        let name = match path.file_name() {
-                            Some(file_name) => {
-                                if let Some(file_name_str) = file_name.to_str() {
-                                    file_name_str.to_owned()
-                                } else {
-                                    return None;
-                                }
-                            }
-                            _ => return None,
-                        };
-                        Some(create_leaf(&name, &dir_metric, false))
+                if pattern.matches_path(&path) {
+                    if file_type.is_dir() {
+                        let name = path.file_name()?.to_str()?.to_owned();
+                        Some(MetricResponseLeaf::new(&name, &dir_metric, false))
+                    } else if path.extension() == Some(OsStr::new("wsp")) {
+                        let name = path.file_stem()?.to_str()?.to_owned();
+                        Some(MetricResponseLeaf::new(&name, &dir_metric, true))
+                    } else {
+                        None
                     }
-                    (Ok(path), Ok(file_type))
-                        if pattern.matches_path(&path)
-                            && file_type.is_file()
-                            && path.extension() == Some(OsStr::new("wsp")) =>
-                    {
-                        let name = match path.file_stem() {
-                            Some(file_name) => {
-                                if let Some(file_name_str) = file_name.to_str() {
-                                    file_name_str.to_owned()
-                                } else {
-                                    return None;
-                                }
-                            }
-                            _ => return None,
-                        };
-
-                        Some(create_leaf(&name, &dir_metric, true))
-                    }
-                    _ => None,
+                } else {
+                    None
                 }
             })
             .collect();
@@ -132,24 +120,8 @@ fn path(dir: &Path, metric: &str) -> Result<PathBuf, ResponseError> {
     Ok(full_path)
 }
 
-fn create_leaf(name: &str, dir: &str, is_leaf: bool) -> MetricResponseLeaf {
-    let path = if !dir.is_empty() {
-        format!("{}.{}", dir, name)
-    } else {
-        name.to_owned()
-    };
-
-    MetricResponseLeaf {
-        name: name.to_owned(),
-        path,
-        is_leaf,
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use tempfile;
-
     use super::*;
     use std::fs::create_dir;
     use std::fs::File;
@@ -163,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn walk_tree_verify() -> Result<(), Error> {
+    fn walk_tree_verify() -> Result<(), Box<dyn std::error::Error>> {
         let dir = get_temp_dir();
         let path = dir.path();
         let path1 = path.join(Path::new("foo"));
@@ -173,11 +145,10 @@ mod tests {
 
         create_dir(&path1)?;
         create_dir(&path2)?;
-        let _file1 = File::create(&path3).unwrap();
-        let _file2 = File::create(&path4).unwrap();
+        let _file1 = File::create(&path3)?;
+        let _file2 = File::create(&path4)?;
 
-        let metric =
-            WalkerPath(path.to_owned()).walk_tree(&Path::new(""), &Pattern::new("*").unwrap())?;
+        let metric = WalkerPath(path.to_owned()).walk_tree(&Path::new(""), &Pattern::new("*")?)?;
 
         let mut metric_cmp = vec![
             MetricResponseLeaf {
@@ -200,8 +171,8 @@ mod tests {
         metric_cmp.sort_by_key(|k| k.name.clone());
         assert_eq!(metric, metric_cmp);
 
-        let metric2 = WalkerPath(path.to_owned())
-            .walk_tree(&Path::new("foo"), &Pattern::new("*").unwrap())?;
+        let metric2 =
+            WalkerPath(path.to_owned()).walk_tree(&Path::new("foo"), &Pattern::new("*")?)?;
 
         let mut metric_cmp2 = vec![MetricResponseLeaf {
             name: "bar".into(),
