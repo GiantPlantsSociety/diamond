@@ -139,10 +139,8 @@ pub async fn find_handler<T: Walker>(
         .walk_tree(&path.path, &path.pattern)
         .map(|metrics| {
             if query.format == FindFormat::TreeJson {
-                let metrics_json: Vec<JsonTreeLeaf> = metrics
-                    .iter()
-                    .map(|x| JsonTreeLeaf::from(x.to_owned()))
-                    .collect();
+                let metrics_json: Vec<JsonTreeLeaf> =
+                    metrics.into_iter().map(|x| JsonTreeLeaf::from(x)).collect();
                 HttpResponse::Ok().json(metrics_json)
             } else {
                 let metrics_completer = MetricResponse { metrics };

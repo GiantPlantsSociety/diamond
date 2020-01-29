@@ -55,7 +55,67 @@ impl Walker for WalkerPath {
         subdir: &Path,
         pattern: &Pattern,
     ) -> Result<Vec<MetricResponseLeaf>, Error> {
-        walk_complete_tree(&self.0, subdir, pattern)
+        let full_path = self.0.canonicalize()?.join(&subdir);
+        let dir_metric = subdir
+            .components()
+            .filter_map(|x| x.as_os_str().to_str())
+            .collect::<Vec<&str>>()
+            .concat();
+
+        let mut metrics: Vec<MetricResponseLeaf> = fs::read_dir(&full_path)?
+            .filter_map(|entry| {
+                let (local_path, local_file_type) = match entry {
+                    Ok(rentry) => (
+                        rentry
+                            .path()
+                            .strip_prefix(&full_path)
+                            .map(std::borrow::ToOwned::to_owned),
+                        rentry.file_type(),
+                    ),
+                    _ => return None,
+                };
+
+                match (&local_path, &local_file_type) {
+                    (Ok(path), Ok(file_type))
+                        if pattern.matches_path(&path) && file_type.is_dir() =>
+                    {
+                        let name = match path.file_name() {
+                            Some(file_name) => {
+                                if let Some(file_name_str) = file_name.to_str() {
+                                    file_name_str.to_owned()
+                                } else {
+                                    return None;
+                                }
+                            }
+                            _ => return None,
+                        };
+                        Some(create_leaf(&name, &dir_metric, false))
+                    }
+                    (Ok(path), Ok(file_type))
+                        if pattern.matches_path(&path)
+                            && file_type.is_file()
+                            && path.extension() == Some(OsStr::new("wsp")) =>
+                    {
+                        let name = match path.file_stem() {
+                            Some(file_name) => {
+                                if let Some(file_name_str) = file_name.to_str() {
+                                    file_name_str.to_owned()
+                                } else {
+                                    return None;
+                                }
+                            }
+                            _ => return None,
+                        };
+
+                        Some(create_leaf(&name, &dir_metric, true))
+                    }
+                    _ => None,
+                }
+            })
+            .collect();
+
+        metrics.sort_by_key(|k| k.name.clone());
+        Ok(metrics)
     }
 }
 
@@ -84,73 +144,6 @@ fn create_leaf(name: &str, dir: &str, is_leaf: bool) -> MetricResponseLeaf {
         path,
         is_leaf,
     }
-}
-
-#[inline]
-fn walk_complete_tree(
-    dir: &Path,
-    subdir: &Path,
-    pattern: &Pattern,
-) -> Result<Vec<MetricResponseLeaf>, Error> {
-    let full_path = dir.canonicalize()?.join(&subdir);
-    let dir_metric = subdir
-        .components()
-        .filter_map(|x| x.as_os_str().to_str())
-        .collect::<Vec<&str>>()
-        .concat();
-
-    let mut metrics: Vec<MetricResponseLeaf> = fs::read_dir(&full_path)?
-        .filter_map(|entry| {
-            let (local_path, local_file_type) = match entry {
-                Ok(rentry) => (
-                    rentry
-                        .path()
-                        .strip_prefix(&full_path)
-                        .map(std::borrow::ToOwned::to_owned),
-                    rentry.file_type(),
-                ),
-                _ => return None,
-            };
-
-            match (&local_path, &local_file_type) {
-                (Ok(path), Ok(file_type)) if pattern.matches_path(&path) && file_type.is_dir() => {
-                    let name = match path.file_name() {
-                        Some(file_name) => {
-                            if let Some(file_name_str) = file_name.to_str() {
-                                file_name_str.to_owned()
-                            } else {
-                                return None;
-                            }
-                        }
-                        _ => return None,
-                    };
-                    Some(create_leaf(&name, &dir_metric, false))
-                }
-                (Ok(path), Ok(file_type))
-                    if pattern.matches_path(&path)
-                        && file_type.is_file()
-                        && path.extension() == Some(OsStr::new("wsp")) =>
-                {
-                    let name = match path.file_stem() {
-                        Some(file_name) => {
-                            if let Some(file_name_str) = file_name.to_str() {
-                                file_name_str.to_owned()
-                            } else {
-                                return None;
-                            }
-                        }
-                        _ => return None,
-                    };
-
-                    Some(create_leaf(&name, &dir_metric, true))
-                }
-                _ => None,
-            }
-        })
-        .collect();
-
-    metrics.sort_by_key(|k| k.name.clone());
-    Ok(metrics)
 }
 
 #[cfg(test)]
@@ -183,7 +176,8 @@ mod tests {
         let _file1 = File::create(&path3).unwrap();
         let _file2 = File::create(&path4).unwrap();
 
-        let metric = walk_complete_tree(&path, &Path::new(""), &Pattern::new("*").unwrap())?;
+        let metric =
+            WalkerPath(path.to_owned()).walk_tree(&Path::new(""), &Pattern::new("*").unwrap())?;
 
         let mut metric_cmp = vec![
             MetricResponseLeaf {
@@ -206,7 +200,8 @@ mod tests {
         metric_cmp.sort_by_key(|k| k.name.clone());
         assert_eq!(metric, metric_cmp);
 
-        let metric2 = walk_complete_tree(&path, &Path::new("foo"), &Pattern::new("*").unwrap())?;
+        let metric2 = WalkerPath(path.to_owned())
+            .walk_tree(&Path::new("foo"), &Pattern::new("*").unwrap())?;
 
         let mut metric_cmp2 = vec![MetricResponseLeaf {
             name: "bar".into(),
