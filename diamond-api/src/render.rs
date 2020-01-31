@@ -1,4 +1,3 @@
-extern crate chrono;
 use chrono::NaiveDateTime;
 
 use actix_web::error::ErrorInternalServerError;
@@ -7,16 +6,14 @@ use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse}
 use failure::err_msg;
 use futures::future::{ready, FutureExt, LocalBoxFuture};
 use serde::*;
-use std::iter::successors;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
-use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::interval::Interval;
-use whisper::{ArchiveData, WhisperFile};
 
-use crate::application::{Context, Walker};
+use crate::context::Context;
 use crate::error::{ParseError, ResponseError};
 use crate::parse::{de_time_parse, time_parse};
+use crate::storage::{RenderPoint, Walker};
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -122,50 +119,6 @@ pub struct RenderMetric(String);
 #[derive(Debug, PartialEq)]
 pub struct RenderPath(PathBuf);
 
-#[inline]
-fn path(dir: &Path, metric: &str) -> Result<PathBuf, ResponseError> {
-    let path = metric
-        .split('.')
-        .fold(PathBuf::new(), |acc, x| acc.join(x))
-        .with_extension("wsp");
-    let full_path = dir
-        .canonicalize()
-        .map_err(|_| ResponseError::Path)?
-        .join(&path);
-    Ok(full_path)
-}
-
-fn walk(dir: &Path, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>, ResponseError> {
-    let full_path = path(dir, metric)?;
-    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
-
-    let ArchiveData {
-        from_interval,
-        step,
-        values,
-        ..
-    } = WhisperFile::open(&full_path)?.fetch_auto_points(interval, now)?;
-
-    let timestamps = successors(Some(from_interval), |i| i.checked_add(step));
-    let points = values
-        .into_iter()
-        .zip(timestamps)
-        .map(|(value, time)| RenderPoint(value, time))
-        .collect();
-
-    Ok(points)
-}
-
-fn walker(w: Walker) -> impl Fn(&str, Interval) -> Result<Vec<RenderPoint>, ResponseError> {
-    move |metric, interval| match &w {
-        Walker::File(dir) => walk(dir.as_path(), metric, interval),
-        Walker::Const(res) => Ok(res.to_vec()),
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RenderPoint(Option<f64>, u32);
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RenderResponseEntry {
     target: String,
@@ -177,8 +130,8 @@ pub struct RenderResponse {
     entries: Vec<Option<RenderResponseEntry>>,
 }
 
-pub async fn render_handler(
-    ctx: Data<Context>,
+pub async fn render_handler<T: Walker>(
+    ctx: Data<Context<T>>,
     query: RenderQuery,
 ) -> Result<HttpResponse, failure::Error> {
     let interval = Interval::new(query.from, query.until).map_err(err_msg)?;
@@ -188,11 +141,12 @@ pub async fn render_handler(
         .target
         .into_iter()
         .map(|metric| {
-            let w = walker(ctx.walker.clone());
-            w(&metric, interval).map(|points| RenderResponseEntry {
-                datapoints: points,
-                target: metric,
-            })
+            ctx.walker
+                .walk(&metric, interval)
+                .map(|points| RenderResponseEntry {
+                    datapoints: points,
+                    target: metric,
+                })
         })
         .collect();
 
@@ -249,13 +203,19 @@ fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> 
 mod tests {
     use super::*;
     use crate::opts::Args;
+    use crate::test_utils::WalkerConst;
+
     use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use actix_web::http::StatusCode;
     use actix_web::test::TestRequest;
     use failure::Error;
     use futures::stream::StreamExt;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
-    async fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String, String) {
+    async fn render_response(
+        ctx: Context<WalkerConst>,
+        query: RenderQuery,
+    ) -> (StatusCode, String, String) {
         let mut response: HttpResponse = render_handler(Data::new(ctx), query).await.ok().unwrap();
         let content_type: String = response
             .head()
@@ -294,7 +254,7 @@ mod tests {
                     force: false,
                     port: 0,
                 },
-                walker: Walker::Const(vec![]),
+                walker: WalkerConst(vec![]),
             };
             let query = RenderQuery {
                 target: vec![],
@@ -317,7 +277,7 @@ mod tests {
                 force: false,
                 port: 0,
             },
-            walker: Walker::Const(vec![]),
+            walker: WalkerConst(vec![]),
         };
         let query = RenderQuery {
             target: vec![],
@@ -340,7 +300,7 @@ mod tests {
                 force: false,
                 port: 0,
             },
-            walker: Walker::Const(vec![
+            walker: WalkerConst(vec![
                 RenderPoint(Some(1.0 as f64), t),
                 RenderPoint(None, t + 10),
                 RenderPoint(Some(2.0 as f64), t + 100),
@@ -370,7 +330,7 @@ mod tests {
                 force: false,
                 port: 0,
             },
-            walker: Walker::Const(vec![]),
+            walker: WalkerConst(vec![]),
         };
         let query = RenderQuery {
             target: vec![],
@@ -393,7 +353,7 @@ mod tests {
                 force: false,
                 port: 0,
             },
-            walker: Walker::Const(vec![
+            walker: WalkerConst(vec![
                 RenderPoint(Some(1.1 as f64), t),
                 RenderPoint(Some(2.2 as f64), t + 60),
                 RenderPoint(None, t + 60 * 60),
