@@ -75,7 +75,7 @@ fn run(args: &Args) -> Result<(), Error> {
 
     resize(
         path,
-        args.newfile.as_ref().map(PathBuf::as_path),
+        args.newfile.as_deref(),
         &args.retentions,
         x_files_factor,
         aggregation_method,

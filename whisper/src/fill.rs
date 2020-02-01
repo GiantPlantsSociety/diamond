@@ -94,14 +94,15 @@ pub fn fill(src: &Path, dst: &Path, from: u32, now: u32) -> Result<(), io::Error
         for v in data_dst.values {
             if v.is_none() && gapstart.is_none() {
                 gapstart = Some(start);
-            } else if v.is_some() && gapstart.is_some() {
-                let gapstart_unwrap = gapstart.unwrap();
-                if (start - gapstart_unwrap) > archive.seconds_per_point {
+            } else if let Some(gapstart_unwrap) = gapstart {
+                if v.is_some() {
+                    if (start - gapstart_unwrap) > archive.seconds_per_point {
+                        fill_interval(src, dst, gapstart_unwrap, start, now)?;
+                    }
+                    gapstart = None;
+                } else if start == (end - step) {
                     fill_interval(src, dst, gapstart_unwrap, start, now)?;
                 }
-                gapstart = None;
-            } else if gapstart.is_some() && (start == (end - step)) {
-                fill_interval(src, dst, gapstart.unwrap(), start, now)?;
             }
             start += step;
         }
