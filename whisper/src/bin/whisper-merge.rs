@@ -1,5 +1,5 @@
-use failure::format_err;
-use failure::Error;
+use std::error::Error;
+use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -26,13 +26,13 @@ struct Args {
     until: Option<u32>,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     for filename in &[&args.from_path, &args.to_path] {
         if !filename.is_file() {
-            return Err(format_err!(
-                "[ERROR] File \"{:?}\" does not exist!",
-                filename
-            ));
+            return Err(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                format!("[ERROR] File \"{:?}\" does not exist!", filename),
+            )));
         }
     }
 

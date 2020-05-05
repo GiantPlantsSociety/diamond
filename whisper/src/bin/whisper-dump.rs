@@ -1,5 +1,5 @@
 use chrono::prelude::NaiveDateTime;
-use failure::Error;
+use std::io::Result;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
@@ -16,7 +16,7 @@ struct Args {
     path: PathBuf,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<()> {
     let mut file = whisper::WhisperFile::open(&args.path)?;
 
     let meta = file.info().clone();

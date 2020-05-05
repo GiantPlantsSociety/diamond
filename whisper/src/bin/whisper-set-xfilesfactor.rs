@@ -1,4 +1,4 @@
-use failure::Error;
+use std::io::Result;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
@@ -18,7 +18,7 @@ struct Args {
     x_files_factor: f32,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<()> {
     let mut file = whisper::WhisperFile::open(&args.path)?;
 
     let old_x_files_factor = file.info().x_files_factor;

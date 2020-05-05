@@ -1,5 +1,5 @@
-use failure::Error;
 use std::fs::remove_file;
+use std::io::Result;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 use structopt::StructOpt;
@@ -31,7 +31,7 @@ fn is_whisper_file(path: &Path) -> bool {
     path.extension() == Some(std::ffi::OsStr::new("wsp"))
 }
 
-fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error> {
+fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<()> {
     for entry in WalkDir::new(dir).min_depth(1) {
         match entry {
             Ok(ref entry) if verbose && entry.file_type().is_dir() => {
@@ -48,7 +48,7 @@ fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> Result<(), Error
     Ok(())
 }
 
-fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<(), Error> {
+fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<()> {
     match whisper::WhisperFile::open(file) {
         Ok(whisper_file) => {
             let x: u32 = whisper_file.info().archives.iter().map(|a| a.points).sum();
@@ -69,7 +69,7 @@ fn delete_corrupt_file(file: &Path, delete_corrupt: bool) -> Result<(), Error> {
     Ok(())
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<()> {
     for dir in &args.directories {
         if !dir.is_dir() {
             eprintln!("{} is not a directory or not exist!", dir.display());

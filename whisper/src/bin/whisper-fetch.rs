@@ -1,5 +1,6 @@
 use chrono::prelude::NaiveDateTime;
-use failure::{err_msg, format_err, Error};
+use std::error::Error;
+use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -56,24 +57,29 @@ fn is_any(_value: &Option<f64>) -> bool {
     true
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     let from = args.from.unwrap_or(now - 86400);
     let until = args.until.unwrap_or(now);
 
-    let interval = Interval::new(from, until).map_err(err_msg)?;
+    let interval = Interval::new(from, until)?;
     let mut file = WhisperFile::open(&args.path)?;
 
     let seconds_per_point = file
         .suggest_archive(interval, now)
-        .ok_or_else(|| err_msg("No data in selected timerange"))?;
+        .ok_or_else(|| "No data in selected timerange")?;
 
     let filter = match args.drop {
         Some(ref s) if s == "nulls" => is_not_null,
         Some(ref s) if s == "zeroes" => is_not_zero,
         Some(ref s) if s == "empty" => is_not_empty,
         None => is_any,
-        Some(ref s) => return Err(format_err!("No such drop option {}.", s)),
+        Some(ref s) => {
+            return Err(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                format!("No such drop option {}.", s),
+            )))
+        }
     };
 
     let archive = file

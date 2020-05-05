@@ -1,4 +1,5 @@
-use failure::{format_err, Error};
+use std::error::Error;
+use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -49,7 +50,7 @@ fn print_details(
     json: bool,
     columns: bool,
     no_headers: bool,
-) -> Result<(), Error> {
+) -> Result<(), Box<dyn Error>> {
     if json {
         println!("{}", serde_json::to_string_pretty(diff)?);
     } else if !columns {
@@ -72,7 +73,7 @@ fn print_summary(
     json: bool,
     columns: bool,
     no_headers: bool,
-) -> Result<(), Error> {
+) -> Result<(), Box<dyn Error>> {
     if json {
         println!("{}", serde_json::to_string_pretty(diff)?);
     } else if !columns {
@@ -90,10 +91,13 @@ fn print_summary(
     Ok(())
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     for filename in &[&args.path_a, &args.path_b] {
         if !filename.is_file() {
-            return Err(format_err!("[ERROR] File {:#?} does not exist!", filename));
+            return Err(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                format!("[ERROR] File {:#?} does not exist!", filename),
+            )));
         }
     }
 
