@@ -1,6 +1,6 @@
 use diamond::line_update;
 use diamond::settings::WhisperConfig;
-use failure::Error;
+use std::error::Error;
 use std::io;
 use std::io::BufRead;
 use std::path::PathBuf;
@@ -42,7 +42,7 @@ Specify lengths of time, for example:
     retentions: Vec<Retention>,
 }
 
-fn run(args: Args) -> Result<(), Error> {
+fn run(args: Args) -> Result<(), Box<dyn Error>> {
     let stdin = io::stdin();
 
     let conf = WhisperConfig {
