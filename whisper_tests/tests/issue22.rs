@@ -1,10 +1,11 @@
+use std::error::Error;
 use whisper::point::*;
 use whisper::retention::*;
 use whisper::*;
 use whisper_tests::*;
 
 #[test]
-fn issue22_original() -> Result<(), failure::Error> {
+fn issue22_original() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22");
 
@@ -41,7 +42,7 @@ fn issue22_original() -> Result<(), failure::Error> {
 }
 
 #[test]
-fn issue22_many_archives() -> Result<(), failure::Error> {
+fn issue22_many_archives() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22_many");
 
@@ -101,7 +102,7 @@ fn issue22_many_archives() -> Result<(), failure::Error> {
 }
 
 #[test]
-fn issue22_many_archives_once() -> Result<(), failure::Error> {
+fn issue22_many_archives_once() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22_many");
 
@@ -188,7 +189,7 @@ fn issue22_many_archives_once() -> Result<(), failure::Error> {
 }
 
 #[test]
-fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
+fn issue22_many_archives_reverse() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22_many");
 
@@ -247,7 +248,7 @@ fn issue22_many_archives_reverse() -> Result<(), failure::Error> {
 }
 
 #[test]
-fn issue22_many_archives_once_shuffle() -> Result<(), failure::Error> {
+fn issue22_many_archives_once_shuffle() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "issue22_many");
 

@@ -12,7 +12,6 @@ whisper = { path = "../whisper" }
 rand = "0.7"
 tempfile = "3"
 byteorder = "1"
-failure = "0.1"
 
 [[bench]]
 name = "tests"

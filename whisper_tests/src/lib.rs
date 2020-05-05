@@ -1,6 +1,6 @@
-use failure::Error;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::{Builder, TempDir};
@@ -44,7 +44,7 @@ pub fn create_and_update_many(
     path: &PathBuf,
     timestamps: &[u32],
     now: u32,
-) -> Result<WhisperFile, Error> {
+) -> Result<WhisperFile, Box<dyn Error>> {
     let mut file = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
@@ -69,7 +69,7 @@ pub fn create_and_update_points(
     path: &PathBuf,
     points: &[Point],
     now: u32,
-) -> Result<WhisperFile, Error> {
+) -> Result<WhisperFile, Box<dyn Error>> {
     let mut file = WhisperBuilder::default()
         .add_retention(Retention {
             seconds_per_point: 60,
