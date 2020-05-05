@@ -1,20 +1,46 @@
-use failure::Fail;
+use std::fmt::{Display, Formatter, Result};
+use std::num::{ParseFloatError, ParseIntError};
 use std::path::PathBuf;
 
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum Error {
-    #[fail(display = "{}", _0)]
-    Io(#[cause] std::io::Error),
-    #[fail(display = "[ERROR] File {:#?} does not exist!", _0)]
+    Io(std::io::Error),
     FileNotExist(PathBuf),
+    Kind(String),
 }
 
-#[derive(Debug, PartialEq, Fail)]
-pub enum ParseError {
-    #[fail(display = "Cannot parse point from string: {}", _0)]
-    ParsePointError(String),
-    #[fail(display = "{}", _0)]
-    ParseFloatError(#[cause] std::num::ParseFloatError),
-    #[fail(display = "{}", _0)]
-    ParseIntError(#[cause] std::num::ParseIntError),
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            Error::Io(e) => write!(f, "{}", e),
+            Error::FileNotExist(e) => write!(f, "[ERROR] File {:#?} does not exist!", e),
+            Error::Kind(e) => write!(f, "{}", e),
+        }
+    }
 }
+
+impl std::error::Error for Error {}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Error::Io(error)
+    }
+}
+#[derive(Debug, PartialEq)]
+pub enum ParseError {
+    ParsePointError(String),
+    ParseFloatError(ParseFloatError),
+    ParseIntError(ParseIntError),
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            ParseError::ParsePointError(e) => write!(f, "Cannot parse point from string: {}", e),
+            ParseError::ParseFloatError(e) => write!(f, "cause: {}", e),
+            ParseError::ParseIntError(e) => write!(f, "cause: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}

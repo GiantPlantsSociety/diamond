@@ -1,19 +1,18 @@
 use crate::aggregation::AggregationMethod;
 use crate::builder::WhisperBuilder;
-use crate::error;
+use crate::error::Error;
 use crate::interval::Interval;
 
 use crate::point::Point;
 use crate::retention::Retention;
 use crate::WhisperFile;
 
-use failure::Error;
 use std::fs::{remove_file, rename};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
-fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), Error> {
+fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> io::Result<()> {
     let mut file_src = WhisperFile::open(path_src)?;
     let mut file_dst = WhisperFile::open(path_dst)?;
 
@@ -59,7 +58,7 @@ fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), E
     Ok(())
 }
 
-fn migrate_nonaggregate(path_src: &Path, path_dst: &Path, now: u32) -> Result<(), Error> {
+fn migrate_nonaggregate(path_src: &Path, path_dst: &Path, now: u32) -> io::Result<()> {
     let mut file_src = WhisperFile::open(path_src)?;
     let mut file_dst = WhisperFile::open(path_dst)?;
 
@@ -95,7 +94,7 @@ fn migrate_points(
     now: u32,
 ) -> Result<(), Error> {
     if !path_src.is_file() {
-        return Err(error::Error::FileNotExist(path_src.to_owned()).into());
+        return Err(Error::FileNotExist(path_src.to_owned()).into());
     }
 
     if aggregate {
