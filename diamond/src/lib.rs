@@ -1,9 +1,10 @@
-use failure::*;
 use lazy_static::lazy_static;
-
 use regex::Regex;
 use std::convert::From;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use std::fs;
+use std::num::{ParseFloatError, ParseIntError};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,14 +29,39 @@ pub struct MetricPoints {
     pub points: Vec<Point>,
 }
 
-#[derive(Fail, Debug)]
-enum MetricError {
-    #[fail(display = "Metric line({}) cannot be validated", _0)]
+#[derive(Debug)]
+pub enum MetricError {
     Validate(String),
-    #[fail(display = "Metric name({}) cannot be validated", _0)]
     NameValidate(String),
-    #[fail(display = "Cannot parse metric from line: {}", _0)]
     LineParse(String),
+    ParseIntError(ParseIntError),
+    ParseFloatError(ParseFloatError),
+}
+
+impl Display for MetricError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            Self::Validate(s) => write!(f, "Metric line({}) cannot be validated", s),
+            Self::NameValidate(s) => write!(f, "Metric name({}) cannot be validated", s),
+            Self::LineParse(s) => write!(f, "Cannot parse metric from line: {}", s),
+            Self::ParseIntError(e) => write!(f, "{}", e),
+            Self::ParseFloatError(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl Error for MetricError {}
+
+impl From<ParseIntError> for MetricError {
+    fn from(error: ParseIntError) -> Self {
+        Self::ParseIntError(error)
+    }
+}
+
+impl From<ParseFloatError> for MetricError {
+    fn from(error: ParseFloatError) -> Self {
+        Self::ParseFloatError(error)
+    }
 }
 
 impl MetricPoint {
@@ -53,9 +79,9 @@ impl MetricPoint {
 }
 
 impl FromStr for MetricPoint {
-    type Err = Error;
+    type Err = MetricError;
 
-    fn from_str(s: &str) -> Result<MetricPoint, Error> {
+    fn from_str(s: &str) -> Result<MetricPoint, MetricError> {
         MetricPoint::validate(s)?;
 
         let segments: Vec<&str> = s.split(' ').collect();
@@ -106,9 +132,9 @@ impl MetricPath {
 }
 
 impl FromStr for MetricPath {
-    type Err = Error;
+    type Err = MetricError;
 
-    fn from_str(s: &str) -> Result<Self, Error> {
+    fn from_str(s: &str) -> Result<Self, MetricError> {
         MetricPath::validate(s)?;
         let segments: Vec<&str> = s.split('.').collect();
 
@@ -139,7 +165,7 @@ pub fn line_update<P: AsRef<Path>>(
     dir: P,
     config: &WhisperConfig,
     now: u32,
-) -> Result<(), Error> {
+) -> Result<(), Box<dyn Error>> {
     let metric: MetricPoint = message.parse()?;
     let metric_path: MetricPath = metric.name.parse()?;
 
@@ -322,7 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn update_line_with_absent_wsp() -> Result<(), Error> {
+    fn update_line_with_absent_wsp() -> Result<(), Box<dyn Error>> {
         let dir = Builder::new()
             .prefix("diamond")
             .tempdir()
@@ -356,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    fn update_line_with_present_wsp() -> Result<(), Error> {
+    fn update_line_with_present_wsp() -> Result<(), Box<dyn Error>> {
         let dir = Builder::new()
             .prefix("diamond")
             .tempdir()
@@ -402,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn update_silently_with_absent_wsp() -> Result<(), Error> {
+    fn update_silently_with_absent_wsp() -> Result<(), std::io::Error> {
         let dir = Builder::new()
             .prefix("diamond_silent")
             .tempdir()

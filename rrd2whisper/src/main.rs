@@ -1,5 +1,6 @@
-use failure::{format_err, Error};
 use std::collections::HashMap;
+use std::error::Error;
+use std::io;
 /// https://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html
 use std::path::PathBuf;
 use std::process::exit;
@@ -29,7 +30,7 @@ struct Args {
     rrd_path: PathBuf,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
     let rrd_info = rrd::info(&args.rrd_path, None, false).unwrap();
@@ -50,10 +51,13 @@ fn run(args: &Args) -> Result<(), Error> {
 
     if relevant_rras.is_empty() {
         let method: &str = args.aggregation_method.into();
-        return Err(format_err!(
-            "[ERROR] Unable to find any RRAs with consolidation function: {}",
-            method
-        ));
+        return Err(Box::new(io::Error::new(
+            io::ErrorKind::Other,
+            format!(
+                "[ERROR] Unable to find any RRAs with consolidation function: {}",
+                method
+            ),
+        )));
     }
 
     let archives: Vec<_> = relevant_rras
