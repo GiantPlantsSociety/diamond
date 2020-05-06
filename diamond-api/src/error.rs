@@ -14,6 +14,7 @@ pub enum ParseError {
     Time,
     Unknown,
     Pattern(usize, &'static str),
+    Query(String),
 }
 
 impl fmt::Display for ParseError {
@@ -32,6 +33,7 @@ impl fmt::Display for ParseError {
             ParseError::Pattern(pos, msg) => {
                 write!(f, "Pattern syntax error near position {}: {}", pos, msg)
             }
+            ParseError::Query(s) => write!(f, "{}", s),
         }
     }
 }
@@ -53,6 +55,12 @@ impl From<ParseIntError> for ParseError {
 impl From<PatternError> for ParseError {
     fn from(error: PatternError) -> Self {
         ParseError::Pattern(error.pos, error.msg)
+    }
+}
+
+impl From<serde_urlencoded::de::Error> for ParseError {
+    fn from(error: serde_urlencoded::de::Error) -> Self {
+        ParseError::Query(error.to_string())
     }
 }
 

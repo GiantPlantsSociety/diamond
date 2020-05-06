@@ -26,7 +26,7 @@ pub struct RenderQuery {
 }
 
 impl FromStr for RenderQuery {
-    type Err = Error;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let raw: Vec<(String, String)> = serde_urlencoded::from_str(s)?;
