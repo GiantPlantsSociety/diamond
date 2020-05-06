@@ -1,6 +1,5 @@
 use chrono::prelude::NaiveDateTime;
 use std::error::Error;
-use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -74,12 +73,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
         Some(ref s) if s == "zeroes" => is_not_zero,
         Some(ref s) if s == "empty" => is_not_empty,
         None => is_any,
-        Some(ref s) => {
-            return Err(Box::new(io::Error::new(
-                io::ErrorKind::Other,
-                format!("No such drop option {}.", s),
-            )))
-        }
+        Some(ref s) => return Err(format!("No such drop option {}.", s).into()),
     };
 
     let archive = file

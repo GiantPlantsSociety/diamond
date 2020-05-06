@@ -1,6 +1,5 @@
 use serde_json::json;
 use std::error::Error;
-use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
@@ -70,10 +69,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
         Some(ref field) if field == "aggregationMethod" => println!("{}", meta.aggregation_method),
         Some(ref field) if field == "fileSize"          => println!("{}", meta.file_size()),
         Some(ref field) => return Err(
-            Box::new(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field)
-        ))),
+            format!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field).into()),
         None => format_info(&meta, args.json)?,
     };
 

@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -29,10 +28,7 @@ struct Args {
 fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     for filename in &[&args.from_path, &args.to_path] {
         if !filename.is_file() {
-            return Err(Box::new(io::Error::new(
-                io::ErrorKind::Other,
-                format!("[ERROR] File \"{:?}\" does not exist!", filename),
-            )));
+            return Err(format!("[ERROR] File \"{:?}\" does not exist!", filename).into());
         }
     }
 
