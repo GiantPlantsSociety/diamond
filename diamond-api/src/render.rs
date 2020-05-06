@@ -3,7 +3,6 @@ use chrono::NaiveDateTime;
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Json};
 use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse};
-use failure::err_msg;
 use futures::future::{ready, FutureExt, LocalBoxFuture};
 use serde::*;
 use std::path::PathBuf;
@@ -27,7 +26,7 @@ pub struct RenderQuery {
 }
 
 impl FromStr for RenderQuery {
-    type Err = failure::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let raw: Vec<(String, String)> = serde_urlencoded::from_str(s)?;
@@ -133,8 +132,8 @@ pub struct RenderResponse {
 pub async fn render_handler<T: Walker>(
     ctx: Data<Context<T>>,
     query: RenderQuery,
-) -> Result<HttpResponse, failure::Error> {
-    let interval = Interval::new(query.from, query.until).map_err(err_msg)?;
+) -> Result<HttpResponse, Error> {
+    let interval = Interval::new(query.from, query.until).map_err(ResponseError::Kind)?;
     let format = query.format;
 
     let response: Result<Vec<RenderResponseEntry>, ResponseError> = query
@@ -208,8 +207,8 @@ mod tests {
     use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use actix_web::http::StatusCode;
     use actix_web::test::TestRequest;
-    use failure::Error;
     use futures::stream::StreamExt;
+    use std::error;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     async fn render_response(
@@ -445,7 +444,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_time_yesterday_now() -> Result<(), Error> {
+    fn url_deserialize_time_yesterday_now() -> Result<(), Box<dyn error::Error>> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
         let params = RenderQuery {
@@ -464,7 +463,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_time_relative() -> Result<(), Error> {
+    fn url_deserialize_time_relative() -> Result<(), Box<dyn error::Error>> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
         let params = RenderQuery {

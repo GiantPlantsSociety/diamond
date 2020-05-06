@@ -152,12 +152,13 @@ pub async fn find_handler<T: Walker>(
 #[cfg(test)]
 mod tests {
     use actix_web::test::TestRequest;
+    use std::error;
     use std::path::PathBuf;
 
     use super::*;
 
     #[test]
-    fn url_serialize() -> Result<(), failure::Error> {
+    fn url_serialize() -> Result<(), Box<dyn error::Error>> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -188,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize() -> Result<(), failure::Error> {
+    fn url_deserialize() -> Result<(), Box<dyn error::Error>> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -219,7 +220,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_default() -> Result<(), failure::Error> {
+    fn url_deserialize_default() -> Result<(), Box<dyn error::Error>> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::default(),
@@ -234,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn findpath_convert() -> Result<(), failure::Error> {
+    fn findpath_convert() -> Result<(), Box<dyn error::Error>> {
         let path = FindPath {
             path: PathBuf::from("123/456/"),
             pattern: Pattern::new("789")?,
@@ -254,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn query_convertion() -> Result<(), failure::Error> {
+    fn query_convertion() -> Result<(), Box<dyn error::Error>> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,

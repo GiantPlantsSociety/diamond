@@ -56,6 +56,8 @@ impl From<PatternError> for ParseError {
     }
 }
 
+impl actix_web::error::ResponseError for ParseError {}
+
 #[derive(Debug, PartialEq)]
 pub enum ResponseError {
     SystemTime(Duration),
@@ -92,3 +94,5 @@ impl From<SystemTimeError> for ResponseError {
         ResponseError::SystemTime(error.duration())
     }
 }
+
+impl actix_web::error::ResponseError for ResponseError {}
