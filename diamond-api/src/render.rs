@@ -596,7 +596,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn render_request_parse_url() -> Result<(), actix_web::error::Error> {
+    async fn render_request_parse_url() -> Result<(), actix_web::Error> {
         let req = TestRequest::with_uri("/render?target=app.numUsers&format=json&from=0&until=10")
             .to_http_request();
 
@@ -612,7 +612,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn render_request_parse_form() -> Result<(), actix_web::error::Error> {
+    async fn render_request_parse_form() -> Result<(), actix_web::Error> {
         let s = "target=app.numUsers&format=json&from=0&until=10";
 
         let (req, mut payload) =
@@ -635,7 +635,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn render_request_parse_json() -> Result<(), actix_web::error::Error> {
+    async fn render_request_parse_json() -> Result<(), actix_web::Error> {
         let s = r#"{ "target":["app.numUsers"],"format":"json","from":"0","until":"10"}"#;
 
         let (req, mut pl) = TestRequest::with_uri("/render")

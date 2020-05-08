@@ -1,4 +1,3 @@
-use actix_web::error::Error;
 use glob::Pattern;
 use std::path::Path;
 use whisper::interval::Interval;
@@ -14,7 +13,7 @@ impl Walker for WalkerConst {
         Ok(self.0.to_vec())
     }
 
-    fn walk_tree(&self, _: &Path, _: &Pattern) -> Result<Vec<MetricResponseLeaf>, Error> {
+    fn walk_tree(&self, _: &Path, _: &Pattern) -> Result<Vec<MetricResponseLeaf>, ResponseError> {
         Ok(vec![MetricResponseLeaf {
             name: "virtual".to_owned(),
             path: "metric".to_owned(),

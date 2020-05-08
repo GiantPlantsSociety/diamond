@@ -135,7 +135,8 @@ pub async fn find_handler<T: Walker>(
 ) -> Result<HttpResponse> {
     let path = FindPath::from(&query).map_err(ErrorInternalServerError)?;
 
-    ctx.walker
+    Ok(ctx
+        .walker
         .walk_tree(&path.path, &path.pattern)
         .map(|metrics| {
             if query.format == FindFormat::TreeJson {
@@ -146,7 +147,7 @@ pub async fn find_handler<T: Walker>(
                 let metrics_completer = MetricResponse { metrics };
                 HttpResponse::Ok().json(metrics_completer)
             }
-        })
+        })?)
 }
 
 #[cfg(test)]

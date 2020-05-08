@@ -1,4 +1,3 @@
-use actix_web::error::Error;
 use glob::Pattern;
 use serde::*;
 use std::ffi::OsStr;
@@ -38,8 +37,11 @@ impl MetricResponseLeaf {
 
 pub trait Walker {
     fn walk(&self, metric: &str, interval: Interval) -> Result<Vec<RenderPoint>, ResponseError>;
-    fn walk_tree(&self, subdir: &Path, pattern: &Pattern)
-        -> Result<Vec<MetricResponseLeaf>, Error>;
+    fn walk_tree(
+        &self,
+        subdir: &Path,
+        pattern: &Pattern,
+    ) -> Result<Vec<MetricResponseLeaf>, ResponseError>;
 }
 
 #[derive(Clone)]
@@ -69,7 +71,7 @@ impl Walker for WalkerPath {
         &self,
         subdir: &Path,
         pattern: &Pattern,
-    ) -> Result<Vec<MetricResponseLeaf>, Error> {
+    ) -> Result<Vec<MetricResponseLeaf>, ResponseError> {
         let full_path = self.0.canonicalize()?.join(&subdir);
         let dir_metric = subdir
             .components()
