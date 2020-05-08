@@ -1,4 +1,4 @@
-use std::io::Result;
+use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
@@ -21,7 +21,7 @@ struct Args {
     x_files_factor: f32,
 }
 
-fn run(args: &Args) -> Result<()> {
+fn run(args: &Args) -> io::Result<()> {
     let mut file = whisper::WhisperFile::open(&args.path)?;
 
     let old_aggregation_method = file.info().aggregation_method;

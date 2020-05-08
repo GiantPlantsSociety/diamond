@@ -4,6 +4,7 @@ use crate::retention::Retention;
 use std::convert::AsRef;
 use std::default;
 use std::fmt::{Display, Formatter};
+use std::io;
 use std::path::Path;
 
 pub struct WhisperBuilder {
@@ -152,7 +153,7 @@ pub enum BuilderError {
     BadRetention(usize, u32, u32),
     NotEnoughPoints(usize, u32, u32),
     InvalidXFilesFactor(f32),
-    Io(std::io::Error),
+    Io(io::Error),
 }
 
 impl Display for BuilderError {

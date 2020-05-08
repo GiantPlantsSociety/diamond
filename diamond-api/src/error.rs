@@ -2,6 +2,7 @@ use glob::PatternError;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
+use std::io;
 use std::num::ParseIntError;
 use std::time::{Duration, SystemTimeError};
 
@@ -91,8 +92,8 @@ impl fmt::Display for ResponseError {
     }
 }
 
-impl From<std::io::Error> for ResponseError {
-    fn from(error: std::io::Error) -> Self {
+impl From<io::Error> for ResponseError {
+    fn from(error: io::Error) -> Self {
         ResponseError::Kind(error.to_string())
     }
 }

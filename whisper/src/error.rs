@@ -1,10 +1,11 @@
 use std::fmt::{Display, Formatter, Result};
+use std::io;
 use std::num::{ParseFloatError, ParseIntError};
 use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum Error {
-    Io(std::io::Error),
+    Io(io::Error),
     FileNotExist(PathBuf),
     Kind(String),
 }
@@ -21,8 +22,8 @@ impl Display for Error {
 
 impl std::error::Error for Error {}
 
-impl From<std::io::Error> for Error {
-    fn from(error: std::io::Error) -> Self {
+impl From<io::Error> for Error {
+    fn from(error: io::Error) -> Self {
         Error::Io(error)
     }
 }

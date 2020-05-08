@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Json};
-use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::{dev, FromRequest, HttpMessage, HttpRequest, HttpResponse};
 use futures::future::{ready, FutureExt, LocalBoxFuture};
 use serde::*;
 use std::path::PathBuf;
@@ -47,7 +47,7 @@ impl FromStr for RenderQuery {
 }
 
 impl FromRequest for RenderQuery {
-    type Error = Error;
+    type Error = actix_web::Error;
     type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
     type Config = ();
 
@@ -132,7 +132,7 @@ pub struct RenderResponse {
 pub async fn render_handler<T: Walker>(
     ctx: Data<Context<T>>,
     query: RenderQuery,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, actix_web::Error> {
     let interval = Interval::new(query.from, query.until).map_err(ResponseError::Kind)?;
     let format = query.format;
 
@@ -208,7 +208,6 @@ mod tests {
     use actix_web::http::StatusCode;
     use actix_web::test::TestRequest;
     use futures::stream::StreamExt;
-    use std::error;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     async fn render_response(
@@ -375,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_one() -> Result<(), Error> {
+    fn url_deserialize_one() -> Result<(), ParseError> {
         let params = RenderQuery {
             format: RenderFormat::Json,
             target: ["app.numUsers".to_owned()].to_vec(),
@@ -392,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_multiple() -> Result<(), Error> {
+    fn url_deserialize_multiple() -> Result<(), ParseError> {
         let params = RenderQuery {
             format: RenderFormat::Json,
             target: ["app.numUsers".to_owned(), "app.numServers".to_owned()].to_vec(),
@@ -410,7 +409,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_none() -> Result<(), Error> {
+    fn url_deserialize_none() -> Result<(), ParseError> {
         let params = RenderQuery {
             format: RenderFormat::Json,
             target: Vec::new(),
@@ -427,7 +426,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_other() -> Result<(), Error> {
+    fn url_deserialize_other() -> Result<(), ParseError> {
         let params = RenderQuery {
             format: RenderFormat::Json,
             target: vec!["m1".to_owned()],
@@ -444,7 +443,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_time_yesterday_now() -> Result<(), Box<dyn error::Error>> {
+    fn url_deserialize_time_yesterday_now() -> Result<(), ParseError> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
         let params = RenderQuery {
@@ -463,7 +462,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_time_relative() -> Result<(), Box<dyn error::Error>> {
+    fn url_deserialize_time_relative() -> Result<(), ParseError> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
 
         let params = RenderQuery {
@@ -518,7 +517,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_time_fail() -> Result<(), Error> {
+    fn url_deserialize_time_fail() -> Result<(), ParseError> {
         assert!("target=m1&target=m2&format=json&from=-&until=now"
             .parse::<RenderQuery>()
             .is_err());
@@ -539,7 +538,7 @@ mod tests {
     }
 
     #[test]
-    fn render_response_json() -> Result<(), Error> {
+    fn render_response_json() -> Result<(), serde_json::Error> {
         let rd = serde_json::to_string(&[RenderResponseEntry {
             target: "entries".into(),
             datapoints: vec![
@@ -560,7 +559,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::unreadable_literal)]
-    fn render_response_json_parse() -> Result<(), Error> {
+    fn render_response_json_parse() -> Result<(), serde_json::Error> {
         let rd = [RenderResponseEntry {
             target: "entries".into(),
             datapoints: [

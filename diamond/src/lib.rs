@@ -204,6 +204,7 @@ mod tests {
     use super::*;
     use settings::{Net, WhisperConfig};
     use std::convert::From;
+    use std::io;
     use std::net::IpAddr::V4;
     use std::path::{Path, PathBuf};
     use tempfile::Builder;
@@ -428,7 +429,7 @@ mod tests {
     }
 
     #[test]
-    fn update_silently_with_absent_wsp() -> Result<(), std::io::Error> {
+    fn update_silently_with_absent_wsp() -> Result<(), io::Error> {
         let dir = Builder::new()
             .prefix("diamond_silent")
             .tempdir()
