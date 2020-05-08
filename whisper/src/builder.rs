@@ -176,7 +176,14 @@ impl Display for BuilderError {
     }
 }
 
-impl std::error::Error for BuilderError {}
+impl std::error::Error for BuilderError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 impl From<BuilderError> for error::Error {
     fn from(error: BuilderError) -> Self {

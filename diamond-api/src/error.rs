@@ -39,7 +39,14 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl Error for ParseError {}
+impl Error for ParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::ParseIntError(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 impl From<SystemTimeError> for ParseError {
     fn from(error: SystemTimeError) -> Self {

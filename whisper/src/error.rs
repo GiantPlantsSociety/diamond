@@ -20,7 +20,14 @@ impl Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Self {
@@ -44,4 +51,12 @@ impl Display for ParseError {
     }
 }
 
-impl std::error::Error for ParseError {}
+impl std::error::Error for ParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::ParseFloatError(e) => Some(e),
+            Self::ParseIntError(e) => Some(e),
+            _ => None,
+        }
+    }
+}

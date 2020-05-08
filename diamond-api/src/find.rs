@@ -153,12 +153,13 @@ pub async fn find_handler<T: Walker>(
 #[cfg(test)]
 mod tests {
     use actix_web::test::TestRequest;
+    use std::error::Error;
     use std::path::PathBuf;
 
     use super::*;
 
     #[test]
-    fn url_serialize() -> Result<(), serde_urlencoded::ser::Error> {
+    fn url_serialize() -> Result<(), Box<dyn Error>> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
