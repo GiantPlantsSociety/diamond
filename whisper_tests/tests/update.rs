@@ -1,5 +1,5 @@
 use byteorder::{BigEndian, WriteBytesExt};
-use failure::Error;
+use std::error::Error;
 use std::fs;
 use whisper::point::Point;
 use whisper::retention::*;
@@ -31,7 +31,7 @@ impl Dump for Vec<u8> {
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_update_snapshot() -> Result<(), Error> {
+fn test_update_snapshot() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "update_snapshot");
 
@@ -202,7 +202,7 @@ fn test_update_snapshot() -> Result<(), Error> {
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_update_and_aggregate_snapshot() -> Result<(), Error> {
+fn test_update_and_aggregate_snapshot() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "update_and_aggregate_snapshot");
 

@@ -2,6 +2,7 @@ use config::*;
 use serde::*;
 use std::convert::From;
 use std::fs;
+use std::io;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use whisper::aggregation::AggregationMethod;
@@ -44,7 +45,7 @@ impl Settings {
         s.try_into()
     }
 
-    pub fn generate<P: AsRef<Path>>(path: P) -> Result<(), std::io::Error> {
+    pub fn generate<P: AsRef<Path>>(path: P) -> Result<(), io::Error> {
         fs::write(path, CONFIG)
     }
 }

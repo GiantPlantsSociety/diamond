@@ -1,5 +1,4 @@
-use failure::*;
-
+use std::error::Error;
 use whisper::builder::WhisperBuilder;
 use whisper::interval::Interval;
 use whisper::point::Point;
@@ -8,7 +7,7 @@ use whisper::ArchiveData;
 use whisper_tests::*;
 
 #[test]
-fn whisper_suggest_archive() -> Result<(), Error> {
+fn whisper_suggest_archive() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "suggest");
 
@@ -49,25 +48,22 @@ fn whisper_suggest_archive() -> Result<(), Error> {
     file.update_many(&points, now)?;
 
     assert_eq!(
-        file.suggest_archive(Interval::new(now - 600, now - 60).map_err(err_msg)?, now),
+        file.suggest_archive(Interval::new(now - 600, now - 60)?, now),
         Some(60)
     );
 
     assert_eq!(
-        file.suggest_archive(Interval::new(now - 1200, now - 600).map_err(err_msg)?, now),
+        file.suggest_archive(Interval::new(now - 1200, now - 600)?, now),
         Some(300)
     );
 
     assert_eq!(
-        file.suggest_archive(Interval::new(now - 6000, now - 3000).map_err(err_msg)?, now),
+        file.suggest_archive(Interval::new(now - 6000, now - 3000)?, now),
         Some(600)
     );
 
     assert_eq!(
-        file.suggest_archive(
-            Interval::new(now - 12000, now - 6060).map_err(err_msg)?,
-            now
-        ),
+        file.suggest_archive(Interval::new(now - 12000, now - 6060)?, now),
         None
     );
 
@@ -75,7 +71,7 @@ fn whisper_suggest_archive() -> Result<(), Error> {
 }
 
 #[test]
-fn whisper_fetch_auto_points() -> Result<(), Error> {
+fn whisper_fetch_auto_points() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
     let path = get_file_path(&temp_dir, "fetch_auto_points");
 
@@ -104,7 +100,7 @@ fn whisper_fetch_auto_points() -> Result<(), Error> {
         now,
     )?;
 
-    let interval = Interval::new(now - 540, now - 60).map_err(err_msg)?;
+    let interval = Interval::new(now - 540, now - 60)?;
 
     let data = ArchiveData {
         from_interval: 1528240260,
@@ -124,7 +120,7 @@ fn whisper_fetch_auto_points() -> Result<(), Error> {
 
     assert_eq!(file.fetch_auto_points(interval, now)?, data);
 
-    let interval2 = Interval::new(now - 3000, now - 900).map_err(err_msg)?;
+    let interval2 = Interval::new(now - 3000, now - 900)?;
     assert!(file.fetch_auto_points(interval2, now).is_err());
 
     Ok(())

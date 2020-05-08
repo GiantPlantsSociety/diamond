@@ -8,7 +8,6 @@ repository = "https://github.com/GiantPlantsSociety/diamond"
 edition = "2018"
 
 [dependencies]
-failure = "0.1"
 lazy_static = "1"
 regex = "1"
 structopt = "0.3"

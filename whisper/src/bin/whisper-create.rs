@@ -1,5 +1,5 @@
-use failure::Error;
 use humansize::{file_size_opts as options, FileSize};
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::process::exit;
@@ -95,7 +95,7 @@ fn estimate_info(retentions: &[Retention]) {
     }
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     if args.estimate {
         estimate_info(&args.retentions);
     } else {

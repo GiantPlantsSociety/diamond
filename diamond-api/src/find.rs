@@ -1,6 +1,6 @@
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Form, Json, Query};
-use actix_web::{dev, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
+use actix_web::{dev, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
 use futures::future::{FutureExt, LocalBoxFuture};
 use glob::Pattern;
 use serde::*;
@@ -76,7 +76,7 @@ pub struct FindQuery {
 }
 
 impl FromRequest for FindQuery {
-    type Error = Error;
+    type Error = actix_web::Error;
     type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
     type Config = ();
 
@@ -135,7 +135,8 @@ pub async fn find_handler<T: Walker>(
 ) -> Result<HttpResponse> {
     let path = FindPath::from(&query).map_err(ErrorInternalServerError)?;
 
-    ctx.walker
+    Ok(ctx
+        .walker
         .walk_tree(&path.path, &path.pattern)
         .map(|metrics| {
             if query.format == FindFormat::TreeJson {
@@ -146,18 +147,19 @@ pub async fn find_handler<T: Walker>(
                 let metrics_completer = MetricResponse { metrics };
                 HttpResponse::Ok().json(metrics_completer)
             }
-        })
+        })?)
 }
 
 #[cfg(test)]
 mod tests {
     use actix_web::test::TestRequest;
+    use std::error::Error;
     use std::path::PathBuf;
 
     use super::*;
 
     #[test]
-    fn url_serialize() -> Result<(), failure::Error> {
+    fn url_serialize() -> Result<(), Box<dyn Error>> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -188,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize() -> Result<(), failure::Error> {
+    fn url_deserialize() -> Result<(), ParseError> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -219,7 +221,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_default() -> Result<(), failure::Error> {
+    fn url_deserialize_default() -> Result<(), ParseError> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::default(),
@@ -234,7 +236,7 @@ mod tests {
     }
 
     #[test]
-    fn findpath_convert() -> Result<(), failure::Error> {
+    fn findpath_convert() -> Result<(), ParseError> {
         let path = FindPath {
             path: PathBuf::from("123/456/"),
             pattern: Pattern::new("789")?,
@@ -254,7 +256,7 @@ mod tests {
     }
 
     #[test]
-    fn query_convertion() -> Result<(), failure::Error> {
+    fn query_convertion() -> Result<(), ParseError> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -311,7 +313,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn find_request_parse_url() -> Result<(), actix_web::error::Error> {
+    async fn find_request_parse_url() -> Result<(), actix_web::Error> {
         let r =
             TestRequest::with_uri("/find?query=123&format=treejson&wildcards=1&from=0&until=10")
                 .to_srv_request();
@@ -331,7 +333,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn find_request_parse_form() -> Result<(), actix_web::error::Error> {
+    async fn find_request_parse_form() -> Result<(), actix_web::Error> {
         let r = TestRequest::with_uri("/find")
             .header("content-type", "application/x-www-form-urlencoded")
             .set_payload("query=123&format=treejson&wildcards=1&from=0&until=10")
@@ -352,7 +354,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn find_request_parse_json() -> Result<(), actix_web::error::Error> {
+    async fn find_request_parse_json() -> Result<(), actix_web::Error> {
         let r = TestRequest::with_uri("/render")
             .header("content-type", "application/json")
             .set_payload(

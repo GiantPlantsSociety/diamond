@@ -1,5 +1,4 @@
-use failure::Error;
-
+use std::error::Error;
 use whisper::builder;
 use whisper::builder::*;
 use whisper::point::*;
@@ -8,7 +7,7 @@ use whisper_tests::*;
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_merge_update() -> Result<(), Error> {
+fn test_merge_update() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_1");
@@ -43,7 +42,7 @@ fn test_merge_update() -> Result<(), Error> {
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_merge_update_many() -> Result<(), Error> {
+fn test_merge_update_many() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue34_3");
@@ -116,7 +115,7 @@ fn test_merge_errors() -> Result<(), builder::BuilderError> {
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_merge_overwrite() -> Result<(), Error> {
+fn test_merge_overwrite() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");
@@ -198,7 +197,7 @@ fn test_merge_overwrite() -> Result<(), Error> {
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_fill_overlap() -> Result<(), Error> {
+fn test_fill_overlap() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "issue54_1");

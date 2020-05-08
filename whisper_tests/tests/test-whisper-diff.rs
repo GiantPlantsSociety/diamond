@@ -1,4 +1,4 @@
-use failure::Error;
+use std::error::Error;
 use whisper::diff::*;
 use whisper::point::*;
 use whisper::retention::*;
@@ -7,7 +7,7 @@ use whisper_tests::*;
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_diff_simple_filtered() -> Result<(), Error> {
+fn test_diff_simple_filtered() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "diff1_1");
@@ -76,7 +76,7 @@ fn test_diff_simple_filtered() -> Result<(), Error> {
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_diff_simple_unfiltered() -> Result<(), Error> {
+fn test_diff_simple_unfiltered() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "diff2_1");
@@ -188,7 +188,7 @@ fn test_diff_simple_unfiltered() -> Result<(), Error> {
 
 #[test]
 #[allow(clippy::unreadable_literal)]
-fn test_diff_error() -> Result<(), Error> {
+fn test_diff_error() -> Result<(), Box<dyn Error>> {
     let temp_dir = get_temp_dir();
 
     let path1 = get_file_path(&temp_dir, "diff1_1");

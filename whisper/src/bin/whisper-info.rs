@@ -1,5 +1,5 @@
-use failure::{format_err, Error};
 use serde_json::json;
+use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
@@ -19,7 +19,7 @@ struct Args {
     field: Option<String>,
 }
 
-fn format_info(meta: &whisper::WhisperMetadata, json: bool) -> Result<(), Error> {
+fn format_info(meta: &whisper::WhisperMetadata, json: bool) -> Result<(), Box<dyn Error>> {
     if json {
         let john = json!({
             "maxRetention": &meta.max_retention,
@@ -59,7 +59,7 @@ fn format_info(meta: &whisper::WhisperMetadata, json: bool) -> Result<(), Error>
     Ok(())
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     let file = whisper::WhisperFile::open(&args.path)?;
     let meta = file.info();
 
@@ -68,7 +68,8 @@ fn run(args: &Args) -> Result<(), Error> {
         Some(ref field) if field == "xFilesFactor"      => println!("{}", meta.x_files_factor),
         Some(ref field) if field == "aggregationMethod" => println!("{}", meta.aggregation_method),
         Some(ref field) if field == "fileSize"          => println!("{}", meta.file_size()),
-        Some(ref field) => return Err(format_err!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field)),
+        Some(ref field) => return Err(
+            format!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field).into()),
         None => format_info(&meta, args.json)?,
     };
 

@@ -2,6 +2,7 @@ use glob::PatternError;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
+use std::io;
 use std::num::ParseIntError;
 use std::time::{Duration, SystemTimeError};
 
@@ -14,6 +15,7 @@ pub enum ParseError {
     Time,
     Unknown,
     Pattern(usize, &'static str),
+    Query(String),
 }
 
 impl fmt::Display for ParseError {
@@ -32,11 +34,19 @@ impl fmt::Display for ParseError {
             ParseError::Pattern(pos, msg) => {
                 write!(f, "Pattern syntax error near position {}: {}", pos, msg)
             }
+            ParseError::Query(s) => write!(f, "{}", s),
         }
     }
 }
 
-impl Error for ParseError {}
+impl Error for ParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::ParseIntError(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 impl From<SystemTimeError> for ParseError {
     fn from(error: SystemTimeError) -> Self {
@@ -55,6 +65,14 @@ impl From<PatternError> for ParseError {
         ParseError::Pattern(error.pos, error.msg)
     }
 }
+
+impl From<serde_urlencoded::de::Error> for ParseError {
+    fn from(error: serde_urlencoded::de::Error) -> Self {
+        ParseError::Query(error.to_string())
+    }
+}
+
+impl actix_web::error::ResponseError for ParseError {}
 
 #[derive(Debug, PartialEq)]
 pub enum ResponseError {
@@ -81,8 +99,8 @@ impl fmt::Display for ResponseError {
     }
 }
 
-impl From<std::io::Error> for ResponseError {
-    fn from(error: std::io::Error) -> Self {
+impl From<io::Error> for ResponseError {
+    fn from(error: io::Error) -> Self {
         ResponseError::Kind(error.to_string())
     }
 }
@@ -92,3 +110,5 @@ impl From<SystemTimeError> for ResponseError {
         ResponseError::SystemTime(error.duration())
     }
 }
+
+impl actix_web::error::ResponseError for ResponseError {}

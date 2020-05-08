@@ -1,4 +1,4 @@
-use failure::Error;
+use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -22,7 +22,7 @@ struct Args {
     dst: PathBuf,
 }
 
-fn run(args: &Args) -> Result<(), Error> {
+fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
     fill(&args.src, &args.dst, now, now)?;
     Ok(())
