@@ -4,6 +4,7 @@ pub mod opts;
 pub mod storage;
 
 pub(crate) mod error;
+pub(crate) mod exec;
 pub(crate) mod find;
 pub(crate) mod parse;
 pub(crate) mod render;

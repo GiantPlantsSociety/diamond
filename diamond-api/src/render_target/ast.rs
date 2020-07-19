@@ -3,7 +3,7 @@ use std::fmt;
 
 // Literal
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LiteralValue {
     Boolean(bool),
     Integer(i64),
@@ -14,7 +14,7 @@ pub enum LiteralValue {
 
 // Path expression
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum PathElement {
     Variable(String),
     Partial(String),
@@ -23,7 +23,7 @@ pub enum PathElement {
     Enum(Vec<String>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PathWord(pub Vec<PathElement>);
 
 impl PathWord {
@@ -75,7 +75,7 @@ impl PathWord {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PathExpression(pub Vec<PathWord>);
 
 impl fmt::Display for PathExpression {
@@ -115,14 +115,14 @@ impl fmt::Display for PathExpression {
 
 // Call
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Call {
     pub function: String,
     pub args: Vec<Arg>,
     pub named_args: Vec<(String, Arg)>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Arg {
     Literal(LiteralValue),
     Expression(Expression),
@@ -130,13 +130,13 @@ pub enum Arg {
 
 // Template
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Source {
     Call(Call),
     Path(PathExpression),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Template {
     pub source: Source,
     pub args: Vec<LiteralValue>,
@@ -145,7 +145,7 @@ pub struct Template {
 
 // Expression
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Path(PathExpression),
     Call(Call),
