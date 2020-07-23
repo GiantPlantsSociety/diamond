@@ -66,6 +66,22 @@ impl<T: Storage> ExpressionExec for T {
                             divide_series(series_values)
                         }
                     }
+                    ("diffSeries", series, [], []) => {
+                        if series.len() != 2 {
+                            Vec::new()
+                        } else {
+                            let series_values = self.resolve_series(series);
+                            diff_series(series_values)
+                        }
+                    }
+                    ("maxSeries", series, [], []) => {
+                        let series_values = self.resolve_series(series);
+                        max_series(series_values)
+                    }
+                    ("minSeries", series, [], []) => {
+                        let series_values = self.resolve_series(series);
+                        min_series(series_values)
+                    }
                     _ => unimplemented!(),
                 }
             }
@@ -179,12 +195,61 @@ fn divide_series(series: Vec<Series>) -> Vec<Series> {
         let divide = left
             .into_iter()
             .zip(right.into_iter())
-            .map(|(Point(time, x), Point(_, y))| Point(*time, x + y))
+            .map(|(Point(time, x), Point(_, y))| Point(*time, x / y))
             .collect::<Vec<_>>();
         vec![divide]
     } else {
         Vec::new()
     }
+}
+
+fn diff_series(series: Vec<Series>) -> Vec<Series> {
+    if let [left, right] = series.as_slice() {
+        let divide = left
+            .into_iter()
+            .zip(right.into_iter())
+            .map(|(Point(time, x), Point(_, y))| Point(*time, x - y))
+            .collect::<Vec<_>>();
+        vec![divide]
+    } else {
+        Vec::new()
+    }
+}
+
+fn max_series(series: Vec<Series>) -> Vec<Series> {
+    let init = series
+        .iter()
+        .next()
+        .unwrap()
+        .into_iter()
+        .map(|Point(time, _)| Point(*time, 0_f64))
+        .collect();
+
+    let max_series = series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+        acc.into_iter()
+            .zip(serie.into_iter())
+            .map(|(Point(time, x), Point(_, y))| Point(time, x.max(y)))
+            .collect::<Series>()
+    });
+    vec![max_series]
+}
+
+fn min_series(series: Vec<Series>) -> Vec<Series> {
+    let init = series
+        .iter()
+        .next()
+        .unwrap()
+        .into_iter()
+        .map(|Point(time, _)| Point(*time, 0_f64))
+        .collect();
+
+    let min_series = series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+        acc.into_iter()
+            .zip(serie.into_iter())
+            .map(|(Point(time, x), Point(_, y))| Point(time, x.min(y)))
+            .collect::<Series>()
+    });
+    vec![min_series]
 }
 
 #[derive(Clone)]
