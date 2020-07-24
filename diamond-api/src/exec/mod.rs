@@ -82,6 +82,10 @@ impl<T: Storage> ExpressionExec for T {
                         let series_values = self.resolve_series(series);
                         min_series(series_values)
                     }
+                    ("multiplySeries", series, [], []) => {
+                        let series_values = self.resolve_series(series);
+                        multiply_series(series_values)
+                    }
                     _ => unimplemented!(),
                 }
             }
@@ -252,6 +256,24 @@ fn min_series(series: Vec<Series>) -> Vec<Series> {
     vec![min_series]
 }
 
+fn multiply_series(series: Vec<Series>) -> Vec<Series> {
+    let init = series
+        .iter()
+        .next()
+        .unwrap()
+        .into_iter()
+        .map(|Point(time, _)| Point(*time, 1_f64))
+        .collect();
+
+    let mul = series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+        acc.into_iter()
+            .zip(serie.into_iter())
+            .map(|(Point(time, x), Point(_, y))| Point(time, x * y))
+            .collect::<Series>()
+    });
+    vec![mul]
+}
+
 #[derive(Clone)]
 pub struct StorageConst(Vec<Series>);
 
@@ -281,5 +303,16 @@ mod tests {
         ]);
         let a: Expression = "sumSeries(path.to.metric)".parse().unwrap();
         assert_eq!(s.execute(a), vec![vec![Point(1, 0.6), Point(2, 1.2)]]);
+    }
+
+    #[test]
+    fn test_execution2() {
+        let s = StorageConst(vec![
+            vec![Point(1, 1_f64), Point(2, 1_f64)],
+            vec![Point(1, 2_f64), Point(2, 0.5)],
+            vec![Point(1, 3_f64), Point(2, 4_f64)],
+        ]);
+        let a: Expression = "multiplySeries(path.to.metric)".parse().unwrap();
+        assert_eq!(s.execute(a), vec![vec![Point(1, 6_f64), Point(2, 2_f64)]]);
     }
 }
