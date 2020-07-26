@@ -1,4 +1,6 @@
 use crate::render_target::*;
+use std::error::Error;
+use strum_macros::EnumString;
 
 mod functions;
 use functions::*;
@@ -19,53 +21,68 @@ pub struct Series {
     pub points: Vec<Point>,
 }
 
+#[derive(EnumString)]
+#[strum(serialize_all = "camelCase")]
+pub enum DFunction {
+    SumSeries,
+    Absolute,
+    Alias,
+    AliasByMetric,
+    AliasByNode,
+    AverageSeries,
+    CountSeries,
+    DivideSeries,
+    DiffSeries,
+    MaxSeries,
+    MinSeries,
+    MultiplySeries,
+}
+
 trait Storage {
     fn fetch(&self, path: PathExpression) -> Vec<Series>;
 }
 
 trait ExpressionExec {
-    fn execute(&self, expr: Expression) -> Vec<Series>;
+    fn execute(&self, expr: Expression) -> Result<Vec<Series>, Box<dyn Error>>;
     fn args(args: Vec<Arg>) -> (Vec<Expression>, Vec<LiteralValue>);
     fn resolve_series(&self, series: Vec<Expression>) -> Vec<Series>;
 }
 
 impl<T: Storage> ExpressionExec for T {
-    fn execute(&self, expr: Expression) -> Vec<Series> {
-        match expr {
+    fn execute(&self, expr: Expression) -> Result<Vec<Series>, Box<dyn Error>> {
+        let res = match expr {
             Expression::Path(path_expression) => self.fetch(path_expression),
             Expression::Call(Call {
                 function,
                 args,
                 named_args,
             }) => {
+                let function: DFunction = function.parse()?;
                 let (series, literals) = Self::args(args);
-                match (
-                    function.as_str(),
-                    series,
-                    literals.as_slice(),
-                    named_args.as_slice(),
-                ) {
-                    ("sumSeries", series, [], []) => {
+                match (function, series, literals.as_slice(), named_args.as_slice()) {
+                    (DFunction::SumSeries, series, [], []) => {
                         let series_values = self.resolve_series(series);
                         sum_series(series_values, "".to_owned())
                     }
-                    ("absolute", series, [], []) => {
+                    (DFunction::Absolute, series, [], []) => {
                         let series_values = self.resolve_series(series);
                         absolute(series_values)
                     }
                     // waiting for feature(move_ref_pattern)
-                    ("alias", ref _series, [LiteralValue::String(_name)], []) => unimplemented!(),
-                    ("aliasByMetric", _series, [], []) => unimplemented!(),
-                    ("aliasByNode", _series, [], []) => unimplemented!(),
-                    ("averageSeries", series, [], []) => {
+                    (DFunction::Alias, ref _series, [LiteralValue::String(_name)], []) => {
+                        unimplemented!()
+                    }
+                    (DFunction::AliasByMetric, _series, [], []) => unimplemented!(),
+                    (DFunction::AliasByNode, _series, [], []) => unimplemented!(),
+                    (DFunction::AverageSeries, series, [], []) => {
                         let series_values = self.resolve_series(series);
                         average_series(series_values, "".to_owned())
                     }
-                    ("countSeries", series, [], []) => {
+                    (DFunction::CountSeries, series, [], []) => {
                         let series_values = self.resolve_series(series);
                         count_series(series_values, "".to_owned())
                     }
-                    ("divideSeries", series, [], []) => {
+                    (DFunction::DivideSeries, series, [], []) => {
                         if series.len() != 2 {
                             Vec::new()
                         } else {
@@ -73,7 +90,7 @@ impl<T: Storage> ExpressionExec for T {
                             divide_series(series_values, "".to_owned())
                         }
                     }
-                    ("diffSeries", series, [], []) => {
+                    (DFunction::DiffSeries, series, [], []) => {
                         if series.len() != 2 {
                             Vec::new()
                         } else {
@@ -81,15 +98,15 @@ impl<T: Storage> ExpressionExec for T {
                             diff_series(series_values, "".to_owned())
                         }
                     }
-                    ("maxSeries", series, [], []) => {
+                    (DFunction::MaxSeries, series, [], []) => {
                         let series_values = self.resolve_series(series);
                         max_series(series_values, "".to_owned())
                     }
-                    ("minSeries", series, [], []) => {
+                    (DFunction::MinSeries, series, [], []) => {
                         let series_values = self.resolve_series(series);
                         min_series(series_values, "".to_owned())
                     }
-                    ("multiplySeries", series, [], []) => {
+                    (DFunction::MultiplySeries, series, [], []) => {
                         let series_values = self.resolve_series(series);
                         multiply_series(series_values, "".to_owned())
                     }
@@ -97,7 +114,8 @@ impl<T: Storage> ExpressionExec for T {
                 }
             }
             _ => unimplemented!(),
-        }
+        };
+        Ok(res)
     }
 
     fn args(args: Vec<Arg>) -> (Vec<Expression>, Vec<LiteralValue>) {
@@ -116,7 +134,7 @@ impl<T: Storage> ExpressionExec for T {
     fn resolve_series(&self, series: Vec<Expression>) -> Vec<Series> {
         series
             .into_iter()
-            .map(|x| self.execute(x))
+            .map(|x| self.execute(x).unwrap())
             .flatten()
             .collect::<Vec<_>>()
     }
@@ -143,7 +161,7 @@ mod tests {
         }]);
         let a: Expression = "path.to.metric".parse().unwrap();
         assert_eq!(
-            s.execute(a),
+            s.execute(a).unwrap(),
             vec![Series {
                 name: "path.to.metric".to_owned(),
                 points: vec![Point(1, 0.1)]
@@ -169,7 +187,7 @@ mod tests {
         ]);
         let a: Expression = "sumSeries(path.to.metric)".parse().unwrap();
         assert_eq!(
-            s.execute(a),
+            s.execute(a).unwrap(),
             vec![Series {
                 name: "".to_owned(),
                 points: vec![Point(1, 0.6), Point(2, 1.2)]
@@ -195,7 +213,7 @@ mod tests {
         ]);
         let a: Expression = "multiplySeries(path.to.metric)".parse().unwrap();
         assert_eq!(
-            s.execute(a),
+            s.execute(a).unwrap(),
             vec![Series {
                 name: "".to_owned(),
                 points: vec![Point(1, 6_f64), Point(2, 2_f64)]
