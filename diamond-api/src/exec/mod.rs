@@ -10,7 +10,11 @@ impl PartialEq for Point {
     }
 }
 
-type Series = Vec<Point>;
+#[derive(Clone, PartialEq, Debug)]
+struct Series {
+    pub name: String,
+    pub points: Vec<Point>,
+}
 
 trait Storage {
     fn fetch(&self, path: PathExpression) -> Vec<Series>;
@@ -40,7 +44,7 @@ impl<T: Storage> ExpressionExec for T {
                 ) {
                     ("sumSeries", series, [], []) => {
                         let series_values = self.resolve_series(series);
-                        sum_series(series_values)
+                        sum_series(series_values, "".to_owned())
                     }
                     ("absolute", series, [], []) => {
                         let series_values = self.resolve_series(series);
@@ -52,18 +56,18 @@ impl<T: Storage> ExpressionExec for T {
                     ("aliasByNode", _series, [], []) => unimplemented!(),
                     ("averageSeries", series, [], []) => {
                         let series_values = self.resolve_series(series);
-                        average_series(series_values)
+                        average_series(series_values, "".to_owned())
                     }
                     ("countSeries", series, [], []) => {
                         let series_values = self.resolve_series(series);
-                        count_series(series_values)
+                        count_series(series_values, "".to_owned())
                     }
                     ("divideSeries", series, [], []) => {
                         if series.len() != 2 {
                             Vec::new()
                         } else {
                             let series_values = self.resolve_series(series);
-                            divide_series(series_values)
+                            divide_series(series_values, "".to_owned())
                         }
                     }
                     ("diffSeries", series, [], []) => {
@@ -71,20 +75,20 @@ impl<T: Storage> ExpressionExec for T {
                             Vec::new()
                         } else {
                             let series_values = self.resolve_series(series);
-                            diff_series(series_values)
+                            diff_series(series_values, "".to_owned())
                         }
                     }
                     ("maxSeries", series, [], []) => {
                         let series_values = self.resolve_series(series);
-                        max_series(series_values)
+                        max_series(series_values, "".to_owned())
                     }
                     ("minSeries", series, [], []) => {
                         let series_values = self.resolve_series(series);
-                        min_series(series_values)
+                        min_series(series_values, "".to_owned())
                     }
                     ("multiplySeries", series, [], []) => {
                         let series_values = self.resolve_series(series);
-                        multiply_series(series_values)
+                        multiply_series(series_values, "".to_owned())
                     }
                     _ => unimplemented!(),
                 }
@@ -115,7 +119,7 @@ impl<T: Storage> ExpressionExec for T {
     }
 }
 
-fn sum_series(series: Vec<Series>) -> Vec<Series> {
+fn sum_series(series: Vec<Series>, name: String) -> Vec<Series> {
     if series.len() == 0 {
         return series;
     }
@@ -124,47 +128,57 @@ fn sum_series(series: Vec<Series>) -> Vec<Series> {
         .iter()
         .next()
         .unwrap()
-        .into_iter()
+        .points
+        .iter()
         .map(|Point(time, _)| Point(*time, 0_f64))
         .collect();
 
-    let sum = series.into_iter().fold(init, |acc: Vec<Point>, serie| {
-        acc.into_iter()
-            .zip(serie.into_iter())
-            .map(|(Point(time, x), Point(_, y))| Point(time, x + y))
-            .collect::<Series>()
-    });
+    let sum = Series {
+        name,
+        points: series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+            acc.into_iter()
+                .zip(serie.points.into_iter())
+                .map(|(Point(time, x), Point(_, y))| Point(time, x + y))
+                .collect::<Vec<_>>()
+        }),
+    };
     vec![sum]
 }
 
 fn absolute(series: Vec<Series>) -> Vec<Series> {
     series
         .into_iter()
-        .map(|serie| {
-            serie
+        .map(|serie| Series {
+            name: serie.name,
+            points: serie
+                .points
                 .into_iter()
                 .map(|Point(time, x)| Point(time, x.abs()))
-                .collect::<_>()
+                .collect::<Vec<_>>(),
         })
         .collect::<Vec<_>>()
 }
 
-fn count_series(series: Vec<Series>) -> Vec<Series> {
+fn count_series(series: Vec<Series>, name: String) -> Vec<Series> {
     let count = f64::from(series.len() as i32);
 
     match series.into_iter().nth(0) {
         None => Vec::new(),
         Some(first) => {
-            let count_series = first
-                .into_iter()
-                .map(|Point(time, _)| Point(time, count))
-                .collect();
+            let count_series = Series {
+                name,
+                points: first
+                    .points
+                    .into_iter()
+                    .map(|Point(time, _)| Point(time, count))
+                    .collect(),
+            };
             vec![count_series]
         }
     }
 }
 
-fn average_series(series: Vec<Series>) -> Vec<Series> {
+fn average_series(series: Vec<Series>, name: String) -> Vec<Series> {
     let count = f64::from(series.len() as i32);
 
     if series.len() == 0 {
@@ -175,102 +189,126 @@ fn average_series(series: Vec<Series>) -> Vec<Series> {
         .iter()
         .next()
         .unwrap()
-        .into_iter()
+        .points
+        .iter()
         .map(|Point(time, _)| Point(*time, 0_f64))
         .collect();
 
-    let avg = series
-        .into_iter()
-        .fold(init, |acc: Vec<Point>, serie| {
-            acc.into_iter()
-                .zip(serie.into_iter())
-                .map(|(Point(time, x), Point(_, y))| Point(time, x + y))
-                .collect::<Series>()
-        })
-        .into_iter()
-        .map(|Point(time, x)| Point(time, x / count))
-        .collect::<Vec<_>>();
+    let avg = Series {
+        name,
+        points: series
+            .into_iter()
+            .fold(init, |acc: Vec<Point>, serie| {
+                acc.into_iter()
+                    .zip(serie.points.into_iter())
+                    .map(|(Point(time, x), Point(_, y))| Point(time, x + y))
+                    .collect::<Vec<_>>()
+            })
+            .into_iter()
+            .map(|Point(time, x)| Point(time, x / count))
+            .collect::<Vec<_>>(),
+    };
 
     vec![avg]
 }
 
-fn divide_series(series: Vec<Series>) -> Vec<Series> {
+fn divide_series(series: Vec<Series>, name: String) -> Vec<Series> {
     if let [left, right] = series.as_slice() {
-        let divide = left
-            .into_iter()
-            .zip(right.into_iter())
-            .map(|(Point(time, x), Point(_, y))| Point(*time, x / y))
-            .collect::<Vec<_>>();
+        let divide = Series {
+            name,
+            points: left
+                .points
+                .iter()
+                .zip(right.points.iter())
+                .map(|(Point(time, x), Point(_, y))| Point(*time, x / y))
+                .collect::<Vec<_>>(),
+        };
         vec![divide]
     } else {
         Vec::new()
     }
 }
 
-fn diff_series(series: Vec<Series>) -> Vec<Series> {
+fn diff_series(series: Vec<Series>, name: String) -> Vec<Series> {
     if let [left, right] = series.as_slice() {
-        let divide = left
-            .into_iter()
-            .zip(right.into_iter())
-            .map(|(Point(time, x), Point(_, y))| Point(*time, x - y))
-            .collect::<Vec<_>>();
+        let divide = Series {
+            name,
+            points: left
+                .points
+                .iter()
+                .zip(right.points.iter())
+                .map(|(Point(time, x), Point(_, y))| Point(*time, x - y))
+                .collect::<Vec<_>>(),
+        };
         vec![divide]
     } else {
         Vec::new()
     }
 }
 
-fn max_series(series: Vec<Series>) -> Vec<Series> {
+fn max_series(series: Vec<Series>, name: String) -> Vec<Series> {
     let init = series
         .iter()
         .next()
         .unwrap()
-        .into_iter()
+        .points
+        .iter()
         .map(|Point(time, _)| Point(*time, 0_f64))
         .collect();
 
-    let max_series = series.into_iter().fold(init, |acc: Vec<Point>, serie| {
-        acc.into_iter()
-            .zip(serie.into_iter())
-            .map(|(Point(time, x), Point(_, y))| Point(time, x.max(y)))
-            .collect::<Series>()
-    });
+    let max_series = Series {
+        name,
+        points: series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+            acc.into_iter()
+                .zip(serie.points.into_iter())
+                .map(|(Point(time, x), Point(_, y))| Point(time, x.max(y)))
+                .collect::<Vec<_>>()
+        }),
+    };
     vec![max_series]
 }
 
-fn min_series(series: Vec<Series>) -> Vec<Series> {
+fn min_series(series: Vec<Series>, name: String) -> Vec<Series> {
     let init = series
         .iter()
         .next()
         .unwrap()
-        .into_iter()
+        .points
+        .iter()
         .map(|Point(time, _)| Point(*time, 0_f64))
         .collect();
 
-    let min_series = series.into_iter().fold(init, |acc: Vec<Point>, serie| {
-        acc.into_iter()
-            .zip(serie.into_iter())
-            .map(|(Point(time, x), Point(_, y))| Point(time, x.min(y)))
-            .collect::<Series>()
-    });
+    let min_series = Series {
+        name,
+        points: series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+            acc.into_iter()
+                .zip(serie.points.into_iter())
+                .map(|(Point(time, x), Point(_, y))| Point(time, x.min(y)))
+                .collect::<Vec<_>>()
+        }),
+    };
     vec![min_series]
 }
 
-fn multiply_series(series: Vec<Series>) -> Vec<Series> {
+fn multiply_series(series: Vec<Series>, name: String) -> Vec<Series> {
     let init = series
         .iter()
         .next()
         .unwrap()
-        .into_iter()
+        .points
+        .iter()
         .map(|Point(time, _)| Point(*time, 1_f64))
         .collect();
 
-    let mul = series.into_iter().fold(init, |acc: Vec<Point>, serie| {
-        acc.into_iter()
-            .zip(serie.into_iter())
-            .map(|(Point(time, x), Point(_, y))| Point(time, x * y))
-            .collect::<Series>()
-    });
+    let mul = Series {
+        name,
+        points: series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+            acc.into_iter()
+                .zip(serie.points.into_iter())
+                .map(|(Point(time, x), Point(_, y))| Point(time, x * y))
+                .collect::<Vec<_>>()
+        }),
+    };
     vec![mul]
 }
 
@@ -289,30 +327,69 @@ mod tests {
 
     #[test]
     fn expression_path_test() {
-        let s = StorageConst(vec![vec![Point(1, 0.1)]]);
+        let s = StorageConst(vec![Series {
+            name: "path.to.metric".to_owned(),
+            points: vec![Point(1, 0.1)],
+        }]);
         let a: Expression = "path.to.metric".parse().unwrap();
-        assert_eq!(s.execute(a), vec![vec![Point(1, 0.1)]]);
+        assert_eq!(
+            s.execute(a),
+            vec![Series {
+                name: "path.to.metric".to_owned(),
+                points: vec![Point(1, 0.1)]
+            }]
+        );
     }
 
     #[test]
     fn test_execution() {
         let s = StorageConst(vec![
-            vec![Point(1, 0.1), Point(2, 0.2)],
-            vec![Point(1, 0.2), Point(2, 0.4)],
-            vec![Point(1, 0.3), Point(2, 0.6)],
+            Series {
+                name: "1".to_owned(),
+                points: vec![Point(1, 0.1), Point(2, 0.2)],
+            },
+            Series {
+                name: "2".to_owned(),
+                points: vec![Point(1, 0.2), Point(2, 0.4)],
+            },
+            Series {
+                name: "3".to_owned(),
+                points: vec![Point(1, 0.3), Point(2, 0.6)],
+            },
         ]);
         let a: Expression = "sumSeries(path.to.metric)".parse().unwrap();
-        assert_eq!(s.execute(a), vec![vec![Point(1, 0.6), Point(2, 1.2)]]);
+        assert_eq!(
+            s.execute(a),
+            vec![Series {
+                name: "".to_owned(),
+                points: vec![Point(1, 0.6), Point(2, 1.2)]
+            }]
+        );
     }
 
     #[test]
     fn test_execution2() {
         let s = StorageConst(vec![
-            vec![Point(1, 1_f64), Point(2, 1_f64)],
-            vec![Point(1, 2_f64), Point(2, 0.5)],
-            vec![Point(1, 3_f64), Point(2, 4_f64)],
+            Series {
+                name: "".to_owned(),
+                points: vec![Point(1, 1_f64), Point(2, 1_f64)],
+            },
+            Series {
+                name: "".to_owned(),
+                points: vec![Point(1, 2_f64), Point(2, 0.5)],
+            },
+            Series {
+                name: "".to_owned(),
+                points: vec![Point(1, 3_f64), Point(2, 4_f64)],
+            },
         ]);
         let a: Expression = "multiplySeries(path.to.metric)".parse().unwrap();
-        assert_eq!(s.execute(a), vec![vec![Point(1, 6_f64), Point(2, 2_f64)]]);
+        assert_eq!(
+            s.execute(a),
+            vec![Series {
+                name: "".to_owned(),
+                points: vec![Point(1, 6_f64), Point(2, 2_f64)]
+            }]
+        );
     }
 }
