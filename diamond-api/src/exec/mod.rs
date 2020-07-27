@@ -43,13 +43,20 @@ trait Storage {
 }
 
 trait ExpressionExec {
-    fn execute(&self, expr: Expression) -> Result<Vec<Series>, Box<dyn Error>>;
+    fn apply(&self, expr: Expression) -> Result<Vec<Series>, Box<dyn Error>>;
     fn args(args: Vec<Arg>) -> (Vec<Expression>, Vec<LiteralValue>);
     fn resolve_series(&self, series: Vec<Expression>) -> Vec<Series>;
+    fn apply_function(
+        &self,
+        function: DFunction,
+        series: Vec<Expression>,
+        literals: &[LiteralValue],
+        named_args: &[(String, Arg)],
+    ) -> Result<Vec<Series>, Box<dyn Error>>;
 }
 
 impl<T: Storage> ExpressionExec for T {
-    fn execute(&self, expr: Expression) -> Result<Vec<Series>, Box<dyn Error>> {
+    fn apply(&self, expr: Expression) -> Result<Vec<Series>, Box<dyn Error>> {
         let res = match expr {
             Expression::Path(path_expression) => self.fetch(path_expression),
             Expression::Call(Call {
@@ -59,59 +66,68 @@ impl<T: Storage> ExpressionExec for T {
             }) => {
                 let function: DFunction = function.parse()?;
                 let (series, literals) = Self::args(args);
-                match (function, series, literals.as_slice(), named_args.as_slice()) {
-                    (DFunction::SumSeries, series, [], []) => {
-                        let series_values = self.resolve_series(series);
-                        sum_series(series_values, "".to_owned())
-                    }
-                    (DFunction::Absolute, series, [], []) => {
-                        let series_values = self.resolve_series(series);
-                        absolute(series_values)
-                    }
-                    // waiting for feature(move_ref_pattern)
-                    (DFunction::Alias, ref _series, [LiteralValue::String(_name)], []) => {
-                        unimplemented!()
-                    }
-                    (DFunction::AliasByMetric, _series, [], []) => unimplemented!(),
-                    (DFunction::AliasByNode, _series, [], []) => unimplemented!(),
-                    (DFunction::AverageSeries, series, [], []) => {
-                        let series_values = self.resolve_series(series);
-                        average_series(series_values, "".to_owned())
-                    }
-                    (DFunction::CountSeries, series, [], []) => {
-                        let series_values = self.resolve_series(series);
-                        count_series(series_values, "".to_owned())
-                    }
-                    (DFunction::DivideSeries, series, [], []) => {
-                        if series.len() != 2 {
-                            Vec::new()
-                        } else {
-                            let series_values = self.resolve_series(series);
-                            divide_series(series_values, "".to_owned())
-                        }
-                    }
-                    (DFunction::DiffSeries, series, [], []) => {
-                        if series.len() != 2 {
-                            Vec::new()
-                        } else {
-                            let series_values = self.resolve_series(series);
-                            diff_series(series_values, "".to_owned())
-                        }
-                    }
-                    (DFunction::MaxSeries, series, [], []) => {
-                        let series_values = self.resolve_series(series);
-                        max_series(series_values, "".to_owned())
-                    }
-                    (DFunction::MinSeries, series, [], []) => {
-                        let series_values = self.resolve_series(series);
-                        min_series(series_values, "".to_owned())
-                    }
-                    (DFunction::MultiplySeries, series, [], []) => {
-                        let series_values = self.resolve_series(series);
-                        multiply_series(series_values, "".to_owned())
-                    }
-                    _ => unimplemented!(),
+                self.apply_function(function, series, &literals, &named_args)?
+            }
+            _ => unimplemented!(),
+        };
+        Ok(res)
+    }
+
+    fn apply_function(
+        &self,
+        function: DFunction,
+        series: Vec<Expression>,
+        literals: &[LiteralValue],
+        named_args: &[(String, Arg)],
+    ) -> Result<Vec<Series>, Box<dyn Error>> {
+        let res = match (function, series, literals, named_args) {
+            (DFunction::SumSeries, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                sum_series(series_values, "".to_owned())
+            }
+            (DFunction::Absolute, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                absolute(series_values)
+            }
+            // waiting for feature(move_ref_pattern)
+            (DFunction::Alias, ref _series, [LiteralValue::String(_name)], []) => unimplemented!(),
+            (DFunction::AliasByMetric, _series, [], []) => unimplemented!(),
+            (DFunction::AliasByNode, _series, [], []) => unimplemented!(),
+            (DFunction::AverageSeries, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                average_series(series_values, "".to_owned())
+            }
+            (DFunction::CountSeries, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                count_series(series_values, "".to_owned())
+            }
+            (DFunction::DivideSeries, series, [], []) => {
+                if series.len() != 2 {
+                    Vec::new()
+                } else {
+                    let series_values = self.resolve_series(series);
+                    divide_series(series_values, "".to_owned())
                 }
+            }
+            (DFunction::DiffSeries, series, [], []) => {
+                if series.len() != 2 {
+                    Vec::new()
+                } else {
+                    let series_values = self.resolve_series(series);
+                    diff_series(series_values, "".to_owned())
+                }
+            }
+            (DFunction::MaxSeries, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                max_series(series_values, "".to_owned())
+            }
+            (DFunction::MinSeries, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                min_series(series_values, "".to_owned())
+            }
+            (DFunction::MultiplySeries, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                multiply_series(series_values, "".to_owned())
             }
             _ => unimplemented!(),
         };
@@ -134,7 +150,7 @@ impl<T: Storage> ExpressionExec for T {
     fn resolve_series(&self, series: Vec<Expression>) -> Vec<Series> {
         series
             .into_iter()
-            .map(|x| self.execute(x).unwrap())
+            .map(|x| self.apply(x).unwrap())
             .flatten()
             .collect::<Vec<_>>()
     }
@@ -161,7 +177,7 @@ mod tests {
         }]);
         let a: Expression = "path.to.metric".parse().unwrap();
         assert_eq!(
-            s.execute(a).unwrap(),
+            s.apply(a).unwrap(),
             vec![Series {
                 name: "path.to.metric".to_owned(),
                 points: vec![Point(1, 0.1)]
@@ -187,7 +203,7 @@ mod tests {
         ]);
         let a: Expression = "sumSeries(path.to.metric)".parse().unwrap();
         assert_eq!(
-            s.execute(a).unwrap(),
+            s.apply(a).unwrap(),
             vec![Series {
                 name: "".to_owned(),
                 points: vec![Point(1, 0.6), Point(2, 1.2)]
@@ -213,7 +229,7 @@ mod tests {
         ]);
         let a: Expression = "multiplySeries(path.to.metric)".parse().unwrap();
         assert_eq!(
-            s.execute(a).unwrap(),
+            s.apply(a).unwrap(),
             vec![Series {
                 name: "".to_owned(),
                 points: vec![Point(1, 6_f64), Point(2, 2_f64)]
