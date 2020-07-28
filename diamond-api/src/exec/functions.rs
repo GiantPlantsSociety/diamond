@@ -102,7 +102,7 @@ pub fn absolute(series: Vec<Series>) -> Vec<Series> {
     adjust_series(series, |Point(time, x)| Point(time, x.abs()))
 }
 
-pub fn count_series(series: Vec<Series>, name: String) -> Vec<Series> {
+pub fn count_series(series: Vec<Series>, _name: String) -> Vec<Series> {
     let count = f64::from(series.len() as i32);
     adjust_series(series, |Point(time, _)| Point(time, count))
 }
@@ -123,4 +123,53 @@ pub fn diff_series(series: Vec<Series>, name: String) -> Vec<Series> {
     pair_series(series, name, |(Point(time, x), Point(_, y))| {
         Point(*time, x - y)
     })
+}
+
+pub fn alias(series: Vec<Series>, name: String) -> Vec<Series> {
+    series
+        .into_iter()
+        .map(|Series { name: _, points }| Series {
+            name: name.clone(),
+            points,
+        })
+        .collect::<Vec<_>>()
+}
+
+pub fn alias_by_metric(series: Vec<Series>) -> Vec<Series> {
+    series
+        .into_iter()
+        .map(|Series { name, points }| Series {
+            name: base_metric(name),
+            points,
+        })
+        .collect::<Vec<_>>()
+}
+
+pub fn alias_by_node(series: Vec<Series>, nodes: Vec<i64>) -> Vec<Series> {
+    series
+        .into_iter()
+        .map(|Series { name, points }| Series {
+            name: node_metric(name, nodes.clone()),
+            points,
+        })
+        .collect::<Vec<_>>()
+}
+
+fn base_metric(metric: String) -> String {
+    metric.split('.').last().unwrap_or(&metric).to_owned()
+}
+
+fn node_metric(metric: String, nodes: Vec<i64>) -> String {
+    let count = metric.split('.').count();
+    nodes
+        .into_iter()
+        .map(|node| {
+            let number = if node < 0 {
+                (count as i64 + node) as usize
+            } else {
+                node as usize
+            };
+            metric.split('.').nth(number).unwrap_or("").to_owned()
+        })
+        .fold(String::new(), |state, s| format!("{}.{}", state, s))
 }

@@ -73,6 +73,7 @@ impl<T: Storage> ExpressionExec for T {
         Ok(res)
     }
 
+    #[inline]
     fn apply_function(
         &self,
         function: DFunction,
@@ -90,9 +91,23 @@ impl<T: Storage> ExpressionExec for T {
                 absolute(series_values)
             }
             // waiting for feature(move_ref_pattern)
-            (DFunction::Alias, ref _series, [LiteralValue::String(_name)], []) => unimplemented!(),
-            (DFunction::AliasByMetric, _series, [], []) => unimplemented!(),
-            (DFunction::AliasByNode, _series, [], []) => unimplemented!(),
+            (DFunction::Alias, series, literals, []) => {
+                if let Some(LiteralValue::String(name)) = literals.into_iter().next() {
+                    let series_values = self.resolve_series(series);
+                    alias(series_values, name.to_owned())
+                } else {
+                    Vec::new()
+                }
+            }
+            (DFunction::AliasByMetric, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                alias_by_metric(series_values)
+            }
+            (DFunction::AliasByNode, series, [], []) => {
+                let series_values = self.resolve_series(series);
+                let nodes = resolve_numbers(literals);
+                alias_by_node(series_values, nodes)
+            }
             (DFunction::AverageSeries, series, [], []) => {
                 let series_values = self.resolve_series(series);
                 average_series(series_values, "".to_owned())
@@ -134,6 +149,7 @@ impl<T: Storage> ExpressionExec for T {
         Ok(res)
     }
 
+    #[inline]
     fn args(args: Vec<Arg>) -> (Vec<Expression>, Vec<LiteralValue>) {
         let mut values = Vec::new();
         let mut literals = Vec::new();
@@ -154,6 +170,19 @@ impl<T: Storage> ExpressionExec for T {
             .flatten()
             .collect::<Vec<_>>()
     }
+}
+
+fn resolve_numbers(values: &[LiteralValue]) -> Vec<i64> {
+    values
+        .iter()
+        .flat_map(|x| {
+            if let &LiteralValue::Integer(value) = x {
+                Some(value)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>()
 }
 
 #[derive(Clone)]
