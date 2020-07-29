@@ -6,29 +6,27 @@ fn aggregation_series(
     initial: f64,
     f: impl Fn((Point, Point)) -> Point,
 ) -> Vec<Series> {
-    if series.len() == 0 {
-        return series;
+    match series.iter().next() {
+        Some(first) => {
+            let init = first
+                .points
+                .iter()
+                .map(|Point(time, _)| Point(*time, initial))
+                .collect();
+
+            let aggr = Series {
+                name,
+                points: series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+                    acc.into_iter()
+                        .zip(serie.points.into_iter())
+                        .map(&f)
+                        .collect::<Vec<_>>()
+                }),
+            };
+            vec![aggr]
+        }
+        _ => Vec::new(),
     }
-
-    let init = series
-        .iter()
-        .next()
-        .unwrap()
-        .points
-        .iter()
-        .map(|Point(time, _)| Point(*time, initial))
-        .collect();
-
-    let aggr = Series {
-        name,
-        points: series.into_iter().fold(init, |acc: Vec<Point>, serie| {
-            acc.into_iter()
-                .zip(serie.points.into_iter())
-                .map(&f)
-                .collect::<Vec<_>>()
-        }),
-    };
-    vec![aggr]
 }
 
 fn adjust_series(series: Vec<Series>, f: impl Fn(Point) -> Point) -> Vec<Series> {
