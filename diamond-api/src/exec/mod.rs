@@ -89,19 +89,19 @@ impl<T: Storage> ExpressionExec for T {
         literals: &[LiteralValue],
         named_args: &[(String, Arg)],
     ) -> Result<Vec<Series>, Box<dyn Error>> {
-        let res = match (function, series, literals, named_args) {
-            (DFunction::SumSeries, series, [], []) => {
+        let res = match (function, series, literals.len(), named_args.len()) {
+            (DFunction::SumSeries, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 sum_series(series_values, "".to_owned())
                     .into_iter()
                     .collect()
             }
-            (DFunction::Absolute, series, [], []) => {
+            (DFunction::Absolute, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 absolute(series_values)
             }
             // waiting for feature(move_ref_pattern)
-            (DFunction::Alias, series, literals, []) => {
+            (DFunction::Alias, series, _, 0) => {
                 if let Some(LiteralValue::String(name)) = literals.into_iter().next() {
                     let series_values = self.resolve_n_series(series);
                     alias(series_values, name.to_owned())
@@ -109,24 +109,24 @@ impl<T: Storage> ExpressionExec for T {
                     Default::default()
                 }
             }
-            (DFunction::AliasByMetric, series, [], []) => {
+            (DFunction::AliasByMetric, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 alias_by_metric(series_values)
             }
-            (DFunction::AliasByNode, series, [], []) => {
+            (DFunction::AliasByNode, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 let nodes = resolve_numbers(literals);
                 alias_by_node(series_values, nodes)
             }
-            (DFunction::AverageSeries, series, [], []) => {
+            (DFunction::AverageSeries, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 average_series(series_values, "".to_owned())
             }
-            (DFunction::CountSeries, series, [], []) => {
+            (DFunction::CountSeries, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 count_series(series_values, "".to_owned())
             }
-            (DFunction::DivideSeries, series, [], []) => {
+            (DFunction::DivideSeries, series, 0, 0) => {
                 if series.len() != 2 {
                     Default::default()
                 } else {
@@ -138,7 +138,7 @@ impl<T: Storage> ExpressionExec for T {
                     }
                 }
             }
-            (DFunction::DiffSeries, series, [], []) => {
+            (DFunction::DiffSeries, series, 0, 0) => {
                 if series.len() != 2 {
                     Default::default()
                 } else {
@@ -150,25 +150,25 @@ impl<T: Storage> ExpressionExec for T {
                     }
                 }
             }
-            (DFunction::MaxSeries, series, [], []) => {
+            (DFunction::MaxSeries, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 max_series(series_values, "".to_owned())
                     .into_iter()
                     .collect()
             }
-            (DFunction::MinSeries, series, [], []) => {
+            (DFunction::MinSeries, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 min_series(series_values, "".to_owned())
                     .into_iter()
                     .collect()
             }
-            (DFunction::MultiplySeries, series, [], []) => {
+            (DFunction::MultiplySeries, series, 0, 0) => {
                 let series_values = self.resolve_n_series(series);
                 multiply_series(series_values, "".to_owned())
                     .into_iter()
                     .collect()
             }
-            (DFunction::AsPercent, series, [], []) => match series.as_slice() {
+            (DFunction::AsPercent, series, 0, 0) => match series.as_slice() {
                 [left, right] => {
                     let series_values = self.resolve_series(left.clone());
                     let total = self.resolve_series(right.clone());
