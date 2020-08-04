@@ -5,28 +5,24 @@ fn aggregation_series(
     name: String,
     initial: f64,
     f: impl Fn((Point, Point)) -> Point,
-) -> Vec<Series> {
-    match series.iter().next() {
-        Some(first) => {
-            let init = first
-                .points
-                .iter()
-                .map(|Point(time, _)| Point(*time, initial))
-                .collect();
+) -> Option<Series> {
+    series.iter().next().cloned().map(|first| {
+        let init = first
+            .points
+            .iter()
+            .map(|Point(time, _)| Point(*time, initial))
+            .collect();
 
-            let aggr = Series {
-                name,
-                points: series.into_iter().fold(init, |acc: Vec<Point>, serie| {
-                    acc.into_iter()
-                        .zip(serie.points.into_iter())
-                        .map(&f)
-                        .collect::<Vec<_>>()
-                }),
-            };
-            vec![aggr]
+        Series {
+            name,
+            points: series.into_iter().fold(init, |acc: Vec<Point>, serie| {
+                acc.into_iter()
+                    .zip(serie.points.into_iter())
+                    .map(&f)
+                    .collect::<Vec<_>>()
+            }),
         }
-        _ => Vec::new(),
-    }
+    })
 }
 
 fn adjust_series(series: Vec<Series>, f: impl Fn(Point) -> Point) -> Vec<Series> {
@@ -60,7 +56,7 @@ fn pair_series(
     }
 }
 
-pub fn sum_series(series: Vec<Series>, name: String) -> Vec<Series> {
+pub fn sum_series(series: Vec<Series>, name: String) -> Option<Series> {
     fn sum(pair: (Point, Point)) -> Point {
         let (x, y) = pair;
         Point(x.0, x.1 + y.1)
@@ -76,6 +72,8 @@ pub fn max_series(series: Vec<Series>, name: String) -> Vec<Series> {
     };
 
     aggregation_series(series, name, 0.0, max)
+        .into_iter()
+        .collect()
 }
 
 pub fn min_series(series: Vec<Series>, name: String) -> Vec<Series> {
@@ -85,6 +83,8 @@ pub fn min_series(series: Vec<Series>, name: String) -> Vec<Series> {
     };
 
     aggregation_series(series, name, 0.0, min)
+        .into_iter()
+        .collect()
 }
 
 pub fn multiply_series(series: Vec<Series>, name: String) -> Vec<Series> {
@@ -94,6 +94,8 @@ pub fn multiply_series(series: Vec<Series>, name: String) -> Vec<Series> {
     };
 
     aggregation_series(series, name, 1.0, multiply)
+        .into_iter()
+        .collect()
 }
 
 pub fn absolute(series: Vec<Series>) -> Vec<Series> {
@@ -108,7 +110,7 @@ pub fn count_series(series: Vec<Series>, _name: String) -> Vec<Series> {
 pub fn average_series(series: Vec<Series>, name: String) -> Vec<Series> {
     let count = f64::from(series.len() as i32);
     let avg = |x: Point| Point(x.0, x.1 / count);
-    adjust_series(sum_series(series, name), avg)
+    adjust_series(sum_series(series, name).into_iter().collect(), avg)
 }
 
 pub fn divide_series(series: Vec<Series>, name: String) -> Vec<Series> {
@@ -170,4 +172,25 @@ fn node_metric(metric: String, nodes: Vec<i64>) -> String {
             metric.split('.').nth(number).unwrap_or("").to_owned()
         })
         .fold(String::new(), |state, s| format!("{}.{}", state, s))
+}
+
+pub fn as_percent(series: Vec<Series>, total: Option<Series>) -> Vec<Series> {
+    let total_series = if let Some(total) = total {
+        total
+    } else {
+        sum_series(series.clone(), "".to_owned()).unwrap()
+    };
+
+    series
+        .into_iter()
+        .map(|s| Series {
+            name: s.name,
+            points: s
+                .points
+                .iter()
+                .zip(total_series.points.iter())
+                .map(|(x, y)| Point(x.0, x.1 * 100_f64 / y.1))
+                .collect(),
+        })
+        .collect()
 }

@@ -85,6 +85,8 @@ impl<T: Storage> ExpressionExec for T {
             (DFunction::SumSeries, series, [], []) => {
                 let series_values = self.resolve_series(series);
                 sum_series(series_values, "".to_owned())
+                    .into_iter()
+                    .collect()
             }
             (DFunction::Absolute, series, [], []) => {
                 let series_values = self.resolve_series(series);
