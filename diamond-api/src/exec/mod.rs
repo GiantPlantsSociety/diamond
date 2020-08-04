@@ -178,6 +178,10 @@ impl<T: Storage> ExpressionExec for T {
                         Default::default()
                     }
                 }
+                [left] => {
+                    let series_values = self.resolve_series(left.clone());
+                    as_percent(series_values, None, "".to_owned())
+                }
                 _ => Default::default(),
             },
             _ => unimplemented!(),
