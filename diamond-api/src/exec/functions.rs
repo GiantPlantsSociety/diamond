@@ -36,23 +36,19 @@ fn adjust_series(series: Vec<Series>, f: impl Fn(Point) -> Point) -> Vec<Series>
 }
 
 fn pair_series(
-    series: Vec<Series>,
+    left: &Series,
+    right: &Series,
     name: String,
     f: impl Fn((&Point, &Point)) -> Point,
-) -> Vec<Series> {
-    if let [left, right] = series.as_slice() {
-        let divide = Series {
-            name,
-            points: left
-                .points
-                .iter()
-                .zip(right.points.iter())
-                .map(&f)
-                .collect::<Vec<_>>(),
-        };
-        vec![divide]
-    } else {
-        Vec::new()
+) -> Series {
+    Series {
+        name,
+        points: left
+            .points
+            .iter()
+            .zip(right.points.iter())
+            .map(&f)
+            .collect::<Vec<_>>(),
     }
 }
 
@@ -114,15 +110,25 @@ pub fn average_series(series: Vec<Series>, name: String) -> Vec<Series> {
 }
 
 pub fn divide_series(series: Vec<Series>, name: String) -> Vec<Series> {
-    pair_series(series, name, |(Point(time, x), Point(_, y))| {
-        Point(*time, x / y)
-    })
+    if let [left, right] = series.as_slice() {
+        let result = pair_series(left, right, name, |(Point(time, x), Point(_, y))| {
+            Point(*time, x / y)
+        });
+        vec![result]
+    } else {
+        Vec::new()
+    }
 }
 
 pub fn diff_series(series: Vec<Series>, name: String) -> Vec<Series> {
-    pair_series(series, name, |(Point(time, x), Point(_, y))| {
-        Point(*time, x - y)
-    })
+    if let [left, right] = series.as_slice() {
+        let result = pair_series(left, right, name, |(Point(time, x), Point(_, y))| {
+            Point(*time, x - y)
+        });
+        vec![result]
+    } else {
+        Vec::new()
+    }
 }
 
 pub fn alias(series: Vec<Series>, name: String) -> Vec<Series> {
