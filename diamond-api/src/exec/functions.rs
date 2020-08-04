@@ -180,7 +180,12 @@ fn node_metric(metric: String, nodes: Vec<i64>) -> String {
         .fold(String::new(), |state, s| format!("{}.{}", state, s))
 }
 
-pub fn as_percent(series: Vec<Series>, total: Option<Series>) -> Vec<Series> {
+pub fn as_percent(series: Vec<Series>, total: Option<Series>, name: String) -> Vec<Series> {
+    fn percent(pair: (&Point, &Point)) -> Point {
+        let (x, y) = pair;
+        Point(x.0, x.1 / y.1 * 100_f64)
+    };
+
     let total_series = if let Some(total) = total {
         total
     } else {
@@ -188,15 +193,7 @@ pub fn as_percent(series: Vec<Series>, total: Option<Series>) -> Vec<Series> {
     };
 
     series
-        .into_iter()
-        .map(|s| Series {
-            name: s.name,
-            points: s
-                .points
-                .iter()
-                .zip(total_series.points.iter())
-                .map(|(x, y)| Point(x.0, x.1 * 100_f64 / y.1))
-                .collect(),
-        })
+        .iter()
+        .map(|left| pair_series(left, &total_series, name.clone(), percent))
         .collect()
 }
