@@ -21,6 +21,12 @@ pub struct Series {
     pub points: Vec<Point>,
 }
 
+impl From<Series> for Vec<Series> {
+    fn from(f: Series) -> Self {
+        vec![f]
+    }
+}
+
 #[derive(EnumString)]
 #[strum(serialize_all = "camelCase")]
 pub enum DFunction {
@@ -36,6 +42,7 @@ pub enum DFunction {
     MaxSeries,
     MinSeries,
     MultiplySeries,
+    AsPercent,
 }
 
 trait Storage {
@@ -45,7 +52,8 @@ trait Storage {
 trait ExpressionExec {
     fn apply(&self, expr: Expression) -> Result<Vec<Series>, Box<dyn Error>>;
     fn args(args: Vec<Arg>) -> (Vec<Expression>, Vec<LiteralValue>);
-    fn resolve_series(&self, series: Vec<Expression>) -> Vec<Series>;
+    fn resolve_n_series(&self, series: Vec<Expression>) -> Vec<Series>;
+    fn resolve_series(&self, series: Expression) -> Vec<Series>;
     fn apply_function(
         &self,
         function: DFunction,
@@ -83,69 +91,95 @@ impl<T: Storage> ExpressionExec for T {
     ) -> Result<Vec<Series>, Box<dyn Error>> {
         let res = match (function, series, literals, named_args) {
             (DFunction::SumSeries, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 sum_series(series_values, "".to_owned())
                     .into_iter()
                     .collect()
             }
             (DFunction::Absolute, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 absolute(series_values)
             }
             // waiting for feature(move_ref_pattern)
             (DFunction::Alias, series, literals, []) => {
                 if let Some(LiteralValue::String(name)) = literals.into_iter().next() {
-                    let series_values = self.resolve_series(series);
+                    let series_values = self.resolve_n_series(series);
                     alias(series_values, name.to_owned())
                 } else {
-                    Vec::new()
+                    Default::default()
                 }
             }
             (DFunction::AliasByMetric, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 alias_by_metric(series_values)
             }
             (DFunction::AliasByNode, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 let nodes = resolve_numbers(literals);
                 alias_by_node(series_values, nodes)
             }
             (DFunction::AverageSeries, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 average_series(series_values, "".to_owned())
             }
             (DFunction::CountSeries, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 count_series(series_values, "".to_owned())
             }
             (DFunction::DivideSeries, series, [], []) => {
                 if series.len() != 2 {
-                    Vec::new()
+                    Default::default()
                 } else {
-                    let series_values = self.resolve_series(series);
-                    divide_series(series_values, "".to_owned())
+                    let series_values = self.resolve_n_series(series);
+                    if let [left, right] = series_values.as_slice() {
+                        divide_series(left, right, "".to_owned()).into()
+                    } else {
+                        Default::default()
+                    }
                 }
             }
             (DFunction::DiffSeries, series, [], []) => {
                 if series.len() != 2 {
-                    Vec::new()
+                    Default::default()
                 } else {
-                    let series_values = self.resolve_series(series);
-                    diff_series(series_values, "".to_owned())
+                    let series_values = self.resolve_n_series(series);
+                    if let [left, right] = series_values.as_slice() {
+                        diff_series(left, right, "".to_owned()).into()
+                    } else {
+                        Default::default()
+                    }
                 }
             }
             (DFunction::MaxSeries, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 max_series(series_values, "".to_owned())
+                    .into_iter()
+                    .collect()
             }
             (DFunction::MinSeries, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 min_series(series_values, "".to_owned())
+                    .into_iter()
+                    .collect()
             }
             (DFunction::MultiplySeries, series, [], []) => {
-                let series_values = self.resolve_series(series);
+                let series_values = self.resolve_n_series(series);
                 multiply_series(series_values, "".to_owned())
+                    .into_iter()
+                    .collect()
             }
+            (DFunction::AsPercent, series, [], []) => match series.as_slice() {
+                [left, right] => {
+                    let series_values = self.resolve_series(left.clone());
+                    let total = self.resolve_series(right.clone());
+                    if total.len() == 1 {
+                        as_percent(series_values, total.first().cloned(), "".to_owned())
+                    } else {
+                        Default::default()
+                    }
+                }
+                _ => Default::default(),
+            },
             _ => unimplemented!(),
         };
         Ok(res)
@@ -165,12 +199,16 @@ impl<T: Storage> ExpressionExec for T {
         (values, literals)
     }
 
-    fn resolve_series(&self, series: Vec<Expression>) -> Vec<Series> {
+    fn resolve_n_series(&self, series: Vec<Expression>) -> Vec<Series> {
         series
             .into_iter()
             .map(|x| self.apply(x).unwrap())
             .flatten()
             .collect::<Vec<_>>()
+    }
+
+    fn resolve_series(&self, series: Expression) -> Vec<Series> {
+        self.apply(series).unwrap()
     }
 }
 
