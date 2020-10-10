@@ -2,7 +2,7 @@
 name = "diamond-api"
 description = "Diamond Web API, subset of Graphite Web API"
 version = "0.1.0"
-authors = ["Andrii Radyk <ander.ender@gmail.com>"]
+authors = ["Andrii Radyk <ander.ender@gmail.com>", "Andrey Kutejko <andy128k@gmail.com>"]
 license = "MIT"
 repository = "https://github.com/GiantPlantsSociety/diamond"
 edition = "2018"
@@ -14,10 +14,10 @@ serde_json = "1"
 serde_urlencoded = "0.7"
 structopt = "0.3"
 tempfile = "3"
-glob = "0.3"
 env_logger = "0.7"
 futures = "0.3"
 whisper = { path = "../whisper" }
 nom = "5"
 chrono = "0.4"
 actix-rt = "1"
+regex = "1"

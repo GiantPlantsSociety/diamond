@@ -26,6 +26,55 @@ pub enum PathElement {
 #[derive(Debug, PartialEq)]
 pub struct PathWord(pub Vec<PathElement>);
 
+impl PathWord {
+    pub fn matches(&self, text: &str) -> bool {
+        if let Ok(re) = self.to_regex() {
+            re.is_match(text)
+        } else {
+            false
+        }
+    }
+
+    pub fn to_regex_pattern(&self) -> Result<String, String> {
+        fn element_to_regex(e: &PathElement) -> Result<String, String> {
+            match e {
+                PathElement::Variable(ref v) => Err(format!(
+                    "Variables are forbidden but variable {} is in expression.",
+                    v
+                )),
+                PathElement::Partial(ref p) => Ok(regex::escape(p)),
+                PathElement::Asterisk => Ok(".*?".to_string()),
+                PathElement::OneOf(ref chars) => Ok(chars
+                    .iter()
+                    .map(|c| regex::escape(&String::from(*c)))
+                    .collect::<Vec<_>>()
+                    .join("|")),
+                PathElement::Enum(ref arms) => Ok(arms
+                    .iter()
+                    .map(|a| regex::escape(&a))
+                    .collect::<Vec<_>>()
+                    .join("|")),
+            }
+        }
+
+        let mut buf = String::from("^");
+        for e in &self.0 {
+            let part = element_to_regex(e)?;
+            buf.push('(');
+            buf.push_str(&part);
+            buf.push(')');
+        }
+        buf.push('$');
+
+        Ok(buf)
+    }
+
+    pub fn to_regex(&self) -> Result<regex::Regex, String> {
+        let pattern = self.to_regex_pattern()?;
+        regex::Regex::new(&pattern).map_err(|err| err.to_string())
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct PathExpression(pub Vec<PathWord>);
 

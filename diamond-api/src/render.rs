@@ -5,15 +5,17 @@ use actix_web::web::{Data, Json};
 use actix_web::{dev, FromRequest, HttpMessage, HttpRequest, HttpResponse};
 use futures::future::{ready, FutureExt, LocalBoxFuture};
 use serde::*;
+use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 use whisper::interval::Interval;
 
 use crate::context::Context;
 use crate::error::{ParseError, ResponseError};
 use crate::parse::{de_time_parse, time_parse};
-use crate::storage::{RenderPoint, Walker};
-use std::fmt::{Display, Formatter};
+use crate::render_target::{Expression, PathExpression};
+use crate::storage::RenderPoint;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct RenderQuery {
@@ -129,27 +131,42 @@ pub struct RenderResponse {
     entries: Vec<Option<RenderResponseEntry>>,
 }
 
-pub async fn render_handler<T: Walker>(
-    ctx: Data<Context<T>>,
+pub async fn render_handler(
+    ctx: Data<Context>,
     query: RenderQuery,
 ) -> Result<HttpResponse, actix_web::Error> {
     let interval = Interval::new(query.from, query.until).map_err(ResponseError::Kind)?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time travel beyond Unix epoch is forbidden by Temporal Police.")
+        .as_secs();
     let format = query.format;
 
-    let response: Result<Vec<RenderResponseEntry>, ResponseError> = query
-        .target
-        .into_iter()
-        .map(|metric| {
-            ctx.walker
-                .walk(&metric, interval)
-                .map(|points| RenderResponseEntry {
-                    datapoints: points,
-                    target: metric,
-                })
-        })
-        .collect();
+    let mut response: Vec<RenderResponseEntry> = Vec::new();
 
-    Ok(response.map(|r| format_response(r, format))?)
+    for target in query.target {
+        let expression = Expression::from_str(&target).map_err(ErrorInternalServerError)?;
+        let path_expression: &PathExpression = match expression {
+            Expression::Path(ref e) => e,
+            _ => {
+                return Err(ErrorInternalServerError(format!(
+                    "Unsupported type of query: {}. For now only path expressions are supported",
+                    target
+                )))
+            }
+        };
+
+        let storage_responses = ctx.storage.query(&path_expression, interval, now)?;
+
+        for storage_response in storage_responses {
+            response.push(RenderResponseEntry {
+                target: storage_response.name.0.join("."),
+                datapoints: storage_response.data,
+            });
+        }
+    }
+
+    Ok(format_response(response, format))
 }
 
 // TODO: Extract code BELOW to response_format_csv module
@@ -202,18 +219,16 @@ fn format_response(response: Vec<RenderResponseEntry>, format: RenderFormat) -> 
 mod tests {
     use super::*;
     use crate::opts::Args;
-    use crate::test_utils::WalkerConst;
+    use crate::test_utils::ConstStorage;
 
     use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use actix_web::http::StatusCode;
     use actix_web::test::TestRequest;
     use futures::stream::StreamExt;
+    use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    async fn render_response(
-        ctx: Context<WalkerConst>,
-        query: RenderQuery,
-    ) -> (StatusCode, String, String) {
+    async fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String, String) {
         let mut response: HttpResponse = render_handler(Data::new(ctx), query).await.ok().unwrap();
         let content_type: String = response
             .head()
@@ -252,7 +267,7 @@ mod tests {
                     force: false,
                     port: 0,
                 },
-                walker: WalkerConst(vec![]),
+                storage: Arc::new(ConstStorage(vec![])),
             };
             let query = RenderQuery {
                 target: vec![],
@@ -275,7 +290,7 @@ mod tests {
                 force: false,
                 port: 0,
             },
-            walker: WalkerConst(vec![]),
+            storage: Arc::new(ConstStorage(vec![])),
         };
         let query = RenderQuery {
             target: vec![],
@@ -298,12 +313,12 @@ mod tests {
                 force: false,
                 port: 0,
             },
-            walker: WalkerConst(vec![
+            storage: Arc::new(ConstStorage(vec![
                 RenderPoint(Some(1.0 as f64), t),
                 RenderPoint(None, t + 10),
                 RenderPoint(Some(2.0 as f64), t + 100),
                 RenderPoint(Some(3.0 as f64), t + 1000),
-            ]),
+            ])),
         };
         let query = RenderQuery {
             target: vec!["i.am.a.metric".to_owned()],
@@ -328,7 +343,7 @@ mod tests {
                 force: false,
                 port: 0,
             },
-            walker: WalkerConst(vec![]),
+            storage: Arc::new(ConstStorage(vec![])),
         };
         let query = RenderQuery {
             target: vec![],
@@ -351,12 +366,12 @@ mod tests {
                 force: false,
                 port: 0,
             },
-            walker: WalkerConst(vec![
+            storage: Arc::new(ConstStorage(vec![
                 RenderPoint(Some(1.1 as f64), t),
                 RenderPoint(Some(2.2 as f64), t + 60),
                 RenderPoint(None, t + 60 * 60),
                 RenderPoint(Some(3.3 as f64), t + 24 * 60 * 60),
-            ]),
+            ])),
         };
         let query = RenderQuery {
             target: vec!["i.am.a.metric".to_owned()],
