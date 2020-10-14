@@ -1,23 +1,32 @@
-use glob::Pattern;
-use std::path::Path;
 use whisper::interval::Interval;
 
 use crate::error::ResponseError;
-use crate::storage::{MetricResponseLeaf, RenderPoint, Walker};
+use crate::render_target::PathExpression;
+use crate::storage::{MetricResponseLeaf, RenderPoint, Storage, StorageResponse};
 
 #[derive(Clone)]
-pub struct WalkerConst(pub Vec<RenderPoint>);
+pub struct ConstStorage(pub Vec<RenderPoint>);
 
-impl Walker for WalkerConst {
-    fn walk(&self, _: &str, _: Interval) -> Result<Vec<RenderPoint>, ResponseError> {
-        Ok(self.0.to_vec())
+impl Storage for ConstStorage {
+    fn find(
+        &self,
+        _path_expression: &PathExpression,
+    ) -> Result<Vec<MetricResponseLeaf>, ResponseError> {
+        Ok(vec![MetricResponseLeaf {
+            name: "i.am.a.metric".parse().unwrap(),
+            is_leaf: true,
+        }])
     }
 
-    fn walk_tree(&self, _: &Path, _: &Pattern) -> Result<Vec<MetricResponseLeaf>, ResponseError> {
-        Ok(vec![MetricResponseLeaf {
-            name: "virtual".to_owned(),
-            path: "metric".to_owned(),
-            is_leaf: true,
+    fn query(
+        &self,
+        _path_expression: &PathExpression,
+        _interval: Interval,
+        _now: u64,
+    ) -> Result<Vec<StorageResponse>, ResponseError> {
+        Ok(vec![StorageResponse {
+            name: "i.am.a.metric".parse().unwrap(),
+            data: self.0.clone(),
         }])
     }
 }

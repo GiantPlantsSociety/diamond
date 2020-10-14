@@ -2,15 +2,14 @@ use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Form, Json, Query};
 use actix_web::{dev, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
 use futures::future::{FutureExt, LocalBoxFuture};
-use glob::Pattern;
 use serde::*;
 use std::convert::From;
-use std::path::PathBuf;
+use std::str::FromStr;
 
 use crate::context::Context;
-use crate::error::ParseError;
 use crate::parse::de_time_parse;
-use crate::storage::{MetricResponseLeaf, Walker};
+use crate::render_target::PathExpression;
+use crate::storage::MetricResponseLeaf;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct MetricResponse {
@@ -31,16 +30,16 @@ impl From<MetricResponseLeaf> for JsonTreeLeaf {
     fn from(m: MetricResponseLeaf) -> JsonTreeLeaf {
         if m.is_leaf {
             JsonTreeLeaf {
-                text: m.path,
-                id: m.name,
+                text: m.name.0.join("."),
+                id: m.name.0.last().unwrap().to_owned(),
                 allow_children: 0,
                 expandable: 0,
                 leaf: 1,
             }
         } else {
             JsonTreeLeaf {
-                text: m.path,
-                id: m.name,
+                text: m.name.0.join("."),
+                id: m.name.0.last().unwrap().to_owned(),
                 allow_children: 1,
                 expandable: 1,
                 leaf: 0,
@@ -95,66 +94,26 @@ impl FromRequest for FindQuery {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct FindPath {
-    path: PathBuf,
-    pattern: Pattern,
-}
+pub async fn find_handler(ctx: Data<Context>, query: FindQuery) -> Result<HttpResponse> {
+    let path_expression =
+        PathExpression::from_str(&query.query).map_err(ErrorInternalServerError)?;
 
-impl FindPath {
-    fn from(query: &FindQuery) -> Result<FindPath, ParseError> {
-        let s = &query.query;
-        let mut segments: Vec<&str> = s.split('.').collect();
-
-        let (path, pattern) = match segments.len() {
-            len if len > 1 => {
-                let pattern = segments.pop().ok_or(ParseError::Unknown)?;
-                let path = segments.iter().fold(PathBuf::new(), |acc, x| acc.join(x));
-                (path, pattern)
-            }
-            1 => (PathBuf::from(""), s.as_str()),
-            _ => return Err(ParseError::Unknown),
-        };
-
-        let pattern_str = match query.wildcards {
-            0 => pattern.to_owned(),
-            1 => [&pattern, "*"].concat(),
-            _ => pattern.to_owned(),
-        };
-
-        Ok(FindPath {
-            path,
-            pattern: Pattern::new(&pattern_str)?,
-        })
-    }
-}
-
-pub async fn find_handler<T: Walker>(
-    ctx: Data<Context<T>>,
-    query: FindQuery,
-) -> Result<HttpResponse> {
-    let path = FindPath::from(&query).map_err(ErrorInternalServerError)?;
-
-    Ok(ctx
-        .walker
-        .walk_tree(&path.path, &path.pattern)
-        .map(|metrics| {
-            if query.format == FindFormat::TreeJson {
-                let metrics_json: Vec<JsonTreeLeaf> =
-                    metrics.into_iter().map(JsonTreeLeaf::from).collect();
-                HttpResponse::Ok().json(metrics_json)
-            } else {
-                let metrics_completer = MetricResponse { metrics };
-                HttpResponse::Ok().json(metrics_completer)
-            }
-        })?)
+    Ok(ctx.storage.find(&path_expression).map(|metrics| {
+        if query.format == FindFormat::TreeJson {
+            let metrics_json: Vec<JsonTreeLeaf> =
+                metrics.into_iter().map(JsonTreeLeaf::from).collect();
+            HttpResponse::Ok().json(metrics_json)
+        } else {
+            let metrics_completer = MetricResponse { metrics };
+            HttpResponse::Ok().json(metrics_completer)
+        }
+    })?)
 }
 
 #[cfg(test)]
 mod tests {
     use actix_web::test::TestRequest;
     use std::error::Error;
-    use std::path::PathBuf;
 
     use super::*;
 
@@ -190,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize() -> Result<(), ParseError> {
+    fn url_deserialize() -> Result<(), Box<dyn Error>> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::TreeJson,
@@ -221,7 +180,7 @@ mod tests {
     }
 
     #[test]
-    fn url_deserialize_default() -> Result<(), ParseError> {
+    fn url_deserialize_default() -> Result<(), Box<dyn Error>> {
         let params = FindQuery {
             query: "123".to_owned(),
             format: FindFormat::default(),
@@ -236,50 +195,9 @@ mod tests {
     }
 
     #[test]
-    fn findpath_convert() -> Result<(), ParseError> {
-        let path = FindPath {
-            path: PathBuf::from("123/456/"),
-            pattern: Pattern::new("789")?,
-        };
-
-        let params = FindQuery {
-            query: "123.456.789".to_owned(),
-            format: FindFormat::default(),
-            wildcards: u8::default(),
-            from: 0,
-            until: 10,
-        };
-
-        assert_eq!(FindPath::from(&params)?, path);
-
-        Ok(())
-    }
-
-    #[test]
-    fn query_convertion() -> Result<(), ParseError> {
-        let params = FindQuery {
-            query: "123".to_owned(),
-            format: FindFormat::TreeJson,
-            wildcards: 1,
-            from: 0,
-            until: 10,
-        };
-
-        let path = FindPath {
-            path: PathBuf::from(""),
-            pattern: Pattern::new("123*")?,
-        };
-
-        assert_eq!(FindPath::from(&params)?, path);
-
-        Ok(())
-    }
-
-    #[test]
     fn metric_response_convertion() {
         let mleaf: JsonTreeLeaf = MetricResponseLeaf {
-            name: "456".to_owned(),
-            path: "123.456".to_owned(),
+            name: "123.456".parse().unwrap(),
             is_leaf: true,
         }
         .into();
@@ -295,8 +213,7 @@ mod tests {
         assert_eq!(mleaf, leaf);
 
         let mleaf2: JsonTreeLeaf = MetricResponseLeaf {
-            name: "789".to_owned(),
-            path: "123.456.789".to_owned(),
+            name: "123.456.789".parse().unwrap(),
             is_leaf: false,
         }
         .into();
