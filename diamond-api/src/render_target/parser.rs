@@ -5,7 +5,7 @@ use nom::character::complete::{char as c, digit1, none_of, one_of};
 use nom::combinator::{map, map_res, opt, recognize};
 
 use nom::error::{convert_error, VerboseError, VerboseErrorKind};
-use nom::multi::{fold_many1, many0, many1, separated_list, separated_nonempty_list};
+use nom::multi::{fold_many1, many0, many1, separated_list0, separated_list1};
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::{Err, IResult};
 use std::collections::BTreeSet;
@@ -94,7 +94,7 @@ fn call_args(
 ) -> IResult<&str, (String, Vec<(Option<String>, Arg)>), VerboseError<&str>> {
     let (input, function) = ident(input)?;
     let (input, _) = c('(')(input)?;
-    let (input, all_args) = separated_list(c(','), call_arg)(input)?;
+    let (input, all_args) = separated_list0(c(','), call_arg)(input)?;
     let (input, _) = c(')')(input)?;
 
     Ok((input, (function, all_args)))
@@ -185,7 +185,7 @@ fn partial_path_element(input: &str) -> IResult<&str, String, VerboseError<&str>
 fn path_element_enum(input: &str) -> IResult<&str, Vec<String>, VerboseError<&str>> {
     delimited(
         c('{'),
-        separated_nonempty_list(tag(","), partial_path_element),
+        separated_list1(tag(","), partial_path_element),
         c('}'),
     )(input)
 }
@@ -250,7 +250,7 @@ fn path_word(input: &str) -> IResult<&str, PathWord, VerboseError<&str>> {
 }
 
 fn path_expression(input: &str) -> IResult<&str, PathExpression, VerboseError<&str>> {
-    let (input, path) = separated_nonempty_list(c('.'), path_word)(input)?;
+    let (input, path) = separated_list1(c('.'), path_word)(input)?;
     Ok((input, PathExpression(path)))
 }
 
@@ -289,10 +289,8 @@ fn template_internal(
     let (input, _) = tag("(")(input)?;
     let (input, source) = source(input)?;
 
-    let (input, all_args) = opt(preceded(
-        tag(","),
-        separated_nonempty_list(tag(","), template_arg),
-    ))(input)?;
+    let (input, all_args) =
+        opt(preceded(tag(","), separated_list1(tag(","), template_arg)))(input)?;
     let (input, _) = tag(")")(input)?;
 
     Ok((input, (source, all_args)))
