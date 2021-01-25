@@ -616,7 +616,7 @@ dependencies = [
  "chrono",
  "env_logger",
  "futures",
- "nom 6.0.0",
+ "nom 6.1.0",
  "regex",
  "serde 1.0.117",
  "serde_json",
@@ -1236,9 +1236,9 @@ dependencies = [
 
 [[package]]
 name = "nom"
-version = "6.0.0"
+version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4489ccc7d668957ddf64af7cd027c081728903afa6479d35da7e99bf5728f75f"
+checksum = "ab6f70b46d6325aa300f1c7bb3d470127dfc27806d8ea6bf294ee0ce643ce2b1"
 dependencies = [
  "bitvec",
  "lexical-core",
