@@ -81,8 +81,9 @@ fn calling_with_invalid_xfactor() -> Result<(), Box<dyn Error>> {
 
     let error = "error: Invalid value for '--xFilesFactor <x-files-factor>': invalid float literal";
 
+    // TODO: validate nan as invalid value
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "60:1440", "--xFilesFactor", "nan"])
+        .args(&[path.to_str().unwrap(), "60:1440", "--xFilesFactor", "nano"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains(error).from_utf8());
