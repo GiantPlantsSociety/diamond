@@ -214,7 +214,7 @@ fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError
 
     let (input, mut chars) = fold_many1(
         alt((match_group_range, match_group_single)),
-        BTreeSet::new(),
+        BTreeSet::new,
         |mut acc: BTreeSet<char>, chars: BTreeSet<char>| {
             acc.extend(chars);
             acc
