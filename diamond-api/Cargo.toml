@@ -19,5 +19,5 @@ futures = "0.3"
 whisper = { path = "../whisper" }
 nom = "7"
 chrono = "0.4"
-actix-rt = "1"
+actix-rt = "2"
 regex = "1"
