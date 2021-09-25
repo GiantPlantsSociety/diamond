@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tcp_addr: SocketAddr = format!("{0}:{1}", &settings.tcp.host, settings.tcp.port).parse()?;
     let udp_addr: SocketAddr = format!("{0}:{1}", &settings.udp.host, settings.udp.port).parse()?;
 
-    let mut tcp_listener = TcpListener::bind(&tcp_addr).await?;
+    let tcp_listener = TcpListener::bind(&tcp_addr).await?;
     println!("server running on tcp {}", tcp_addr);
 
     let udp_listener = UdpSocket::bind(&udp_addr).await?;
@@ -48,17 +48,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_udp = config_tcp.clone();
 
     let tcp_server = async move {
-        let mut incoming = tcp_listener.incoming();
-        while let Some(sock) = incoming.next().await {
-            match sock {
-                Ok(sock) => {
-                    let mut framed_sock = Framed::new(sock, LinesCodec::new());
-                    while let Some(line) = framed_sock.next().await {
-                        match line {
-                            Ok(line) => update_silently(&line, &config_tcp),
-                            Err(e) => eprintln!("tcp receive error = {:?}", e),
+        loop {
+            match tcp_listener.accept().await {
+                Ok((sock, _)) => {
+                    let local_config = config_tcp.clone();
+                    tokio::spawn(async move {
+                        let mut framed_sock = Framed::new(sock, LinesCodec::new());
+                        while let Some(line) = framed_sock.next().await {
+                            match line {
+                                Ok(line) => update_silently(&line, &local_config),
+                                Err(e) => eprintln!("tcp receive error = {:?}", e),
+                            }
                         }
-                    }
+                    });
                 }
                 Err(e) => eprintln!("tcp accept error = {:?}", e),
             }
@@ -68,10 +70,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let udp_server = async move {
         let mut incoming = UdpFramed::new(udp_listener, LinesCodec::new());
         while let Some(line) = incoming.next().await {
-            match line {
-                Ok((line, _)) => update_silently(&line, &config_udp),
-                Err(e) => eprintln!("udp receive error = {:?}", e),
-            }
+            let local_config = config_udp.clone();
+            tokio::spawn(async move {
+                match line {
+                    Ok((line, _)) => update_silently(&line, &local_config),
+                    Err(e) => eprintln!("udp receive error = {:?}", e),
+                }
+            });
         }
     };
 
