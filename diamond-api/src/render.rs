@@ -221,15 +221,15 @@ mod tests {
     use crate::opts::Args;
     use crate::test_utils::ConstStorage;
 
+    use actix_web::body::to_bytes;
     use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use actix_web::http::StatusCode;
     use actix_web::test::TestRequest;
-    use futures::stream::StreamExt;
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     async fn render_response(ctx: Context, query: RenderQuery) -> (StatusCode, String, String) {
-        let mut response: HttpResponse = render_handler(Data::new(ctx), query).await.ok().unwrap();
+        let response: HttpResponse = render_handler(Data::new(ctx), query).await.ok().unwrap();
         let content_type: String = response
             .head()
             .headers()
@@ -241,13 +241,13 @@ mod tests {
             .to_string();
         let status = response.status();
 
-        let body = response
-            .take_body()
-            .into_body::<Vec<u8>>()
-            .map(|x| x.unwrap().to_vec())
-            .concat()
-            .await;
-        (status, content_type, String::from_utf8(body).unwrap())
+        let body = to_bytes(response.into_body()).await.unwrap();
+
+        (
+            status,
+            content_type,
+            String::from_utf8(body.to_vec()).unwrap(),
+        )
     }
 
     #[actix_rt::test]
@@ -630,11 +630,11 @@ mod tests {
     async fn render_request_parse_form() -> Result<(), actix_web::Error> {
         let s = "target=app.numUsers&format=json&from=0&until=10";
 
-        let (req, mut payload) =
-            TestRequest::with_header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(CONTENT_LENGTH, s.len())
-                .set_payload(s)
-                .to_http_parts();
+        let (req, mut payload) = TestRequest::default()
+            .insert_header((CONTENT_TYPE, "application/x-www-form-urlencoded"))
+            .insert_header((CONTENT_LENGTH, s.len()))
+            .set_payload(s)
+            .to_http_parts();
 
         let params = RenderQuery {
             format: RenderFormat::Json,
@@ -654,8 +654,8 @@ mod tests {
         let s = r#"{ "target":["app.numUsers"],"format":"json","from":"0","until":"10"}"#;
 
         let (req, mut pl) = TestRequest::with_uri("/render")
-            .header("content-type", "application/json")
-            .header(CONTENT_LENGTH, s.len())
+            .insert_header(("content-type", "application/json"))
+            .insert_header((CONTENT_LENGTH, s.len()))
             .set_payload(s)
             //.to_http_request();
             .to_http_parts();
