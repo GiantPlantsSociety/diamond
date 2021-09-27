@@ -1650,7 +1650,7 @@ dependencies = [
 name = "rrd_test"
 version = "0.1.0"
 dependencies = [
- "rand 0.7.3",
+ "rand 0.8.4",
  "rrd",
  "tempfile",
 ]
@@ -2425,7 +2425,7 @@ version = "0.1.0"
 dependencies = [
  "bencher",
  "byteorder",
- "rand 0.7.3",
+ "rand 0.8.4",
  "tempfile",
  "whisper",
 ]

@@ -8,4 +8,4 @@ license = "GPLv2+"
 [dependencies]
 rrd = { path = "../rrd" }
 tempfile = "3"
-rand = "0.7"
+rand = "0.8"
