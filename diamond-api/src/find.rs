@@ -252,7 +252,7 @@ mod tests {
     #[actix_rt::test]
     async fn find_request_parse_form() -> Result<(), actix_web::Error> {
         let r = TestRequest::with_uri("/find")
-            .header("content-type", "application/x-www-form-urlencoded")
+            .append_header(("content-type", "application/x-www-form-urlencoded"))
             .set_payload("query=123&format=treejson&wildcards=1&from=0&until=10")
             .to_srv_request();
 
@@ -273,7 +273,7 @@ mod tests {
     #[actix_rt::test]
     async fn find_request_parse_json() -> Result<(), actix_web::Error> {
         let r = TestRequest::with_uri("/render")
-            .header("content-type", "application/json")
+            .append_header(("content-type", "application/json"))
             .set_payload(
                 r#"{"query":"123","format":"treejson","wildcards":1,"from":"0","until":"10"}"#,
             )
