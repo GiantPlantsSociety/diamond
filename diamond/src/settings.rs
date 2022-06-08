@@ -33,16 +33,14 @@ pub struct Settings {
 
 impl Settings {
     pub fn new(file: Option<PathBuf>) -> Result<Self, ConfigError> {
-        let mut s = Config::default();
+        let mut builder = Config::builder().add_source(File::from_str(CONFIG, FileFormat::Toml));
 
-        match file {
-            Some(file) => s
-                .merge(File::from_str(CONFIG, FileFormat::Toml))?
-                .merge(File::from(file))?,
-            _ => s.merge(File::from_str(CONFIG, FileFormat::Toml))?,
-        };
+        if let Some(file) = file {
+            builder = builder.add_source(File::from(file));
+        }
 
-        s.try_into()
+        let settings = builder.build()?.try_deserialize()?;
+        Ok(settings)
     }
 
     pub fn generate<P: AsRef<Path>>(path: P) -> Result<(), io::Error> {
