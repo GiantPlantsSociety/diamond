@@ -1,4 +1,4 @@
-use humansize::{file_size_opts as options, FileSize};
+use humansize::{format_size, BINARY};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
@@ -69,15 +69,12 @@ fn estimate_info(retentions: &[Retention]) {
         + (total_points * whisper::POINT_SIZE)) as usize;
     let disk_size = (size as f64 / 4096.0).ceil() as usize * 4096;
 
-    let custom_options = options::FileSizeOpts {
-        decimal_places: 3,
-        ..options::CONVENTIONAL
-    };
+    let custom_options = BINARY.decimal_places(3);
 
     println!();
     println!(
         "Estimated Whisper DB Size: {} ({} bytes on disk with 4k blocks)",
-        size.file_size(&custom_options).unwrap(),
+        format_size(size, &custom_options),
         disk_size
     );
     println!();
@@ -88,9 +85,7 @@ fn estimate_info(retentions: &[Retention]) {
         println!(
             "Estimated storage requirement for {}k metrics: {}",
             number,
-            (number * 1000_usize * disk_size)
-                .file_size(&custom_options)
-                .unwrap()
+            format_size(number * 1000_usize * disk_size, &custom_options),
         );
     }
 }
