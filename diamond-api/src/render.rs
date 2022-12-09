@@ -192,7 +192,9 @@ impl IntoCsv for RenderResponseEntry {
             .map(|point| {
                 let RenderPoint(val, ts) = point;
                 let v = val.map(|f| format!("{}", f)).unwrap_or_default();
-                let t = NaiveDateTime::from_timestamp(i64::from(ts), 0).format("%Y-%m-%d %H:%M:%S");
+                let t = NaiveDateTime::from_timestamp_opt(i64::from(ts), 0)
+                    .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+                    .unwrap_or_else(|| ts.to_string());
                 // TODO: Use `csv` crate instead of "manual" string formatting
                 format!("{},{},{}", metric, t, v)
             })

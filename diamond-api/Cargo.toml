@@ -18,6 +18,6 @@ env_logger = "0.10"
 futures = "0.3"
 whisper = { path = "../whisper" }
 nom = "7"
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 actix-rt = "2"
 regex = "1"

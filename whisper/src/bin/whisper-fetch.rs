@@ -1,9 +1,9 @@
-use chrono::prelude::NaiveDateTime;
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
+use whisper::format_ts::display_ts;
 
 use whisper::interval::Interval;
 use whisper::WhisperFile;
@@ -84,21 +84,13 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
         println!("{}", serde_json::to_string_pretty(&archive)?);
     } else {
         let time_format = match (&args.pretty, &args.time_format) {
-            (true, Some(time_format)) => Some(time_format),
+            (true, Some(time_format)) => Some(time_format.as_str()),
             _ => None,
         };
 
         for (index, value) in archive.values.iter().enumerate() {
             let time = archive.from_interval + archive.step * index as u32;
-
-            match time_format {
-                Some(ftime) => {
-                    let timestr = NaiveDateTime::from_timestamp(i64::from(time), 0).format(&ftime);
-                    print!("{}\t", timestr);
-                }
-                None => print!("{}\t", time),
-            }
-
+            print!("{}\t", display_ts(i64::from(time), time_format));
             match value {
                 Some(v) => println!("{}", v),
                 None => println!("None"),

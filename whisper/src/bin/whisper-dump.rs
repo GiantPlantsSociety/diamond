@@ -1,8 +1,8 @@
-use chrono::prelude::NaiveDateTime;
 use std::io;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
+use whisper::format_ts::display_ts;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "whisper-dump")]
@@ -41,16 +41,12 @@ fn run(args: &Args) -> io::Result<()> {
 
         println!("Archive {} data:", i);
         for (j, point) in points.iter().enumerate() {
-            match args.time_format {
-                Some(ref time_format) => {
-                    let timestr = NaiveDateTime::from_timestamp(i64::from(point.interval), 0)
-                        .format(&time_format);
-                    println!("{}: {}, {:>10}", j, timestr, &point.value);
-                }
-                _ => {
-                    println!("{}: {}, {:>10}", j, &point.interval, &point.value);
-                }
-            }
+            println!(
+                "{}: {}, {:>10}",
+                j,
+                display_ts(i64::from(point.interval), args.time_format.as_deref()),
+                &point.value
+            );
         }
         println!();
     }
