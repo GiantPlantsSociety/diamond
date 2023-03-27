@@ -20,6 +20,6 @@ humansize = "2"
 
 [dev-dependencies]
 assert_cmd = "2.0"
-predicates = "2"
+predicates = "3"
 tempfile = "3"
 unindent = "0.1"
