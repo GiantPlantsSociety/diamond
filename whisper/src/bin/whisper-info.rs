@@ -1,18 +1,17 @@
+use clap::Parser;
 use serde_json::json;
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "whisper-info")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Outputs results in JSON form
-    #[structopt(long = "json")]
+    #[arg(long = "json")]
     json: bool,
 
     /// Path to data file
-    #[structopt(name = "path", parse(from_os_str))]
+    #[arg(name = "path")]
     path: PathBuf,
 
     /// File info field to display
@@ -77,7 +76,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

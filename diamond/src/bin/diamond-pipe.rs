@@ -1,3 +1,4 @@
+use clap::Parser;
 use diamond::line_update;
 use diamond::settings::WhisperConfig;
 use std::error::Error;
@@ -6,28 +7,26 @@ use std::io::BufRead;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
 
 /// Receive metrics from pipe
-#[derive(Debug, StructOpt)]
-#[structopt(name = "diamond-pipe")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Path to the directory with data files
-    #[structopt(name = "path", parse(from_os_str))]
+    #[arg(name = "path")]
     path: PathBuf,
 
     /// Default value for the xFilesFactor for new files
-    #[structopt(long = "xFilesFactor", default_value = "0.5")]
+    #[arg(long = "xFilesFactor", default_value = "0.5")]
     x_files_factor: f32,
 
     /// Default function to use when aggregating values
     /// (average, sum, last, max, min, avg_zero, absmax, absmin)
-    #[structopt(long = "aggregationMethod", default_value = "average")]
+    #[arg(long = "aggregationMethod", default_value = "average")]
     aggregation_method: AggregationMethod,
 
-    #[structopt(
+    #[arg(
         name = "retentions",
         help = r#" Default retentions for new files
 Specify lengths of time, for example:
@@ -36,8 +35,7 @@ Specify lengths of time, for example:
 1h:7d        1 hour per datapoint, 7 days of retention
 12h:2y       12 hours per datapoint, 2 years of retention
 "#,
-        required = true,
-        min_values = 1
+        required = true
     )]
     retentions: Vec<Retention>,
 }
@@ -59,7 +57,7 @@ fn run(args: Args) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(args) {
         eprintln!("{}", err);
         exit(1);

@@ -1,31 +1,29 @@
+use clap::Parser;
 use std::collections::HashMap;
 use std::error::Error;
 /// https://oss.oetiker.ch/rrdtool/doc/rrdcreate.en.html
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use structopt::StructOpt;
 use whisper::{point::Point, retention::Retention, WhisperBuilder};
 
 // # Ignore SIGPIPE
 // signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "rrd2whisper")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// The xFilesFactor to use in the output file. Defaults to the input RRD's xFilesFactor.
-    #[structopt(long = "xFilesFactor")]
+    #[arg(long = "xFilesFactor")]
     x_files_factor: Option<f64>,
 
     /// The consolidation function to fetch from on input and aggregationMethod to set on output. One of: average, last, max, min, avg_zero.
-    #[structopt(long = "aggregationMethod", default_value = "average")]
+    #[arg(long = "aggregationMethod", default_value = "average")]
     aggregation_method: rrd::AggregationMethod,
 
     /// Path to place created whisper file. Defaults to the RRD file's source path.
-    #[structopt(long = "destinationPath", parse(from_os_str))]
+    #[arg(long = "destinationPath")]
     destination_path: Option<PathBuf>,
 
-    #[structopt(parse(from_os_str))]
     rrd_path: PathBuf,
 }
 
@@ -142,7 +140,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

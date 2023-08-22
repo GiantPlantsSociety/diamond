@@ -1,46 +1,45 @@
+use clap::Parser;
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use structopt::StructOpt;
 use whisper::diff;
 use whisper::diff::{
     DiffArchiveInfo, DiffArchiveShort, DiffArchiveSummary, DiffHeader, DiffSummaryHeader,
 };
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "whisper-diff")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Path to data file
-    #[structopt(name = "path_a", parse(from_os_str))]
+    #[arg(name = "path_a")]
     path_a: PathBuf,
 
     /// Path to data file
-    #[structopt(name = "path_b", parse(from_os_str))]
+    #[arg(name = "path_b")]
     path_b: PathBuf,
 
     /// Show summary of differences
-    #[structopt(long = "summary")]
+    #[arg(long = "summary")]
     summary: bool,
 
     /// Skip comparison if either value is undefined
-    #[structopt(long = "ignore-empty")]
+    #[arg(long = "ignore-empty")]
     ignore_empty: bool,
 
     /// Print output in simple columns
-    #[structopt(long = "columns")]
+    #[arg(long = "columns")]
     columns: bool,
 
     /// Do not print column headers
-    #[structopt(long = "no-headers")]
+    #[arg(long = "no-headers")]
     no_headers: bool,
 
     /// Unix epoch time of the end of your requested
-    #[structopt(long = "until")]
+    #[arg(long = "until")]
     until: Option<u32>,
 
     /// Output results in JSON form
-    #[structopt(long = "json")]
+    #[arg(long = "json")]
     json: bool,
 }
 
@@ -124,7 +123,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

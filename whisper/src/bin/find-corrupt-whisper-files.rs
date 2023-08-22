@@ -1,29 +1,23 @@
+use clap::Parser;
 use std::fs::remove_file;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use structopt::StructOpt;
 use walkdir::WalkDir;
 
 /// Find and (optionally) delete corrupt Whisper data files.
-#[derive(Debug, StructOpt)]
-#[structopt(name = "find-corrupt-whisper-files")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Delete reported files.
-    #[structopt(long = "delete-corrupt")]
+    #[arg(long = "delete-corrupt")]
     delete_corrupt: bool,
 
     /// Display progress info.
-    #[structopt(long = "verbose")]
+    #[arg(long = "verbose")]
     verbose: bool,
 
     /// Directory containing Whisper files.
-    #[structopt(
-        name = "WHISPER_DIR",
-        parse(from_os_str),
-        required = true,
-        min_values = 1
-    )]
+    #[arg(name = "WHISPER_DIR", required = true)]
     directories: Vec<PathBuf>,
 }
 
@@ -87,7 +81,7 @@ fn run(args: &Args) -> io::Result<()> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

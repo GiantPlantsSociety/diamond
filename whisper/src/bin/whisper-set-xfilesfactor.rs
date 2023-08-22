@@ -1,20 +1,17 @@
+use clap::Parser;
 use std::io;
 use std::path::PathBuf;
 use std::process::exit;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(
-    name = "whisper-set-xfilesfactor",
-    about = "Set xFilesFactor for existing whisper files"
-)]
+#[derive(Debug, clap::Parser)]
+#[command(about = "Set xFilesFactor for existing whisper files")]
 struct Args {
     /// path to whisper file
-    #[structopt(name = "path", parse(from_os_str))]
+    #[arg(name = "path")]
     path: PathBuf,
 
     /// new xFilesFactor, a float between 0 and 1
-    #[structopt(name = "xFilesFactor")]
+    #[arg(name = "xFilesFactor")]
     x_files_factor: f32,
 }
 
@@ -36,7 +33,7 @@ fn run(args: &Args) -> io::Result<()> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

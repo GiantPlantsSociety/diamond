@@ -1,42 +1,40 @@
+use clap::Parser;
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use structopt::StructOpt;
 use whisper::format_ts::display_ts;
-
 use whisper::interval::Interval;
 use whisper::WhisperFile;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "whisper-fetch")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Unix epoch time of the beginning of your requested interval (default: 24 hours ago)
-    #[structopt(long = "from")]
+    #[arg(long = "from")]
     from: Option<u32>,
 
     /// Unix epoch time of the end of your requested interval (default: now)
-    #[structopt(long = "until")]
+    #[arg(long = "until")]
     until: Option<u32>,
 
     /// Outputs results in JSON form
-    #[structopt(long = "json")]
+    #[arg(long = "json")]
     json: bool,
 
     /// Show human-readable timestamps instead of unix times
-    #[structopt(long = "pretty")]
+    #[arg(long = "pretty")]
     pretty: bool,
 
     /// Time format to use with --pretty; see https://docs.rs/chrono/0.4.6/chrono/format/strftime/index.html
-    #[structopt(long = "time-format", short = "t")]
+    #[arg(long = "time-format", short = 't')]
     time_format: Option<String>,
 
     /// Specify 'nulls' to drop all null values. Specify 'zeroes' to drop all zero values. Specify 'empty' to drop both null and zero values
-    #[structopt(long = "drop")]
+    #[arg(long = "drop")]
     drop: Option<String>,
 
     /// Path to data file
-    #[structopt(name = "path", parse(from_os_str))]
+    #[arg(name = "path")]
     path: PathBuf,
 }
 
@@ -102,7 +100,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

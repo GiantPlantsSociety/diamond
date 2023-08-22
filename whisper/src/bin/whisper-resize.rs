@@ -1,48 +1,46 @@
+use clap::Parser;
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use structopt::StructOpt;
-
 use whisper::aggregation::AggregationMethod;
 use whisper::error;
 use whisper::resize::resize;
 use whisper::retention::Retention;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "whisper-resize")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Change the xFilesFactor
-    #[structopt(long = "xFilesFactor")]
+    #[arg(long = "xFilesFactor")]
     x_files_factor: Option<f32>,
 
     /// Change the aggregation function:
     /// (average, sum, last, max, min, avg_zero, absmax, absmin)
-    #[structopt(long = "aggregationMethod")]
+    #[arg(long = "aggregationMethod")]
     aggregation_method: Option<AggregationMethod>,
 
     /// Perform a destructive change
-    #[structopt(long = "force")]
+    #[arg(long = "force")]
     force: bool,
 
     /// Create a new database file without removing the existing one
-    #[structopt(long = "newfile", parse(from_os_str))]
+    #[arg(long = "newfile")]
     newfile: Option<PathBuf>,
 
     /// Delete the .bak file after successful execution
-    #[structopt(long = "nobackup")]
+    #[arg(long = "nobackup")]
     nobackup: bool,
 
     /// Try to aggregate the values to fit the new archive better.
     /// Note that this will make things slower and use more memory.
-    #[structopt(long = "aggregate")]
+    #[arg(long = "aggregate")]
     aggregate: bool,
 
     /// Path to data file
-    #[structopt(name = "path", parse(from_os_str))]
+    #[arg(name = "path")]
     path: PathBuf,
 
-    #[structopt(
+    #[arg(
         name = "retentions",
         help = r#"timePerPoint and timeToStore specify lengths of time, for example:
 60:1440      60 seconds per datapoint, 1440 datapoints = 1 day of retention
@@ -50,8 +48,7 @@ struct Args {
 1h:7d        1 hour per datapoint, 7 days of retention
 12h:2y       12 hours per datapoint, 2 years of retention
 "#,
-        required = true,
-        min_values = 1
+        required = true
     )]
     retentions: Vec<Retention>,
 }
@@ -87,7 +84,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

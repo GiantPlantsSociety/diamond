@@ -1,3 +1,4 @@
+use clap::Parser;
 use diamond::settings::Settings;
 use diamond::update_silently;
 use futures::join;
@@ -6,27 +7,25 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
-use structopt::StructOpt;
 use tokio::net::{TcpListener, UdpSocket};
 use tokio_util::codec::Framed;
 use tokio_util::codec::LinesCodec;
 use tokio_util::udp::UdpFramed;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "diamond-server")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Path to config file
-    #[structopt(name = "config", long = "config", short = "c", parse(from_os_str))]
+    #[arg(name = "config", long = "config", short = 'c')]
     config: Option<PathBuf>,
 
     /// Generate default config file
-    #[structopt(short = "-g", requires = "config")]
+    #[arg(short = 'g', requires = "config")]
     generate: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::from_args();
+    let args = Args::parse();
 
     if args.generate {
         Settings::generate(args.config.unwrap())?;

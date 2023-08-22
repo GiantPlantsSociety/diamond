@@ -1,18 +1,17 @@
+use clap::Parser;
 use std::io;
 use std::path::PathBuf;
 use std::process::exit;
-use structopt::StructOpt;
 use whisper::format_ts::display_ts;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "whisper-dump")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Time format to show human-readable time instead of unix timestamp; see https://docs.rs/chrono/0.4.6/chrono/format/strftime/index.html
-    #[structopt(long = "time-format", short = "t")]
+    #[arg(long = "time-format", short = 't')]
     time_format: Option<String>,
 
     /// Path to data file
-    #[structopt(name = "path", parse(from_os_str))]
+    #[arg(name = "path")]
     path: PathBuf,
 }
 
@@ -55,7 +54,7 @@ fn run(args: &Args) -> io::Result<()> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

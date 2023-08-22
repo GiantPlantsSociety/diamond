@@ -1,24 +1,23 @@
+use clap::Parser;
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use structopt::StructOpt;
 use whisper::fill::fill;
 
 /// Copies data from src to dst, if missing.
-#[derive(Debug, StructOpt)]
-#[structopt(name = "whisper-fill")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Lock whisper files (is not implemented).
-    #[structopt(long = "lock")]
+    #[arg(long = "lock")]
     lock: bool,
 
     /// Source whisper file.
-    #[structopt(name = "SRC", parse(from_os_str))]
+    #[arg(name = "SRC")]
     src: PathBuf,
 
     /// Destination whisper file.
-    #[structopt(name = "DST", parse(from_os_str))]
+    #[arg(name = "DST")]
     dst: PathBuf,
 }
 
@@ -29,7 +28,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

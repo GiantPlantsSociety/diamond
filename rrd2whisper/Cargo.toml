@@ -6,7 +6,7 @@ edition = "2018"
 license = "GPLv2+"
 
 [dependencies]
-structopt = "0.3"
+clap = { version = "4", features = ["derive"] }
 regex = "1"
 whisper = { path = "../whisper" }
 rrd = { path = "../rrd" }

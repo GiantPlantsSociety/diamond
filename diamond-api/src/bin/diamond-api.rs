@@ -1,5 +1,6 @@
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpResponse, HttpServer};
+use clap::Parser;
 use diamond_api::application::app_config;
 use diamond_api::context::Context;
 use diamond_api::opts::Args;
@@ -8,7 +9,6 @@ use std::fs::create_dir;
 use std::io;
 use std::process::exit;
 use std::sync::Arc;
-use structopt::StructOpt;
 
 #[actix_web::main]
 async fn run(args: Args) -> io::Result<()> {
@@ -54,7 +54,7 @@ async fn run(args: Args) -> io::Result<()> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(args) {
         eprintln!("{}", err);
         exit(1);

@@ -1,23 +1,22 @@
+use clap::Parser;
 use std::io;
 use std::path::PathBuf;
 use std::process::exit;
-use structopt::StructOpt;
 use whisper::aggregation::AggregationMethod;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "whisper-set-aggregation-method")]
+#[derive(Debug, clap::Parser)]
 struct Args {
     /// Path to data file
-    #[structopt(name = "path", parse(from_os_str))]
+    #[arg(name = "path")]
     path: PathBuf,
 
     /// Function to use when aggregating values
     /// (average, sum, last, max, min, avg_zero, absmax, absmin)
-    #[structopt(name = "aggregationMethod", default_value = "average")]
+    #[arg(name = "aggregationMethod", default_value = "average")]
     aggregation_method: AggregationMethod,
 
     /// XFILESFACTOR
-    #[structopt(name = "xFilesFactor", default_value = "0.5")]
+    #[arg(name = "xFilesFactor", default_value = "0.5")]
     x_files_factor: f32,
 }
 
@@ -40,7 +39,7 @@ fn run(args: &Args) -> io::Result<()> {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
     if let Err(err) = run(&args) {
         eprintln!("{}", err);
         exit(1);

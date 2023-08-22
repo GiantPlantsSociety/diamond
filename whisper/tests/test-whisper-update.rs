@@ -9,9 +9,9 @@ const NAME: &str = "whisper-update";
 fn calling_without_args() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .assert()
-        .code(1)
+        .code(2)
         .stdout("")
-        .stderr(predicate::str::contains("USAGE").from_utf8());
+        .stderr(predicate::str::contains("Usage").from_utf8());
     Ok(())
 }
 
@@ -21,7 +21,7 @@ fn calling_help() -> Result<(), Box<dyn Error>> {
         .args(&["--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("USAGE").from_utf8())
+        .stdout(predicate::str::contains("Usage").from_utf8())
         .stderr("");
     Ok(())
 }
@@ -47,7 +47,7 @@ fn calling_with_invalid_timestamp() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid", "nottimestamp:1"])
         .assert()
-        .code(1);
+        .code(2);
     Ok(())
 }
 
@@ -56,6 +56,6 @@ fn calling_with_invalid_value() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .args(&["invalid", "1:value"])
         .assert()
-        .code(1);
+        .code(2);
     Ok(())
 }

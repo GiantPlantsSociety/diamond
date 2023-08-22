@@ -13,9 +13,9 @@ const NAME: &str = "whisper-dump";
 fn calling_without_args() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .assert()
-        .code(1)
+        .code(2)
         .stdout("")
-        .stderr(predicate::str::contains("USAGE").from_utf8());
+        .stderr(predicate::str::contains("Usage").from_utf8());
     Ok(())
 }
 
@@ -25,7 +25,7 @@ fn calling_help() -> Result<(), Box<dyn Error>> {
         .args(&["--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("USAGE").from_utf8())
+        .stdout(predicate::str::contains("Usage").from_utf8())
         .stderr("");
     Ok(())
 }

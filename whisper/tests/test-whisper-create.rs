@@ -12,9 +12,9 @@ const NAME: &str = "whisper-create";
 fn calling_without_args() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
         .assert()
-        .code(1)
+        .code(2)
         .stdout("")
-        .stderr(predicate::str::contains("USAGE").from_utf8());
+        .stderr(predicate::str::contains("Usage").from_utf8());
     Ok(())
 }
 
@@ -24,7 +24,7 @@ fn calling_help() -> Result<(), Box<dyn Error>> {
         .args(&["--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("USAGE").from_utf8())
+        .stdout(predicate::str::contains("Usage").from_utf8())
         .stderr("");
     Ok(())
 }
@@ -55,7 +55,7 @@ fn calling_with_invalid_method() -> Result<(), Box<dyn Error>> {
         .to_path_buf();
 
     let error =
-        "error: Invalid value for '--aggregationMethod <aggregation-method>': Unsupported aggregation method 'unknown'";
+        "error: invalid value 'unknown' for '--aggregationMethod <AGGREGATION_METHOD>': Unsupported aggregation method 'unknown'";
 
     Command::cargo_bin(NAME)?
         .args(&[
@@ -65,7 +65,7 @@ fn calling_with_invalid_method() -> Result<(), Box<dyn Error>> {
             "unknown",
         ])
         .assert()
-        .code(1)
+        .code(2)
         .stderr(predicate::str::contains(error).from_utf8());
     Ok(())
 }
@@ -79,13 +79,14 @@ fn calling_with_invalid_xfactor() -> Result<(), Box<dyn Error>> {
         .path()
         .to_path_buf();
 
-    let error = "error: Invalid value for '--xFilesFactor <x-files-factor>': invalid float literal";
+    let error =
+        "error: invalid value 'nano' for '--xFilesFactor <X_FILES_FACTOR>': invalid float literal";
 
     // TODO: validate nan as invalid value
     Command::cargo_bin(NAME)?
         .args(&[path.to_str().unwrap(), "60:1440", "--xFilesFactor", "nano"])
         .assert()
-        .code(1)
+        .code(2)
         .stderr(predicate::str::contains(error).from_utf8());
     Ok(())
 }
