@@ -1,13 +1,13 @@
 freebsd_instance:
-  image: freebsd-12-1-release-amd64
+  image_family: freebsd-14-0
 
 task:
   # This name gets reported as a build status in GitHub
   name: stable x86_64-unknown-freebsd
   env:
     RUST_BACKTRACE: 1
-  setup_script:
-    - pkg install -y curl rrdtool
+  install_script:
+    - pkg install -y devel/pkgconf curl rrdtool
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh -y
     - . $HOME/.cargo/env
