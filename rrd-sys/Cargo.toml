@@ -7,3 +7,9 @@ license = "GPLv2+"
 
 [dependencies]
 libc = "0.2"
+
+[build-dependencies]
+system-deps = "6.2.2"
+
+[package.metadata.system-deps]
+librrd = "^1.7"
