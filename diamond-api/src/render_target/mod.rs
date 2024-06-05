@@ -2,12 +2,11 @@ pub mod ast;
 mod parser;
 
 pub use ast::*;
-pub use std::convert::TryFrom;
-pub use std::str::FromStr;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn test_from_str() {
