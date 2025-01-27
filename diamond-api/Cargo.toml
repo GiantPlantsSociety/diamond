@@ -17,7 +17,7 @@ tempfile = "3"
 env_logger = "0.11"
 futures = "0.3"
 whisper = { path = "../whisper" }
-nom = "7"
+nom = "8"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 actix-rt = "2"
 regex = "1"
