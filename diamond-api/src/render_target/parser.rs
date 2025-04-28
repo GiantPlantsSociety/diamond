@@ -3,11 +3,10 @@ use nom::branch::alt;
 use nom::bytes::complete::{escaped_transform, is_not, tag, tag_no_case};
 use nom::character::complete::{char as c, digit1, none_of, one_of};
 use nom::combinator::{map, map_res, opt, recognize};
-
-use nom::error::{convert_error, VerboseError, VerboseErrorKind};
+use nom::error::{Error, ParseError};
 use nom::multi::{fold_many1, many0, many1, separated_list0, separated_list1};
-use nom::sequence::{delimited, preceded, terminated, tuple};
-use nom::{Err, IResult};
+use nom::sequence::{delimited, preceded, terminated};
+use nom::{Err, IResult, Parser};
 use std::collections::BTreeSet;
 
 // literals
@@ -18,16 +17,17 @@ pub enum Number {
     Float(f64),
 }
 
-fn literal_number(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+fn literal_number(input: &str) -> IResult<&str, LiteralValue> {
     let (input, number) = map_res(
-        recognize(tuple((
+        recognize((
             opt(c('-')),
             digit1,
-            opt(tuple((c('.'), digit1))),
-            opt(tuple((one_of("eE"), opt(c('-')), digit1))),
-        ))),
+            opt((c('.'), digit1)),
+            opt((one_of("eE"), opt(c('-')), digit1)),
+        )),
         parse_number,
-    )(input)?;
+    )
+    .parse(input)?;
 
     match number {
         Number::Float(v) => Ok((input, LiteralValue::Float(v))),
@@ -35,73 +35,76 @@ fn literal_number(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>
     }
 }
 
-fn literal_string(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+fn literal_string(input: &str) -> IResult<&str, LiteralValue> {
     let (input, string) = alt((
         delimited(c('"'), recognize(opt(is_not("\""))), c('"')),
         delimited(c('\''), recognize(opt(is_not("'"))), c('\'')),
-    ))(input)?;
+    ))
+    .parse(input)?;
 
     Ok((input, LiteralValue::String(string.to_owned())))
 }
 
-fn literal_boolean(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+fn literal_boolean(input: &str) -> IResult<&str, LiteralValue> {
     let (input, boolean) = alt((
         map(tag_no_case("true"), |_| true),
         map(tag_no_case("false"), |_| false),
-    ))(input)?;
+    ))
+    .parse(input)?;
 
     Ok((input, LiteralValue::Boolean(boolean)))
 }
 
-fn literal_none(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+fn literal_none(input: &str) -> IResult<&str, LiteralValue> {
     let (input, _) = tag_no_case("none")(input)?;
     Ok((input, LiteralValue::None))
 }
 
-fn literal_value(input: &str) -> IResult<&str, LiteralValue, VerboseError<&str>> {
+fn literal_value(input: &str) -> IResult<&str, LiteralValue> {
     alt((
         literal_boolean,
         literal_number,
         literal_string,
         literal_none,
-    ))(input)
+    ))
+    .parse(input)
 }
 
-fn ident(input: &str) -> IResult<&str, String, VerboseError<&str>> {
-    let (input, word) = recognize(tuple((
+fn ident(input: &str) -> IResult<&str, String> {
+    let (input, word) = recognize((
         one_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"),
         many0(one_of(
             "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
         )),
-    )))(input)?;
+    ))
+    .parse(input)?;
 
     Ok((input, word.to_owned()))
 }
 
-fn call_arg(input: &str) -> IResult<&str, (Option<String>, Arg), VerboseError<&str>> {
-    tuple((opt(terminated(ident, c('='))), arg))(input)
+fn call_arg(input: &str) -> IResult<&str, (Option<String>, Arg)> {
+    (opt(terminated(ident, c('='))), arg).parse(input)
 }
 
-fn arg(input: &str) -> IResult<&str, Arg, VerboseError<&str>> {
+fn arg(input: &str) -> IResult<&str, Arg> {
     alt((
         map(literal_value, Arg::Literal),
         map(expression, Arg::Expression),
-    ))(input)
+    ))
+    .parse(input)
 }
 
-fn call_args(
-    input: &str,
-) -> IResult<&str, (String, Vec<(Option<String>, Arg)>), VerboseError<&str>> {
+fn call_args(input: &str) -> IResult<&str, (String, Vec<(Option<String>, Arg)>)> {
     let (input, function) = ident(input)?;
     let (input, _) = c('(')(input)?;
-    let (input, all_args) = separated_list0(c(','), call_arg)(input)?;
+    let (input, all_args) = separated_list0(c(','), call_arg).parse(input)?;
     let (input, _) = c(')')(input)?;
 
     Ok((input, (function, all_args)))
 }
 
-fn call(input: &str) -> IResult<&str, Call, VerboseError<&str>> {
-    map_res(call_args, parse_call)(input)
+fn call(input: &str) -> IResult<&str, Call> {
+    map_res(call_args, parse_call).parse(input)
 }
 
 fn parse_number(s: &str) -> Result<Number, String> {
@@ -162,7 +165,7 @@ fn parse_call(argv: (String, Vec<(Option<String>, Arg)>)) -> Result<Call, String
 }
 
 // Path Expression
-fn partial_path_element(input: &str) -> IResult<&str, String, VerboseError<&str>> {
+fn partial_path_element(input: &str) -> IResult<&str, String> {
     let (inp, out) = escaped_transform(
         one_of(
             r##"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#%&+-/:;<=>?@^_`~"##,
@@ -173,24 +176,23 @@ fn partial_path_element(input: &str) -> IResult<&str, String, VerboseError<&str>
     if !out.is_empty() {
         Ok((inp, out))
     } else {
-        Err(Err::Error(VerboseError {
-            errors: vec![(
-                inp,
-                VerboseErrorKind::Context("Path element cannot be empty"),
-            )],
-        }))
+        Err(Err::Error(Error::from_error_kind(
+            inp,
+            nom::error::ErrorKind::Verify,
+        )))
     }
 }
 
-fn path_element_enum(input: &str) -> IResult<&str, Vec<String>, VerboseError<&str>> {
+fn path_element_enum(input: &str) -> IResult<&str, Vec<String>> {
     delimited(
         c('{'),
         separated_list1(tag(","), partial_path_element),
         c('}'),
-    )(input)
+    )
+    .parse(input)
 }
 
-fn match_group_range(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<&str>> {
+fn match_group_range(input: &str) -> IResult<&str, BTreeSet<char>> {
     let (input, from_char) = none_of("]")(input)?;
     let (input, _) = c('-')(input)?;
     let (input, to_char) = none_of("]")(input)?;
@@ -202,15 +204,15 @@ fn match_group_range(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<
     Ok((input, range))
 }
 
-fn match_group_single(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<&str>> {
+fn match_group_single(input: &str) -> IResult<&str, BTreeSet<char>> {
     let (input, single) = none_of("]")(input)?;
     let group_single = [single].iter().cloned().collect();
     Ok((input, group_single))
 }
 
-fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError<&str>> {
+fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>> {
     let (input, _) = c('[')(input)?;
-    let (input, start_dash) = opt(c('-'))(input)?;
+    let (input, start_dash) = opt(c('-')).parse(input)?;
 
     let (input, mut chars) = fold_many1(
         alt((match_group_range, match_group_single)),
@@ -219,9 +221,10 @@ fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError
             acc.extend(chars);
             acc
         },
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, end_dash) = opt(c('-'))(input)?;
+    let (input, end_dash) = opt(c('-')).parse(input)?;
     let (input, _) = c(']')(input)?;
 
     if start_dash.is_some() || end_dash.is_some() {
@@ -231,7 +234,7 @@ fn path_element_group(input: &str) -> IResult<&str, BTreeSet<char>, VerboseError
     Ok((input, chars))
 }
 
-fn path_element(input: &str) -> IResult<&str, PathElement, VerboseError<&str>> {
+fn path_element(input: &str) -> IResult<&str, PathElement> {
     alt((
         map(path_element_enum, PathElement::Enum),
         map(path_element_group, PathElement::OneOf),
@@ -241,26 +244,27 @@ fn path_element(input: &str) -> IResult<&str, PathElement, VerboseError<&str>> {
             PathElement::Variable,
         ),
         map(partial_path_element, PathElement::Partial),
-    ))(input)
+    ))
+    .parse(input)
 }
 
-fn path_word(input: &str) -> IResult<&str, PathWord, VerboseError<&str>> {
-    let (input, path_word) = many1(path_element)(input)?;
+fn path_word(input: &str) -> IResult<&str, PathWord> {
+    let (input, path_word) = many1(path_element).parse(input)?;
     Ok((input, PathWord(path_word)))
 }
 
-fn path_expression(input: &str) -> IResult<&str, PathExpression, VerboseError<&str>> {
-    let (input, path) = separated_list1(c('.'), path_word)(input)?;
+fn path_expression(input: &str) -> IResult<&str, PathExpression> {
+    let (input, path) = separated_list1(c('.'), path_word).parse(input)?;
     Ok((input, PathExpression(path)))
 }
 
 // template
-fn source(input: &str) -> IResult<&str, Source, VerboseError<&str>> {
-    alt((map(call, Source::Call), map(path_expression, Source::Path)))(input)
+fn source(input: &str) -> IResult<&str, Source> {
+    alt((map(call, Source::Call), map(path_expression, Source::Path))).parse(input)
 }
 
-fn template_arg(input: &str) -> IResult<&str, (Option<String>, LiteralValue), VerboseError<&str>> {
-    let (input, arg) = opt(terminated(ident, c('=')))(input)?;
+fn template_arg(input: &str) -> IResult<&str, (Option<String>, LiteralValue)> {
+    let (input, arg) = opt(terminated(ident, c('='))).parse(input)?;
     let (input, value) = literal_value(input)?;
     Ok((input, (arg, value)))
 }
@@ -284,22 +288,23 @@ fn parse_template(
 
 fn template_internal(
     input: &str,
-) -> IResult<&str, (Source, Option<Vec<(Option<String>, LiteralValue)>>), VerboseError<&str>> {
+) -> IResult<&str, (Source, Option<Vec<(Option<String>, LiteralValue)>>)> {
     let (input, _) = tag("template")(input)?;
     let (input, _) = tag("(")(input)?;
     let (input, source) = source(input)?;
 
     let (input, all_args) =
-        opt(preceded(tag(","), separated_list1(tag(","), template_arg)))(input)?;
+        opt(preceded(tag(","), separated_list1(tag(","), template_arg))).parse(input)?;
     let (input, _) = tag(")")(input)?;
 
     Ok((input, (source, all_args)))
 }
 
-fn template(input: &str) -> IResult<&str, Template, VerboseError<&str>> {
+fn template(input: &str) -> IResult<&str, Template> {
     map_res(template_internal, |(source, all_args)| {
         parse_template(source, all_args)
-    })(input)
+    })
+    .parse(input)
 }
 
 // expression
@@ -315,14 +320,15 @@ fn parse_expression(base: Expression, pipe_calls: Vec<Call>) -> Expression {
     wrapped
 }
 
-fn expression(input: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+fn expression(input: &str) -> IResult<&str, Expression> {
     let (input, base) = alt((
         map(template, Expression::Template),
         map(call, Expression::Call),
         map(path_expression, Expression::Path),
-    ))(input)?;
+    ))
+    .parse(input)?;
 
-    let (input, pipe_calls) = many0(preceded(tag("|"), call))(input)?;
+    let (input, pipe_calls) = many0(preceded(tag("|"), call)).parse(input)?;
     let expression = parse_expression(base, pipe_calls);
     Ok((input, expression))
 }
@@ -334,8 +340,8 @@ macro_rules! impl_try_from {
 
             fn try_from(input: &str) -> Result<Self, Self::Error> {
                 let (tail, result) = $parser(input).map_err(|e| match e {
-                    Err::Error(e) => format!("ERROR {}", convert_error(input, e)),
-                    Err::Failure(e) => format!("FAILURE {}", convert_error(input, e)),
+                    Err::Error(e) => format!("ERROR {}", e),
+                    Err::Failure(e) => format!("FAILURE {}", e),
                     Err::Incomplete(_) => "Input is incomplete".to_owned(),
                 })?;
 
@@ -640,6 +646,12 @@ mod tests {
 
     #[test]
     fn test_expression() {
-        println!("Parsed {:#?}", parse!(expression, "template(average(emea.events\\[2019\\].clicks,n=7),skip_empty=false,none=none)|aliasByNode(1)|movingAverage(\"5min\")"));
+        println!(
+            "Parsed {:#?}",
+            parse!(
+                expression,
+                "template(average(emea.events\\[2019\\].clicks,n=7),skip_empty=false,none=none)|aliasByNode(1)|movingAverage(\"5min\")"
+            )
+        );
     }
 }
