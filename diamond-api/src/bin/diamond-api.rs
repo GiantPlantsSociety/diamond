@@ -12,7 +12,8 @@ use std::sync::Arc;
 
 #[actix_web::main]
 async fn run(args: Args) -> io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info,actix_server=info");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("RUST_LOG", "actix_web=info,actix_server=info") };
     env_logger::init();
 
     let path = &args.path;
