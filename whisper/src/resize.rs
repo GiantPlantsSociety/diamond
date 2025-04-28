@@ -3,9 +3,9 @@ use crate::builder::WhisperBuilder;
 use crate::error::Error;
 use crate::interval::Interval;
 
+use crate::WhisperFile;
 use crate::point::Point;
 use crate::retention::Retention;
-use crate::WhisperFile;
 
 use std::fs::{remove_file, rename};
 use std::io;

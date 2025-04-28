@@ -28,11 +28,10 @@ pub struct PathWord(pub Vec<PathElement>);
 
 impl PathWord {
     pub fn matches(&self, text: &str) -> bool {
-        match self.to_regex() { Ok(re) => {
-            re.is_match(text)
-        } _ => {
-            false
-        }}
+        match self.to_regex() {
+            Ok(re) => re.is_match(text),
+            _ => false,
+        }
     }
 
     pub fn to_regex_pattern(&self) -> Result<String, String> {

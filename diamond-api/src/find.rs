@@ -1,6 +1,6 @@
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Form, Json, Query};
-use actix_web::{dev, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
+use actix_web::{FromRequest, HttpMessage, HttpRequest, HttpResponse, Result, dev};
 use futures::future::{FutureExt, LocalBoxFuture};
 use serde::*;
 use std::convert::From;

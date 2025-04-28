@@ -123,8 +123,8 @@ fn walk_tree(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::create_dir;
     use std::fs::File;
+    use std::fs::create_dir;
     use std::path::Path;
     use std::str::FromStr;
 

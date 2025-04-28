@@ -1,5 +1,5 @@
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{App, HttpResponse, HttpServer, web};
 use clap::Parser;
 use diamond_api::application::app_config;
 use diamond_api::context::Context;

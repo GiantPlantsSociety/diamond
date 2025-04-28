@@ -5,7 +5,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use whisper::{point::Point, retention::Retention, WhisperBuilder};
+use whisper::{WhisperBuilder, point::Point, retention::Retention};
 
 // # Ignore SIGPIPE
 // signal.signal(signal.SIGPIPE, signal.SIG_DFL)

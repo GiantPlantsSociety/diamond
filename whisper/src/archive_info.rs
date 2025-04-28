@@ -1,5 +1,5 @@
-use crate::point::Point;
 use crate::POINT_SIZE;
+use crate::point::Point;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 

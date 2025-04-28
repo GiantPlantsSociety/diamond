@@ -8,9 +8,9 @@ use std::num::{ParseFloatError, ParseIntError};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
+use whisper::WhisperFile;
 use whisper::builder::WhisperBuilder;
 use whisper::point::Point;
-use whisper::WhisperFile;
 
 pub mod settings;
 

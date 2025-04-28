@@ -54,8 +54,7 @@ fn calling_with_invalid_method() -> Result<(), Box<dyn Error>> {
         .path()
         .to_path_buf();
 
-    let error =
-        "error: invalid value 'unknown' for '--aggregationMethod <AGGREGATION_METHOD>': Unsupported aggregation method 'unknown'";
+    let error = "error: invalid value 'unknown' for '--aggregationMethod <AGGREGATION_METHOD>': Unsupported aggregation method 'unknown'";
 
     Command::cargo_bin(NAME)?
         .args(&[

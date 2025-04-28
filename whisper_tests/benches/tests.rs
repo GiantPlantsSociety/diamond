@@ -2,11 +2,11 @@ use bencher::Bencher;
 use bencher::{benchmark_group, benchmark_main};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+use whisper::WhisperFile;
 use whisper::builder::{BuilderError, WhisperBuilder};
 use whisper::interval::Interval;
 use whisper::point::Point;
 use whisper::retention::Retention;
-use whisper::WhisperFile;
 use whisper_tests::*;
 
 const SECONDS_AGO: u32 = 3500;

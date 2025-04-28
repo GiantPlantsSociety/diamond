@@ -1,12 +1,12 @@
 use clap::Parser;
-use humansize::{format_size, BINARY};
+use humansize::{BINARY, format_size};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::process::exit;
+use whisper::WhisperBuilder;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
-use whisper::WhisperBuilder;
 
 #[derive(Debug, clap::Parser)]
 struct Args {

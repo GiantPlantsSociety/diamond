@@ -3,9 +3,9 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
+use whisper::WhisperFile;
 use whisper::format_ts::display_ts;
 use whisper::interval::Interval;
-use whisper::WhisperFile;
 
 #[derive(Debug, clap::Parser)]
 struct Args {
