@@ -16,7 +16,9 @@ fn cmp_f64_abs(a: &f64, b: &f64) -> cmp::Ordering {
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum AggregationMethod {
+    #[default]
     Average,
     Sum,
     Last,
@@ -102,12 +104,6 @@ impl AggregationMethod {
     }
 }
 
-impl ::std::default::Default for AggregationMethod {
-    fn default() -> Self {
-        AggregationMethod::Average
-    }
-}
-
 impl FromStr for AggregationMethod {
     type Err = String;
 
@@ -126,9 +122,9 @@ impl FromStr for AggregationMethod {
     }
 }
 
-impl Into<&'static str> for AggregationMethod {
-    fn into(self) -> &'static str {
-        match self {
+impl From<AggregationMethod> for &'static str {
+    fn from(val: AggregationMethod) -> Self {
+        match val {
             AggregationMethod::Average => "average",
             AggregationMethod::Sum => "sum",
             AggregationMethod::Last => "last",

@@ -69,7 +69,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
         Some(field) if field == "fileSize"          => println!("{}", meta.file_size()),
         Some(field) => return Err(
             format!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field).into()),
-        None => format_info(&meta, args.json)?,
+        None => format_info(meta, args.json)?,
     };
 
     Ok(())

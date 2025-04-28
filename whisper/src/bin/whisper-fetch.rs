@@ -64,7 +64,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 
     let seconds_per_point = file
         .suggest_archive(interval, now)
-        .ok_or_else(|| "No data in selected timerange")?;
+        .ok_or("No data in selected timerange")?;
 
     let filter = match args.drop {
         Some(ref s) if s == "nulls" => is_not_null,

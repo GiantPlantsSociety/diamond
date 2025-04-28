@@ -50,15 +50,11 @@ impl From<MetricResponseLeaf> for JsonTreeLeaf {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum FindFormat {
+    #[default]
     TreeJson,
     Completer,
-}
-
-impl Default for FindFormat {
-    fn default() -> FindFormat {
-        FindFormat::TreeJson
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

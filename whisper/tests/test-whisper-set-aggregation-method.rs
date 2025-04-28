@@ -21,7 +21,7 @@ fn calling_without_args() -> Result<(), Box<dyn Error>> {
 #[test]
 fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
-        .args(&["--help"])
+        .args(["--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Usage").from_utf8())
@@ -36,7 +36,7 @@ fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     #[cfg(windows)]
     let error_msg = "The system cannot find the file specified. (os error 2)";
     Command::cargo_bin(NAME)?
-        .args(&["invalid", "average"])
+        .args(["invalid", "average"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains(error_msg).from_utf8());
@@ -56,7 +56,7 @@ fn calling_with_invalid_method() -> Result<(), Box<dyn Error>> {
     let error = "error: invalid value 'unknown' for '[aggregationMethod]': Unsupported aggregation method 'unknown'";
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "unknown", "0.1"])
+        .args([path.to_str().unwrap(), "unknown", "0.1"])
         .assert()
         .code(2)
         .stderr(predicate::str::contains(error).from_utf8());
@@ -76,7 +76,7 @@ fn calling_with_invalid_xfactor() -> Result<(), Box<dyn Error>> {
 
     // TODO: validate nan
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "last", "nano"])
+        .args([path.to_str().unwrap(), "last", "nano"])
         .assert()
         .code(2)
         .stderr(predicate::str::contains(error).from_utf8());
@@ -99,7 +99,7 @@ fn calling_with_last() -> Result<(), Box<dyn Error>> {
     fs::copy(&file_path, &path)?;
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "last"])
+        .args([path.to_str().unwrap(), "last"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Updated aggregation method").from_utf8())
@@ -123,7 +123,7 @@ fn calling_with_sum_and_xfactor() -> Result<(), Box<dyn Error>> {
     fs::copy(&file_path, &path)?;
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "sum", "0.2"])
+        .args([path.to_str().unwrap(), "sum", "0.2"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Updated aggregation method").from_utf8())

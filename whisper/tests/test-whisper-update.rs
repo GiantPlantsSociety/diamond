@@ -18,7 +18,7 @@ fn calling_without_args() -> Result<(), Box<dyn Error>> {
 #[test]
 fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
-        .args(&["--help"])
+        .args(["--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Usage").from_utf8())
@@ -34,7 +34,7 @@ fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     let error_msg = "The system cannot find the file specified. (os error 2)";
 
     Command::cargo_bin(NAME)?
-        .args(&["invalid", "1:1"])
+        .args(["invalid", "1:1"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains(error_msg).from_utf8());
@@ -45,7 +45,7 @@ fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
 #[test]
 fn calling_with_invalid_timestamp() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
-        .args(&["invalid", "nottimestamp:1"])
+        .args(["invalid", "nottimestamp:1"])
         .assert()
         .code(2);
     Ok(())
@@ -54,7 +54,7 @@ fn calling_with_invalid_timestamp() -> Result<(), Box<dyn Error>> {
 #[test]
 fn calling_with_invalid_value() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
-        .args(&["invalid", "1:value"])
+        .args(["invalid", "1:value"])
         .assert()
         .code(2);
     Ok(())

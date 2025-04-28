@@ -50,7 +50,7 @@ impl PathWord {
                     .join("|")),
                 PathElement::Enum(arms) => Ok(arms
                     .iter()
-                    .map(|a| regex::escape(&a))
+                    .map(|a| regex::escape(a))
                     .collect::<Vec<_>>()
                     .join("|")),
             }

@@ -94,7 +94,7 @@ fn walk_tree(
         0 => {}
         1 => {
             let regex = path_words[0].to_regex().map_err(|_| ResponseError::Path)?;
-            for entry in fs::read_dir(&dir)? {
+            for entry in fs::read_dir(dir)? {
                 let path = entry?.path();
                 if let Some(file_name) = file_name(&path) {
                     if regex.is_match(&file_name) {
@@ -106,7 +106,7 @@ fn walk_tree(
         }
         _ => {
             let regex = path_words[0].to_regex().map_err(|_| ResponseError::Path)?;
-            for entry in fs::read_dir(&dir)? {
+            for entry in fs::read_dir(dir)? {
                 let path = entry?.path();
                 if let Some(file_name) = file_name(&path) {
                     if regex.is_match(&file_name) {

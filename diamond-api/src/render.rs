@@ -55,11 +55,7 @@ impl FromRequest for RenderQuery {
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
             "application/x-www-form-urlencoded" => String::from_request(req, payload)
-                .map(|r| {
-                    Ok(r?
-                        .parse::<RenderQuery>()
-                        .map_err(ErrorInternalServerError)?)
-                })
+                .map(|r| r?.parse::<RenderQuery>().map_err(ErrorInternalServerError))
                 .boxed_local(),
             "application/json" => Json::<RenderQuery>::from_request(req, payload)
                 .map(|r| Ok(r?.into_inner()))
@@ -71,21 +67,17 @@ impl FromRequest for RenderQuery {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum RenderFormat {
     Png,
     Raw,
     Csv,
+    #[default]
     Json,
     Svg,
     Pdf,
     Dygraph,
     Rickshaw,
-}
-
-impl Default for RenderFormat {
-    fn default() -> Self {
-        RenderFormat::Json
-    }
 }
 
 impl FromStr for RenderFormat {
@@ -155,7 +147,7 @@ pub async fn render_handler(
             }
         };
 
-        let storage_responses = ctx.storage.query(&path_expression, interval, now)?;
+        let storage_responses = ctx.storage.query(path_expression, interval, now)?;
 
         for storage_response in storage_responses {
             response.push(RenderResponseEntry {
@@ -315,10 +307,10 @@ mod tests {
                 port: 0,
             },
             storage: Arc::new(ConstStorage(vec![
-                RenderPoint(Some(1.0 as f64), t),
+                RenderPoint(Some(1.0_f64), t),
                 RenderPoint(None, t + 10),
-                RenderPoint(Some(2.0 as f64), t + 100),
-                RenderPoint(Some(3.0 as f64), t + 1000),
+                RenderPoint(Some(2.0_f64), t + 100),
+                RenderPoint(Some(3.0_f64), t + 1000),
             ])),
         };
         let query = RenderQuery {
@@ -368,10 +360,10 @@ mod tests {
                 port: 0,
             },
             storage: Arc::new(ConstStorage(vec![
-                RenderPoint(Some(1.1 as f64), t),
-                RenderPoint(Some(2.2 as f64), t + 60),
+                RenderPoint(Some(1.1_f64), t),
+                RenderPoint(Some(2.2_f64), t + 60),
                 RenderPoint(None, t + 60 * 60),
-                RenderPoint(Some(3.3 as f64), t + 24 * 60 * 60),
+                RenderPoint(Some(3.3_f64), t + 24 * 60 * 60),
             ])),
         };
         let query = RenderQuery {
