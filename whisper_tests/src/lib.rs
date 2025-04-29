@@ -1,7 +1,5 @@
-use rand::{
-    distributions::{Alphanumeric, DistString},
-    thread_rng,
-};
+use rand::distr::SampleString;
+use rand::{distr::Alphanumeric, rng};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
@@ -26,7 +24,7 @@ pub fn get_file_path(temp_dir: &TempDir, prefix: &str) -> PathBuf {
 }
 
 pub fn random_string(len: usize) -> String {
-    Alphanumeric.sample_string(&mut thread_rng(), len)
+    Alphanumeric.sample_string(&mut rng(), len)
 }
 
 pub fn copy_test_file(temp_dir: &TempDir, filename: &str) -> PathBuf {

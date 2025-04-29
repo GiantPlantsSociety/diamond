@@ -9,7 +9,7 @@ edition = "2024"
 
 [dependencies]
 whisper = { path = "../whisper" }
-rand = "0.8"
+rand = "0.9"
 tempfile = "3"
 byteorder = "1"
 
@@ -19,4 +19,3 @@ harness = false
 
 [dev-dependencies]
 bencher = "0.1.5"
-
