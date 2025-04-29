@@ -1,9 +1,9 @@
 use std::error::Error;
+use whisper::ArchiveData;
 use whisper::builder::WhisperBuilder;
 use whisper::interval::Interval;
 use whisper::point::Point;
 use whisper::retention::Retention;
-use whisper::ArchiveData;
 use whisper_tests::*;
 
 #[test]

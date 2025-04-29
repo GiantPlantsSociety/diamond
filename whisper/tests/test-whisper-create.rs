@@ -21,7 +21,7 @@ fn calling_without_args() -> Result<(), Box<dyn Error>> {
 #[test]
 fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
-        .args(&["--help"])
+        .args(["--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Usage").from_utf8())
@@ -37,7 +37,7 @@ fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     let error_msg = "The system cannot find the path specified. (os error 3)";
 
     Command::cargo_bin(NAME)?
-        .args(&["invalid/path", "60:1440"])
+        .args(["invalid/path", "60:1440"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains(error_msg).from_utf8());
@@ -54,11 +54,10 @@ fn calling_with_invalid_method() -> Result<(), Box<dyn Error>> {
         .path()
         .to_path_buf();
 
-    let error =
-        "error: invalid value 'unknown' for '--aggregationMethod <AGGREGATION_METHOD>': Unsupported aggregation method 'unknown'";
+    let error = "error: invalid value 'unknown' for '--aggregationMethod <AGGREGATION_METHOD>': Unsupported aggregation method 'unknown'";
 
     Command::cargo_bin(NAME)?
-        .args(&[
+        .args([
             path.to_str().unwrap(),
             "60:1440",
             "--aggregationMethod",
@@ -84,7 +83,7 @@ fn calling_with_invalid_xfactor() -> Result<(), Box<dyn Error>> {
 
     // TODO: validate nan as invalid value
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "60:1440", "--xFilesFactor", "nano"])
+        .args([path.to_str().unwrap(), "60:1440", "--xFilesFactor", "nano"])
         .assert()
         .code(2)
         .stderr(predicate::str::contains(error).from_utf8());
@@ -103,7 +102,7 @@ fn calling_creating_simple() -> Result<(), Box<dyn Error>> {
         .to_path_buf();
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "60:1440"])
+        .args([path.to_str().unwrap(), "60:1440"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Created: ").from_utf8())
@@ -125,7 +124,7 @@ fn calling_creating_multiple_retention() -> Result<(), Box<dyn Error>> {
         .to_path_buf();
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "60:1440", "300:1440"])
+        .args([path.to_str().unwrap(), "60:1440", "300:1440"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Created: ").from_utf8())
@@ -156,7 +155,7 @@ fn calling_creating_with_present_file() -> Result<(), Box<dyn Error>> {
     let error_msg = "The file exists. (os error 80)";
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "60:1440"])
+        .args([path.to_str().unwrap(), "60:1440"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains(error_msg).from_utf8());

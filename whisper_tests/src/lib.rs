@@ -76,7 +76,7 @@ pub fn create_and_update_points(
         })
         .build(path)?;
 
-    file.update_many(&points, now)?;
+    file.update_many(points, now)?;
 
     Ok(file)
 }

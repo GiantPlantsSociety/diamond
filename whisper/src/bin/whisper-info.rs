@@ -63,13 +63,13 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
     let meta = file.info();
 
     match &args.field {
-        Some(ref field) if field == "maxRetention"      => println!("{}", meta.max_retention),
-        Some(ref field) if field == "xFilesFactor"      => println!("{}", meta.x_files_factor),
-        Some(ref field) if field == "aggregationMethod" => println!("{}", meta.aggregation_method),
-        Some(ref field) if field == "fileSize"          => println!("{}", meta.file_size()),
-        Some(ref field) => return Err(
+        Some(field) if field == "maxRetention"      => println!("{}", meta.max_retention),
+        Some(field) if field == "xFilesFactor"      => println!("{}", meta.x_files_factor),
+        Some(field) if field == "aggregationMethod" => println!("{}", meta.aggregation_method),
+        Some(field) if field == "fileSize"          => println!("{}", meta.file_size()),
+        Some(field) => return Err(
             format!("Unknown field \"{}\". Valid fields are maxRetention, xFilesFactor, aggregationMethod, archives, fileSize", field).into()),
-        None => format_info(&meta, args.json)?,
+        None => format_info(meta, args.json)?,
     };
 
     Ok(())

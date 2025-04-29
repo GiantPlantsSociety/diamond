@@ -32,7 +32,7 @@ fn walk_dir(dir: &Path, delete_corrupt: bool, verbose: bool) -> io::Result<()> {
                 println!("Scanning {}...", entry.path().canonicalize()?.display())
             }
             Ok(ref entry) if is_whisper_file(entry.path()) => {
-                delete_corrupt_file(&entry.path(), delete_corrupt)?
+                delete_corrupt_file(entry.path(), delete_corrupt)?
             }
             Err(e) => eprintln!("{}", e),
             _ => {}

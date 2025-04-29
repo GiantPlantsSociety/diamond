@@ -1,4 +1,4 @@
-use actix_web::web::{resource, ServiceConfig};
+use actix_web::web::{ServiceConfig, resource};
 
 use crate::context::Context;
 use crate::find::*;

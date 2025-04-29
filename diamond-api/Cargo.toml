@@ -2,10 +2,13 @@
 name = "diamond-api"
 description = "Diamond Web API, subset of Graphite Web API"
 version = "0.1.0"
-authors = ["Andrii Radyk <ander.ender@gmail.com>", "Andrey Kutejko <andy128k@gmail.com>"]
+authors = [
+    "Andrii Radyk <ander.ender@gmail.com>",
+    "Andrey Kutejko <andy128k@gmail.com>",
+]
 license = "MIT"
 repository = "https://github.com/GiantPlantsSociety/diamond"
-edition = "2018"
+edition = "2024"
 
 [dependencies]
 actix-web = "4.9.0"
@@ -17,7 +20,7 @@ tempfile = "3"
 env_logger = "0.11"
 futures = "0.3"
 whisper = { path = "../whisper" }
-nom = "7"
+nom = "8.0"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 actix-rt = "2"
 regex = "1"

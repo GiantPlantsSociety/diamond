@@ -46,7 +46,7 @@ impl Value {
             Value::Float(x) => Some(*x),
             Value::Long(x) => Some(*x as f64),
             Value::Int(x) => Some(f64::from(*x)),
-            Value::Text(ref x) => x.parse().ok(),
+            Value::Text(x) => x.parse().ok(),
             _ => None,
         }
     }
@@ -55,7 +55,7 @@ impl Value {
         match self {
             Value::Long(x) => Some(*x),
             Value::Int(x) => cast(*x),
-            Value::Text(ref x) => x.parse().ok(),
+            Value::Text(x) => x.parse().ok(),
             _ => None,
         }
     }
@@ -64,21 +64,21 @@ impl Value {
         match self {
             Value::Long(x) => cast(*x),
             Value::Int(x) => Some(*x),
-            Value::Text(ref x) => x.parse().ok(),
+            Value::Text(x) => x.parse().ok(),
             _ => None,
         }
     }
 
     pub fn text(&self) -> Option<&str> {
         match self {
-            Value::Text(ref x) => Some(x),
+            Value::Text(x) => Some(x),
             _ => None,
         }
     }
 
     pub fn blob(&self) -> Option<&[u8]> {
         match self {
-            Value::Blob(ref x) => Some(x),
+            Value::Blob(x) => Some(x),
             _ => None,
         }
     }
@@ -110,9 +110,9 @@ impl FromStr for AggregationMethod {
     }
 }
 
-impl Into<&'static str> for AggregationMethod {
-    fn into(self) -> &'static str {
-        match self {
+impl From<AggregationMethod> for &'static str {
+    fn from(val: AggregationMethod) -> Self {
+        match val {
             AggregationMethod::Average => "average",
             AggregationMethod::Min => "min",
             AggregationMethod::Max => "max",
@@ -185,7 +185,7 @@ impl Info {
 
 pub struct InfoIter<'a>(*const rrd_info_t, PhantomData<&'a ()>);
 
-impl<'a> Iterator for InfoIter<'a> {
+impl Iterator for InfoIter<'_> {
     type Item = (String, Value);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -210,8 +210,7 @@ impl<'a> Iterator for InfoIter<'a> {
                 }
                 rrd_info_type_RD_I_BLO => {
                     let block = unsafe { (*info).value.u_blo };
-                    let mut buffer = Vec::<u8>::new();
-                    buffer.resize(block.size as usize, 0u8);
+                    let buffer = vec![0; block.size as usize];
                     unsafe {
                         ptr::copy_nonoverlapping(
                             block.ptr,

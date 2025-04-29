@@ -1,5 +1,5 @@
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{App, HttpResponse, HttpServer, web};
 use clap::Parser;
 use diamond_api::application::app_config;
 use diamond_api::context::Context;
@@ -12,7 +12,8 @@ use std::sync::Arc;
 
 #[actix_web::main]
 async fn run(args: Args) -> io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info,actix_server=info");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("RUST_LOG", "actix_web=info,actix_server=info") };
     env_logger::init();
 
     let path = &args.path;

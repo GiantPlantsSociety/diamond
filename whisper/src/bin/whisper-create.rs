@@ -1,12 +1,12 @@
 use clap::Parser;
-use humansize::{format_size, BINARY};
+use humansize::{BINARY, format_size};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::process::exit;
+use whisper::WhisperBuilder;
 use whisper::aggregation::AggregationMethod;
 use whisper::retention::Retention;
-use whisper::WhisperBuilder;
 
 #[derive(Debug, clap::Parser)]
 struct Args {
@@ -62,9 +62,9 @@ fn estimate_info(retentions: &[Retention]) {
 
     let total_points: usize = retentions.iter().map(|x| x.points as usize).sum();
 
-    let size = (whisper::METADATA_SIZE
+    let size = whisper::METADATA_SIZE
         + (retentions.len() * whisper::ARCHIVE_INFO_SIZE)
-        + (total_points * whisper::POINT_SIZE)) as usize;
+        + (total_points * whisper::POINT_SIZE);
     let disk_size = (size as f64 / 4096.0).ceil() as usize * 4096;
 
     let custom_options = BINARY.decimal_places(3);
@@ -72,7 +72,7 @@ fn estimate_info(retentions: &[Retention]) {
     println!();
     println!(
         "Estimated Whisper DB Size: {} ({} bytes on disk with 4k blocks)",
-        format_size(size, &custom_options),
+        format_size(size, custom_options),
         disk_size
     );
     println!();
@@ -83,7 +83,7 @@ fn estimate_info(retentions: &[Retention]) {
         println!(
             "Estimated storage requirement for {}k metrics: {}",
             number,
-            format_size(number * 1000_usize * disk_size, &custom_options),
+            format_size(number * 1000_usize * disk_size, custom_options),
         );
     }
 }

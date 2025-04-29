@@ -5,7 +5,7 @@ version = "0.1.0"
 authors = ["Andrii Radyk <ander.ender@gmail.com>"]
 license = "MIT"
 repository = "https://github.com/GiantPlantsSociety/diamond"
-edition = "2018"
+edition = "2024"
 
 [dependencies]
 lazy_static = "1"
@@ -14,7 +14,7 @@ clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec", "net"] }
 futures = "0.3"
-config = "0.14"
+config = "0.15"
 serde = { version = "1", features = ["derive"] }
 whisper = { path = "../whisper" }
 

@@ -3,9 +3,9 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
+use whisper::WhisperFile;
 use whisper::format_ts::display_ts;
 use whisper::interval::Interval;
-use whisper::WhisperFile;
 
 #[derive(Debug, clap::Parser)]
 struct Args {
@@ -64,7 +64,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
 
     let seconds_per_point = file
         .suggest_archive(interval, now)
-        .ok_or_else(|| "No data in selected timerange")?;
+        .ok_or("No data in selected timerange")?;
 
     let filter = match args.drop {
         Some(ref s) if s == "nulls" => is_not_null,

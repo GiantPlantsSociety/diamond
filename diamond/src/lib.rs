@@ -8,9 +8,9 @@ use std::num::{ParseFloatError, ParseIntError};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
+use whisper::WhisperFile;
 use whisper::builder::WhisperBuilder;
 use whisper::point::Point;
-use whisper::WhisperFile;
 
 pub mod settings;
 
@@ -88,7 +88,7 @@ impl FromStr for MetricPoint {
 
         let (name, timestamp, value) = match segments.len() {
             3 => (segments[0], segments[1], segments[2]),
-            _ => return Err(MetricError::LineParse(s.to_owned()).into()),
+            _ => return Err(MetricError::LineParse(s.to_owned())),
         };
 
         Ok(MetricPoint {
@@ -175,7 +175,7 @@ pub fn line_update<P: AsRef<Path>>(
         WhisperFile::open(&file_path)?
     } else {
         let dir_path = file_path.parent().unwrap();
-        fs::create_dir_all(&dir_path)?;
+        fs::create_dir_all(dir_path)?;
 
         WhisperBuilder::default()
             .add_retentions(&config.retentions)
@@ -196,7 +196,7 @@ pub fn update_silently(line: &str, conf: &Settings) {
         .unwrap()
         .as_secs() as u32;
 
-    line_update(&line, &conf.db_path, &conf.whisper, now).unwrap_or_else(|e| eprintln!("{}", e));
+    line_update(line, &conf.db_path, &conf.whisper, now).unwrap_or_else(|e| eprintln!("{}", e));
 }
 
 #[cfg(test)]
@@ -393,7 +393,7 @@ mod tests {
 
         let file_path = dir.join("this").join("is").join("correct2.wsp");
 
-        fs::create_dir_all(&file_path.parent().unwrap())?;
+        fs::create_dir_all(file_path.parent().unwrap())?;
 
         let mut file = WhisperBuilder::default()
             .add_retentions(&[Retention {

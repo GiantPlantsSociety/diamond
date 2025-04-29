@@ -1,9 +1,9 @@
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Json};
-use actix_web::{dev, FromRequest, HttpMessage, HttpRequest, HttpResponse};
-use futures::future::{ready, FutureExt, LocalBoxFuture};
+use actix_web::{FromRequest, HttpMessage, HttpRequest, HttpResponse, dev};
+use futures::future::{FutureExt, LocalBoxFuture, ready};
 use serde::*;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
@@ -55,11 +55,7 @@ impl FromRequest for RenderQuery {
     fn from_request(req: &HttpRequest, payload: &mut dev::Payload) -> Self::Future {
         match req.content_type().to_lowercase().as_str() {
             "application/x-www-form-urlencoded" => String::from_request(req, payload)
-                .map(|r| {
-                    Ok(r?
-                        .parse::<RenderQuery>()
-                        .map_err(ErrorInternalServerError)?)
-                })
+                .map(|r| r?.parse::<RenderQuery>().map_err(ErrorInternalServerError))
                 .boxed_local(),
             "application/json" => Json::<RenderQuery>::from_request(req, payload)
                 .map(|r| Ok(r?.into_inner()))
@@ -71,21 +67,17 @@ impl FromRequest for RenderQuery {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum RenderFormat {
     Png,
     Raw,
     Csv,
+    #[default]
     Json,
     Svg,
     Pdf,
     Dygraph,
     Rickshaw,
-}
-
-impl Default for RenderFormat {
-    fn default() -> Self {
-        RenderFormat::Json
-    }
 }
 
 impl FromStr for RenderFormat {
@@ -151,11 +143,11 @@ pub async fn render_handler(
                 return Err(ErrorInternalServerError(format!(
                     "Unsupported type of query: {}. For now only path expressions are supported",
                     target
-                )))
+                )));
             }
         };
 
-        let storage_responses = ctx.storage.query(&path_expression, interval, now)?;
+        let storage_responses = ctx.storage.query(path_expression, interval, now)?;
 
         for storage_response in storage_responses {
             response.push(RenderResponseEntry {
@@ -192,7 +184,7 @@ impl IntoCsv for RenderResponseEntry {
             .map(|point| {
                 let RenderPoint(val, ts) = point;
                 let v = val.map(|f| format!("{}", f)).unwrap_or_default();
-                let t = NaiveDateTime::from_timestamp_opt(i64::from(ts), 0)
+                let t = DateTime::from_timestamp(i64::from(ts), 0)
                     .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
                     .unwrap_or_else(|| ts.to_string());
                 // TODO: Use `csv` crate instead of "manual" string formatting
@@ -223,8 +215,8 @@ mod tests {
     use crate::test_utils::ConstStorage;
 
     use actix_web::body::to_bytes;
-    use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use actix_web::http::StatusCode;
+    use actix_web::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use actix_web::test::TestRequest;
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -315,10 +307,10 @@ mod tests {
                 port: 0,
             },
             storage: Arc::new(ConstStorage(vec![
-                RenderPoint(Some(1.0 as f64), t),
+                RenderPoint(Some(1.0_f64), t),
                 RenderPoint(None, t + 10),
-                RenderPoint(Some(2.0 as f64), t + 100),
-                RenderPoint(Some(3.0 as f64), t + 1000),
+                RenderPoint(Some(2.0_f64), t + 100),
+                RenderPoint(Some(3.0_f64), t + 1000),
             ])),
         };
         let query = RenderQuery {
@@ -331,9 +323,9 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(ct, "application/json");
         assert_eq!(
-                response,
-                "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,1564432988],[null,1564432998],[2.0,1564433088],[3.0,1564433988]]}]"
-            )
+            response,
+            "[{\"target\":\"i.am.a.metric\",\"datapoints\":[[1.0,1564432988],[null,1564432998],[2.0,1564433088],[3.0,1564433988]]}]"
+        )
     }
 
     #[actix_rt::test]
@@ -368,10 +360,10 @@ mod tests {
                 port: 0,
             },
             storage: Arc::new(ConstStorage(vec![
-                RenderPoint(Some(1.1 as f64), t),
-                RenderPoint(Some(2.2 as f64), t + 60),
+                RenderPoint(Some(1.1_f64), t),
+                RenderPoint(Some(2.2_f64), t + 60),
                 RenderPoint(None, t + 60 * 60),
-                RenderPoint(Some(3.3 as f64), t + 24 * 60 * 60),
+                RenderPoint(Some(3.3_f64), t + 24 * 60 * 60),
             ])),
         };
         let query = RenderQuery {
@@ -384,9 +376,9 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(ct, "text/csv");
         assert_eq!(
-                response,
-                "i.am.a.metric,2019-07-29 20:43:08,1.1\ni.am.a.metric,2019-07-29 20:44:08,2.2\ni.am.a.metric,2019-07-29 21:43:08,\ni.am.a.metric,2019-07-30 20:43:08,3.3\n"
-            )
+            response,
+            "i.am.a.metric,2019-07-29 20:43:08,1.1\ni.am.a.metric,2019-07-29 20:44:08,2.2\ni.am.a.metric,2019-07-29 21:43:08,\ni.am.a.metric,2019-07-30 20:43:08,3.3\n"
+        )
     }
 
     #[test]
@@ -534,21 +526,29 @@ mod tests {
 
     #[test]
     fn url_deserialize_time_fail() -> Result<(), ParseError> {
-        assert!("target=m1&target=m2&format=json&from=-&until=now"
-            .parse::<RenderQuery>()
-            .is_err());
+        assert!(
+            "target=m1&target=m2&format=json&from=-&until=now"
+                .parse::<RenderQuery>()
+                .is_err()
+        );
 
-        assert!("target=m1&target=m2&format=json&from=-d&until=now"
-            .parse::<RenderQuery>()
-            .is_err());
+        assert!(
+            "target=m1&target=m2&format=json&from=-d&until=now"
+                .parse::<RenderQuery>()
+                .is_err()
+        );
 
-        assert!("target=m1&target=m2&format=json&from=&until=now"
-            .parse::<RenderQuery>()
-            .is_err());
+        assert!(
+            "target=m1&target=m2&format=json&from=&until=now"
+                .parse::<RenderQuery>()
+                .is_err()
+        );
 
-        assert!("target=m1&target=m2&format=json&from=tomorrow&until=now"
-            .parse::<RenderQuery>()
-            .is_err());
+        assert!(
+            "target=m1&target=m2&format=json&from=tomorrow&until=now"
+                .parse::<RenderQuery>()
+                .is_err()
+        );
 
         Ok(())
     }

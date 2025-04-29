@@ -250,7 +250,8 @@ fn test_fill_overlap() -> Result<(), Box<dyn Error>> {
     whisper::fill::fill(&path1, &path2, now, now)?;
     let points = file2.dump(60)?;
 
-    for delta in &[180] {
+    {
+        let delta = &180;
         assert!(
             points.iter().any(|p| p.interval == (now - delta)
                 && (p.value - f64::from(*delta)) < std::f64::EPSILON),

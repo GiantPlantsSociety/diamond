@@ -1,6 +1,6 @@
 use actix_web::error::ErrorInternalServerError;
 use actix_web::web::{Data, Form, Json, Query};
-use actix_web::{dev, FromRequest, HttpMessage, HttpRequest, HttpResponse, Result};
+use actix_web::{FromRequest, HttpMessage, HttpRequest, HttpResponse, Result, dev};
 use futures::future::{FutureExt, LocalBoxFuture};
 use serde::*;
 use std::convert::From;
@@ -50,15 +50,11 @@ impl From<MetricResponseLeaf> for JsonTreeLeaf {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum FindFormat {
+    #[default]
     TreeJson,
     Completer,
-}
-
-impl Default for FindFormat {
-    fn default() -> FindFormat {
-        FindFormat::TreeJson
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -3,9 +3,9 @@ use crate::builder::WhisperBuilder;
 use crate::error::Error;
 use crate::interval::Interval;
 
+use crate::WhisperFile;
 use crate::point::Point;
 use crate::retention::Retention;
-use crate::WhisperFile;
 
 use std::fs::{remove_file, rename};
 use std::io;
@@ -50,7 +50,7 @@ fn migrate_aggregate(path_src: &Path, path_dst: &Path, now: u32) -> io::Result<(
 
             println!("timepoints_to_update: {}", values);
 
-            until = points_to_write.get(0).map(|x| x.interval).unwrap_or(now);
+            until = points_to_write.first().map(|x| x.interval).unwrap_or(now);
             file_dst.update_many(&points_to_write, now)?;
         }
     }
@@ -94,7 +94,7 @@ fn migrate_points(
     now: u32,
 ) -> Result<(), Error> {
     if !path_src.is_file() {
-        return Err(Error::FileNotExist(path_src.to_owned()).into());
+        return Err(Error::FileNotExist(path_src.to_owned()));
     }
 
     if aggregate {

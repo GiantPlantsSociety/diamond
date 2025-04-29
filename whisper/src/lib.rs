@@ -86,7 +86,7 @@ impl WhisperMetadata {
                 )
             })?;
 
-        if x_files_factor < 0.0 || x_files_factor > 1.0 {
+        if !(0.0..=1.0).contains(&x_files_factor) {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 format!("Bad x_files_factor {}", x_files_factor),
@@ -192,7 +192,7 @@ impl WhisperFile {
     }
 
     pub fn set_x_files_factor(&mut self, x_files_factor: f32) -> Result<(), io::Error> {
-        if x_files_factor < 0.0 || x_files_factor > 1.0 {
+        if !(0.0..=1.0).contains(&x_files_factor) {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 format!("Bad x_files_factor {}", x_files_factor),
@@ -538,7 +538,7 @@ fn file_update(
     for pair in header.archives[archive_index..].windows(2) {
         let higher = &pair[0];
         let lower = &pair[1];
-        if !__propagate(fh, &header, interval, higher, lower)? {
+        if !__propagate(fh, header, interval, higher, lower)? {
             break;
         }
     }
@@ -561,7 +561,7 @@ fn file_update_many(
             if !current_points.is_empty() {
                 // Commit all the points we've found that it can fit
                 current_points.reverse(); // Put points in chronological order
-                __archive_update_many(fh, &header, archive_index, &current_points)?;
+                __archive_update_many(fh, header, archive_index, &current_points)?;
                 current_points.clear();
             }
             archive_index += 1;
@@ -580,7 +580,7 @@ fn file_update_many(
     // Don't forget to commit after we've checked all the archives
     if archive_index < header.archives.len() && !current_points.is_empty() {
         current_points.reverse();
-        __archive_update_many(fh, &header, archive_index, &current_points)?;
+        __archive_update_many(fh, header, archive_index, &current_points)?;
     }
 
     Ok(())
@@ -706,7 +706,7 @@ fn adjust_instant(instant: u32, step: u32) -> u32 {
 }
 
 fn adjust_instant_up(instant: u32, step: u32) -> u32 {
-    (instant + step - 1) / step * step
+    instant.div_ceil(step) * step
 }
 
 fn adjust_interval(interval: Interval, step: u32) -> Result<Interval, String> {
@@ -732,7 +732,7 @@ fn archive_fetch_interval<R: Read + Seek>(
     } else {
         let from_index = instant_offset(archive, base.interval, interval.from());
         let until_index = instant_offset(archive, base.interval, interval.until());
-        let points = read_archive(fh, &archive, from_index, until_index)?;
+        let points = read_archive(fh, archive, from_index, until_index)?;
         Ok(Some(points))
     }
 }
@@ -747,7 +747,7 @@ fn points_to_data(
             let count = (interval.until() - interval.from()) / seconds_per_point;
             vec![None; count as usize]
         }
-        Some(points) => points_to_values(&points, interval.from(), seconds_per_point),
+        Some(points) => points_to_values(points, interval.from(), seconds_per_point),
     };
 
     ArchiveData {

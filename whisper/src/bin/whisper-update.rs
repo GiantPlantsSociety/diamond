@@ -3,8 +3,8 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use whisper::point::Point;
 use whisper::WhisperFile;
+use whisper::point::Point;
 
 #[derive(Debug, clap::Parser)]
 struct Args {

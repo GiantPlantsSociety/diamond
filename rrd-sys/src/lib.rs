@@ -4,7 +4,7 @@
 
 extern crate libc;
 
-use libc::{mode_t, time_t, tm, FILE};
+use libc::{FILE, mode_t, time_t, tm};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -12,7 +12,7 @@ pub struct rrd_t {
     _unused: [u8; 0],
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn rrd_set_to_DNAN() -> f64;
     pub fn rrd_set_to_DINF() -> f64;
 }
@@ -80,7 +80,7 @@ pub type rrd_output_callback_t = ::std::option::Option<
     ) -> usize,
 >;
 
-extern "C" {
+unsafe extern "C" {
     pub fn rrd_create(
         arg1: ::std::os::raw::c_int,
         arg2: *mut *mut ::std::os::raw::c_char,
@@ -155,7 +155,7 @@ extern "C" {
         argv: *mut *mut ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
     pub fn rrd_first(arg1: ::std::os::raw::c_int, arg2: *mut *mut ::std::os::raw::c_char)
-        -> time_t;
+    -> time_t;
     pub fn rrd_resize(
         arg1: ::std::os::raw::c_int,
         arg2: *mut *mut ::std::os::raw::c_char,
@@ -273,7 +273,7 @@ pub struct rrd_time_value {
 
 pub type rrd_time_value_t = rrd_time_value;
 
-extern "C" {
+unsafe extern "C" {
     pub fn rrd_parsetime(
         spec: *const ::std::os::raw::c_char,
         ptv: *mut rrd_time_value_t,
@@ -289,7 +289,7 @@ pub struct rrd_context {
 
 pub type rrd_context_t = rrd_context;
 
-extern "C" {
+unsafe extern "C" {
     pub fn rrd_get_context() -> *mut rrd_context_t;
     pub fn rrd_proc_start_end(
         arg1: *mut rrd_time_value_t,

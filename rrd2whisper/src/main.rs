@@ -5,7 +5,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
-use whisper::{point::Point, retention::Retention, WhisperBuilder};
+use whisper::{WhisperBuilder, point::Point, retention::Retention};
 
 // # Ignore SIGPIPE
 // signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -74,10 +74,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
             String::new()
         };
 
-        let destination_directory = args
-            .destination_path
-            .as_ref()
-            .unwrap_or_else(|| &args.rrd_path);
+        let destination_directory = args.destination_path.as_ref().unwrap_or(&args.rrd_path);
         let destination_name = format!(
             "{}{}.wsp",
             args.rrd_path.file_stem().unwrap().to_str().unwrap(),

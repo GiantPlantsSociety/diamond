@@ -28,30 +28,29 @@ pub struct PathWord(pub Vec<PathElement>);
 
 impl PathWord {
     pub fn matches(&self, text: &str) -> bool {
-        if let Ok(re) = self.to_regex() {
-            re.is_match(text)
-        } else {
-            false
+        match self.to_regex() {
+            Ok(re) => re.is_match(text),
+            _ => false,
         }
     }
 
     pub fn to_regex_pattern(&self) -> Result<String, String> {
         fn element_to_regex(e: &PathElement) -> Result<String, String> {
             match e {
-                PathElement::Variable(ref v) => Err(format!(
+                PathElement::Variable(v) => Err(format!(
                     "Variables are forbidden but variable {} is in expression.",
                     v
                 )),
-                PathElement::Partial(ref p) => Ok(regex::escape(p)),
+                PathElement::Partial(p) => Ok(regex::escape(p)),
                 PathElement::Asterisk => Ok(".*?".to_string()),
-                PathElement::OneOf(ref chars) => Ok(chars
+                PathElement::OneOf(chars) => Ok(chars
                     .iter()
                     .map(|c| regex::escape(&String::from(*c)))
                     .collect::<Vec<_>>()
                     .join("|")),
-                PathElement::Enum(ref arms) => Ok(arms
+                PathElement::Enum(arms) => Ok(arms
                     .iter()
-                    .map(|a| regex::escape(&a))
+                    .map(|a| regex::escape(a))
                     .collect::<Vec<_>>()
                     .join("|")),
             }
@@ -86,17 +85,17 @@ impl fmt::Display for PathExpression {
             }
             for element in word.0.iter() {
                 match element {
-                    PathElement::Variable(ref s) => write!(f, "${}", s)?,
-                    PathElement::Partial(ref s) => write!(f, "{}", s)?,
+                    PathElement::Variable(s) => write!(f, "${}", s)?,
+                    PathElement::Partial(s) => write!(f, "{}", s)?,
                     PathElement::Asterisk => write!(f, "*")?,
-                    PathElement::OneOf(ref chars) => {
+                    PathElement::OneOf(chars) => {
                         write!(f, "[")?;
                         for ch in chars.iter() {
                             write!(f, "{}", ch)?;
                         }
                         write!(f, "]")?;
                     }
-                    PathElement::Enum(ref e) => {
+                    PathElement::Enum(e) => {
                         write!(f, "{{")?;
                         for (index, part) in e.iter().enumerate() {
                             if index > 0 {

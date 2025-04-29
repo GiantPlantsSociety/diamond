@@ -159,18 +159,30 @@ pub enum BuilderError {
 impl Display for BuilderError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
-            Self::NoRetentions =>
-                write!(f, "You must specify at least one retention"),
-            Self::SamePrecision(size, precision, precision2) =>
-                write!(f, "A Whisper database may not be configured having two archives with the same precision (at index {}, {:?} and next is {:?})", size, precision, precision2),
-            Self::UndividablePrecision(size, precision, precision2) =>
-                write!(f, "Higher precision archives' precision must evenly divide all lower precision archives' precision (at index {}, {:?} and next is {:?})", size, precision, precision2),
-            Self::BadRetention(index, retention, retention2) =>
-                write!(f, "Lower precision archives must cover larger time intervals than higher precision archives (at index {}: {} seconds and next is {} seconds)", index, retention, retention2),
-            Self::NotEnoughPoints(index, points, points2) =>
-                write!(f, "Each archive must have at least enough points to consolidate to the next archive (archive at index {} consolidates {} of previous archive's points but it has only {} total points)", index, points, points2),
-            Self::InvalidXFilesFactor(factor) =>
-                write!(f, "Invalid xFilesFactor {}, not between 0 and 1", factor),
+            Self::NoRetentions => write!(f, "You must specify at least one retention"),
+            Self::SamePrecision(size, precision, precision2) => write!(
+                f,
+                "A Whisper database may not be configured having two archives with the same precision (at index {}, {:?} and next is {:?})",
+                size, precision, precision2
+            ),
+            Self::UndividablePrecision(size, precision, precision2) => write!(
+                f,
+                "Higher precision archives' precision must evenly divide all lower precision archives' precision (at index {}, {:?} and next is {:?})",
+                size, precision, precision2
+            ),
+            Self::BadRetention(index, retention, retention2) => write!(
+                f,
+                "Lower precision archives must cover larger time intervals than higher precision archives (at index {}: {} seconds and next is {} seconds)",
+                index, retention, retention2
+            ),
+            Self::NotEnoughPoints(index, points, points2) => write!(
+                f,
+                "Each archive must have at least enough points to consolidate to the next archive (archive at index {} consolidates {} of previous archive's points but it has only {} total points)",
+                index, points, points2
+            ),
+            Self::InvalidXFilesFactor(factor) => {
+                write!(f, "Invalid xFilesFactor {}, not between 0 and 1", factor)
+            }
             Self::Io(e) => write!(f, "{}", e),
         }
     }

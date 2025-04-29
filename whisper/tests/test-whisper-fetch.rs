@@ -18,7 +18,7 @@ fn calling_without_args() -> Result<(), Box<dyn Error>> {
 #[test]
 fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
-        .args(&["--help"])
+        .args(["--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Usage").from_utf8())

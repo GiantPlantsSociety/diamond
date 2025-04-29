@@ -2,10 +2,10 @@
 name = "rrd_test"
 version = "0.1.0"
 authors = ["Andrey Kutejko <andy128k@gmail.com>"]
-edition = "2018"
+edition = "2024"
 license = "GPLv2+"
 
 [dependencies]
 rrd = { path = "../rrd" }
 tempfile = "3"
-rand = "0.8"
+rand = "0.9"

@@ -21,7 +21,7 @@ fn calling_without_args() -> Result<(), Box<dyn Error>> {
 #[test]
 fn calling_help() -> Result<(), Box<dyn Error>> {
     Command::cargo_bin(NAME)?
-        .args(&["--help"])
+        .args(["--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Usage").from_utf8())
@@ -37,7 +37,7 @@ fn calling_with_invalid_path() -> Result<(), Box<dyn Error>> {
     let error_msg = "The system cannot find the file specified. (os error 2)";
 
     Command::cargo_bin(NAME)?
-        .args(&["invalid", "0.5"])
+        .args(["invalid", "0.5"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains(error_msg).from_utf8());
@@ -61,7 +61,7 @@ fn calling_with_invalid_param() -> Result<(), Box<dyn Error>> {
     fs::copy(&file_path, &path)?;
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "2.0"])
+        .args([path.to_str().unwrap(), "2.0"])
         .assert()
         .code(1)
         .stderr(predicate::str::contains("Bad x_files_factor 2").from_utf8());
@@ -84,7 +84,7 @@ fn calling_with_fractional_number() -> Result<(), Box<dyn Error>> {
     fs::copy(&file_path, &path)?;
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "0.1"])
+        .args([path.to_str().unwrap(), "0.1"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Updated xFilesFactor").from_utf8())
@@ -109,7 +109,7 @@ fn calling_with_whole_param() -> Result<(), Box<dyn Error>> {
     fs::copy(&file_path, &path)?;
 
     Command::cargo_bin(NAME)?
-        .args(&[path.to_str().unwrap(), "1"])
+        .args([path.to_str().unwrap(), "1"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Updated xFilesFactor").from_utf8())
