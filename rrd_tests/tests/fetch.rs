@@ -1,7 +1,8 @@
 use rand::{
-    distributions::{Alphanumeric, DistString},
-    thread_rng,
+    distr::{Alphanumeric, SampleString},
+    rng,
 };
+
 use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::path::PathBuf;
@@ -23,7 +24,7 @@ fn get_file_path(temp_dir: &TempDir, prefix: &str) -> PathBuf {
 }
 
 fn random_string(len: usize) -> String {
-    Alphanumeric.sample_string(&mut thread_rng(), len)
+    Alphanumeric.sample_string(&mut rng(), len)
 }
 
 #[test]
@@ -34,7 +35,7 @@ fn test_read_rrd() -> Result<(), Box<dyn Error>> {
     Command::new("rrdtool")
         .arg("create")
         .arg(&path)
-        .args(&["--step", "300"])
+        .args(["--step", "300"])
         .arg("DS:temp:GAUGE:600:-273:5000")
         .arg("RRA:AVERAGE:0.5:1:1200")
         .arg("RRA:MIN:0.6:12:2400")

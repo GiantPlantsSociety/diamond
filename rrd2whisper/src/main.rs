@@ -74,10 +74,7 @@ fn run(args: &Args) -> Result<(), Box<dyn Error>> {
             String::new()
         };
 
-        let destination_directory = args
-            .destination_path
-            .as_ref()
-            .unwrap_or_else(|| &args.rrd_path);
+        let destination_directory = args.destination_path.as_ref().unwrap_or(&args.rrd_path);
         let destination_name = format!(
             "{}{}.wsp",
             args.rrd_path.file_stem().unwrap().to_str().unwrap(),
