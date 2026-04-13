@@ -9,7 +9,7 @@ edition = "2024"
 
 [dependencies]
 whisper = { path = "../whisper" }
-rand = "0.9"
+rand = "0.10"
 tempfile = "3"
 byteorder = "1"
 
